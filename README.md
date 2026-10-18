@@ -1,0 +1,68 @@
+# RegimeCast
+
+Explainable crypto risk forecasting for BTC, ETH and SOL perpetual futures.
+Final Year Project, BS Artificial Intelligence, SZABIST Islamabad (Fall 2026).
+**Paper trading only. Not financial advice.**
+
+Team: Saeed Ahmad Jan (22108199), Ryan Ali (22108197), Aila Jabeen (22108167). Supervisor: Mr. Awais.
+
+## What is in the repo now (Module M1)
+
+| Part | File | What it does |
+|---|---|---|
+| Archive downloader | `regimecast/data/binance_archive.py` | Downloads Binance USD-M history (1m klines, mark/index/premium price, funding, open interest) with checksum checks. Safe to re-run. |
+| Data health | `regimecast/data/validate.py` | Finds gaps, duplicates, bad prices and the known Binance archive bugs. Writes `data/reports/data_health_<symbol>.json`. |
+| Live recorder | `regimecast/recorder/recorder.py` | Runs 24/7 on Railway. Records liquidations, mark price + funding, top-20 order book and open interest. Binance does not keep these for free, so every day we record is data we keep. |
+| Liquidation engine | `regimecast/risk/liquidation.py` | Binance liquidation price (isolated + cross, margin tiers, funding), random-walk baseline P(liq), FHS model on mark-price paths, safe-leverage search. |
+| Volatility | `regimecast/vol/` | Realised volatility targets (1h from 1-min, 24h from subsampled 5-min), HAR family baselines, walk-forward evaluation, QLIKE, Diebold-Mariano, Model Confidence Set. |
+| API | `regimecast/api/main.py` | FastAPI backend: `/risk-check`, `/forecast`, `/regime`, `/track-record`, `/data-health`. Contract in `docs/openapi.json`. |
+
+## Setup (Windows)
+
+```bat
+git clone https://github.com/algorian-commits/regimecast.git
+cd regimecast
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python -m pytest
+```
+
+## Step by step: first results for BTC
+
+```bat
+:: 1. download BTC history (about 30-60 min the first time)
+python -m regimecast.data.binance_archive --symbols BTCUSDT --start 2020-01
+
+:: 2. check the data
+python -m regimecast.data.validate --symbols BTCUSDT
+
+:: 3. HAR baselines, walk-forward, out of sample from 2024
+python scripts/run_har_baseline.py --symbol BTCUSDT --test-start 2024-01-01
+
+:: 4. run the API and open http://127.0.0.1:8000/docs
+uvicorn regimecast.api.main:app --reload
+```
+
+If Binance is blocked on your network, run step 1 on a VPN or on the Railway server.
+
+## Live recorder (Railway)
+
+Deployed from this repo with `Dockerfile.recorder`. It needs:
+* a **volume** mounted at `/data`
+* a region **outside the US** (Binance blocks US servers)
+* env var `RECORDER_TOKEN` (any long random text) to protect file downloads
+
+Check it: `https://<recorder-url>/health`. Copy files to your PC:
+`python scripts/pull_live_data.py` (set `RECORDER_URL` and `RECORDER_TOKEN` first).
+
+## Rules we follow (to keep results honest)
+
+1. A value labelled at time *t* only uses data up to *t*.
+2. Liquidations use **mark price**, not last price.
+3. Walk-forward only, with a purge gap equal to the forecast horizon. No random K-fold.
+4. QLIKE on variance (not log variance). Log models are bias-corrected.
+5. Every model we try is logged. The final test period (from 2025-Q4, including the Oct 2025 crash) is touched once.
+6. Margin tiers in `liquidation.py` are placeholders until `scripts/fetch_brackets.py` is run with a read-only key.
+
+See `docs/TEAM_TASKS.md` for who does what.

@@ -1,0 +1,11 @@
+[project]
+name = "regimecast"
+version = "0.1.0"
+description = "RegimeCast: explainable crypto risk forecasting (FYP, SZABIST)"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+include = ["regimecast*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

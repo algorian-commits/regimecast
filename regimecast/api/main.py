@@ -1,0 +1,203 @@
+"""RegimeCast backend API (FastAPI).
+
+Run locally:  uvicorn regimecast.api.main:app --reload
+Docs:         http://127.0.0.1:8000/docs   (Ryan: the typed client is generated
+              from docs/openapi.json, which `python scripts/export_openapi.py` refreshes)
+
+Endpoints that depend on models not built yet return HTTP 503 with
+{"status": "not_ready"} so the front-end can show a placeholder.
+"""
+from __future__ import annotations
+
+import json
+import math
+from datetime import datetime, timezone
+from typing import Literal
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field, model_validator
+
+from regimecast import config
+from regimecast.risk import liquidation as liq
+
+app = FastAPI(title="RegimeCast API", version="0.1.0",
+              description="Explainable crypto risk forecasting. Paper trading only. Not financial advice.")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+Symbol = Literal["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+# Used only until the volatility model publishes forecasts. Clearly flagged in responses.
+PLACEHOLDER_ANNUAL_VOL = {"BTCUSDT": 0.55, "ETHUSDT": 0.70, "SOLUSDT": 0.90}
+
+
+# ------------------------------------------------------------------ schemas
+class TradeIn(BaseModel):
+    symbol: Symbol
+    side: Literal["long", "short"]
+    entry: float = Field(gt=0, description="Entry price in USDT")
+    leverage: float = Field(gt=0, le=125)
+    qty: float | None = Field(None, gt=0, description="Size in coins. Give qty OR margin.")
+    margin: float | None = Field(None, gt=0, description="Margin in USDT (isolated). Give qty OR margin.")
+    margin_mode: Literal["isolated", "cross"] = "isolated"
+    wallet_balance: float | None = Field(None, gt=0, description="Cross margin: whole cross wallet in USDT")
+    stop: float | None = Field(None, gt=0)
+    horizon_hours: Literal[1, 24] = 24
+    risk_limit: float = Field(0.01, gt=0, lt=1, description="Max acceptable P(liquidation) for safe leverage")
+    sigma_annual: float | None = Field(None, gt=0, description="Override volatility (annualised, e.g. 0.6)")
+
+    @model_validator(mode="after")
+    def _size(self):
+        if (self.qty is None) == (self.margin is None):
+            raise ValueError("give exactly one of qty or margin")
+        if self.margin_mode == "cross" and self.wallet_balance is None:
+            raise ValueError("cross margin needs wallet_balance")
+        return self
+
+
+class StopInfo(BaseModel):
+    stop: float
+    stop_inside_liquidation: bool = Field(description="True if the stop would trigger AFTER liquidation")
+    p_stop_hit: float
+    loss_at_stop_usdt: float
+
+
+class RiskOut(BaseModel):
+    symbol: str
+    side: str
+    notional_usdt: float
+    margin_usdt: float
+    liquidation_price: float | None
+    liquidation_distance_pct: float | None
+    horizon_hours: int
+    p_liquidation: float
+    model: str
+    sigma_horizon_pct: float
+    volatility_source: str
+    max_safe_leverage: float
+    max_position_usdt: float
+    fees_round_trip_usdt: float
+    maintenance_margin_rate: float
+    stop: StopInfo | None = None
+    regime: str | None = None
+    explanation: list[str]
+    warnings: list[str]
+    generated_at: str
+
+
+class NotReady(BaseModel):
+    status: str = "not_ready"
+    detail: str
+
+
+# ------------------------------------------------------------------ helpers
+def _latest_forecasts() -> dict:
+    f = config.DATA_DIR / "forecasts" / "latest.json"
+    return json.loads(f.read_text()) if f.exists() else {}
+
+
+def _sigma(symbol: str, horizon: int, override: float | None) -> tuple[float, str]:
+    """Volatility over the horizon (std of log return) and where it came from."""
+    if override:
+        return override * math.sqrt(horizon / config.HOURS_PER_YEAR), "user override"
+    fc = _latest_forecasts().get(symbol, {}).get(f"{horizon}h")
+    if fc and fc.get("variance"):
+        return math.sqrt(fc["variance"]), f"model forecast ({fc.get('model', '?')}, {fc.get('made_at', '?')})"
+    a = PLACEHOLDER_ANNUAL_VOL[symbol]
+    return a * math.sqrt(horizon / config.HOURS_PER_YEAR), "PLACEHOLDER (volatility model not trained yet)"
+
+
+# ------------------------------------------------------------------ routes
+@app.get("/health")
+def health():
+    return {"status": "ok", "time": datetime.now(timezone.utc).isoformat(), "version": app.version}
+
+
+@app.post("/risk-check", response_model=RiskOut)
+def risk_check(t: TradeIn) -> RiskOut:
+    qty = t.qty if t.qty is not None else t.margin * t.leverage / t.entry
+    pos = liq.Position(symbol=t.symbol, side=t.side, entry=t.entry, qty=qty, leverage=t.leverage,
+                       margin_mode=t.margin_mode, wallet_balance=t.wallet_balance, stop=t.stop)
+    tier = liq.tier_for(t.symbol, pos.notional)
+    warnings: list[str] = []
+    if t.leverage > tier.max_leverage:
+        warnings.append(f"Binance allows at most {tier.max_leverage}x for this position size.")
+
+    sigma_h, source = _sigma(t.symbol, t.horizon_hours, t.sigma_annual)
+    if source.startswith("PLACEHOLDER"):
+        warnings.append("Volatility is a placeholder until the forecasting model is trained.")
+
+    lp = liq.liquidation_price(pos)
+    dist = liq.adverse_log_distance(pos, lp)
+    p = liq.first_passage_prob(dist, sigma_h)
+
+    def prob_fn(p_: liq.Position) -> float:
+        return liq.first_passage_prob(liq.adverse_log_distance(p_, liq.liquidation_price(p_)), sigma_h)
+
+    safe_lev = liq.max_safe_leverage(prob_fn, pos, t.risk_limit)
+    margin = pos.margin_used()
+
+    stop_info = None
+    if t.stop:
+        stop_dist = liq.adverse_log_distance(pos, t.stop)
+        inside = stop_dist >= dist
+        loss = abs(t.stop - t.entry) * qty + liq.fees_round_trip(pos)
+        stop_info = StopInfo(stop=t.stop, stop_inside_liquidation=inside,
+                             p_stop_hit=liq.first_passage_prob(stop_dist, sigma_h),
+                             loss_at_stop_usdt=round(min(loss, margin) if inside else loss, 2))
+        if inside:
+            warnings.append("Your stop is beyond the liquidation price: you would be liquidated first.")
+
+    finite = math.isfinite(lp) and lp > 0
+    expl = [
+        f"Liquidation is triggered by the mark price at about {lp:,.2f} USDT." if finite
+        else "This position cannot be liquidated at this margin.",
+        f"That is a {100 * (math.exp(dist) - 1):.2f}% adverse move from your entry." if finite else "",
+        f"Expected volatility over {t.horizon_hours}h is about {100 * sigma_h:.2f}% ({source}).",
+        f"Highest leverage keeping P(liquidation) under {100 * t.risk_limit:.1f}% is {safe_lev}x.",
+    ]
+    return RiskOut(
+        symbol=t.symbol, side=t.side, notional_usdt=round(pos.notional, 2), margin_usdt=round(margin, 2),
+        liquidation_price=round(lp, 2) if finite else None,
+        liquidation_distance_pct=round(100 * (math.exp(dist) - 1), 3) if finite else None,
+        horizon_hours=t.horizon_hours, p_liquidation=round(p, 5), model="first_passage_baseline",
+        sigma_horizon_pct=round(100 * sigma_h, 3), volatility_source=source,
+        max_safe_leverage=safe_lev, max_position_usdt=round(safe_lev * pos.initial_margin, 2),
+        fees_round_trip_usdt=round(liq.fees_round_trip(pos), 4), maintenance_margin_rate=tier.mmr,
+        stop=stop_info, regime=None, explanation=[e for e in expl if e], warnings=warnings,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+@app.get("/forecast", responses={503: {"model": NotReady}})
+def forecast(symbol: Symbol = "BTCUSDT", horizon_hours: Literal[1, 24] = 24):
+    fc = _latest_forecasts().get(symbol, {}).get(f"{horizon_hours}h")
+    if not fc:
+        raise HTTPException(503, detail={"status": "not_ready", "detail": "volatility model not trained yet"})
+    return fc
+
+
+@app.get("/regime", responses={503: {"model": NotReady}})
+def regime(symbol: Symbol = "BTCUSDT"):
+    f = config.DATA_DIR / "regimes" / "latest.json"
+    data = json.loads(f.read_text()).get(symbol) if f.exists() else None
+    if not data:
+        raise HTTPException(503, detail={"status": "not_ready", "detail": "regime model not trained yet"})
+    return data
+
+
+@app.get("/track-record")
+def track_record(symbol: Symbol = "BTCUSDT", limit: int = 500):
+    f = config.DATA_DIR / "track_record" / f"{symbol}.jsonl"
+    if not f.exists():
+        return {"symbol": symbol, "records": []}
+    lines = f.read_text().strip().splitlines()[-limit:]
+    return {"symbol": symbol, "records": [json.loads(x) for x in lines]}
+
+
+@app.get("/data-health/{symbol}")
+def data_health(symbol: Symbol):
+    f = config.DATA_DIR / "reports" / f"data_health_{symbol}.json"
+    if not f.exists():
+        raise HTTPException(503, detail={"status": "not_ready", "detail": "run python -m regimecast.data.validate"})
+    return json.loads(f.read_text())

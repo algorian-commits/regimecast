@@ -1,0 +1,653 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "RegimeCast API",
+    "description": "Explainable crypto risk forecasting. Paper trading only. Not financial advice.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/risk-check": {
+      "post": {
+        "summary": "Risk Check",
+        "operationId": "risk_check_risk_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TradeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/forecast": {
+      "get": {
+        "summary": "Forecast",
+        "operationId": "forecast_forecast_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "default": "BTCUSDT",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "horizon_hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                1,
+                24
+              ],
+              "type": "integer",
+              "default": 24,
+              "title": "Horizon Hours"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReady"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regime": {
+      "get": {
+        "summary": "Regime",
+        "operationId": "regime_regime_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "default": "BTCUSDT",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReady"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/track-record": {
+      "get": {
+        "summary": "Track Record",
+        "operationId": "track_record_track_record_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "default": "BTCUSDT",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data-health/{symbol}": {
+      "get": {
+        "summary": "Data Health",
+        "operationId": "data_health_data_health__symbol__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "NotReady": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "not_ready"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "NotReady"
+      },
+      "RiskOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "notional_usdt": {
+            "type": "number",
+            "title": "Notional Usdt"
+          },
+          "margin_usdt": {
+            "type": "number",
+            "title": "Margin Usdt"
+          },
+          "liquidation_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidation Price"
+          },
+          "liquidation_distance_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidation Distance Pct"
+          },
+          "horizon_hours": {
+            "type": "integer",
+            "title": "Horizon Hours"
+          },
+          "p_liquidation": {
+            "type": "number",
+            "title": "P Liquidation"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "sigma_horizon_pct": {
+            "type": "number",
+            "title": "Sigma Horizon Pct"
+          },
+          "volatility_source": {
+            "type": "string",
+            "title": "Volatility Source"
+          },
+          "max_safe_leverage": {
+            "type": "number",
+            "title": "Max Safe Leverage"
+          },
+          "max_position_usdt": {
+            "type": "number",
+            "title": "Max Position Usdt"
+          },
+          "fees_round_trip_usdt": {
+            "type": "number",
+            "title": "Fees Round Trip Usdt"
+          },
+          "maintenance_margin_rate": {
+            "type": "number",
+            "title": "Maintenance Margin Rate"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StopInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "regime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regime"
+          },
+          "explanation": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Explanation"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "side",
+          "notional_usdt",
+          "margin_usdt",
+          "liquidation_price",
+          "liquidation_distance_pct",
+          "horizon_hours",
+          "p_liquidation",
+          "model",
+          "sigma_horizon_pct",
+          "volatility_source",
+          "max_safe_leverage",
+          "max_position_usdt",
+          "fees_round_trip_usdt",
+          "maintenance_margin_rate",
+          "explanation",
+          "warnings",
+          "generated_at"
+        ],
+        "title": "RiskOut"
+      },
+      "StopInfo": {
+        "properties": {
+          "stop": {
+            "type": "number",
+            "title": "Stop"
+          },
+          "stop_inside_liquidation": {
+            "type": "boolean",
+            "title": "Stop Inside Liquidation",
+            "description": "True if the stop would trigger AFTER liquidation"
+          },
+          "p_stop_hit": {
+            "type": "number",
+            "title": "P Stop Hit"
+          },
+          "loss_at_stop_usdt": {
+            "type": "number",
+            "title": "Loss At Stop Usdt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stop",
+          "stop_inside_liquidation",
+          "p_stop_hit",
+          "loss_at_stop_usdt"
+        ],
+        "title": "StopInfo"
+      },
+      "TradeIn": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "enum": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT"
+            ],
+            "title": "Symbol"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "long",
+              "short"
+            ],
+            "title": "Side"
+          },
+          "entry": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Entry",
+            "description": "Entry price in USDT"
+          },
+          "leverage": {
+            "type": "number",
+            "maximum": 125.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Leverage"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty",
+            "description": "Size in coins. Give qty OR margin."
+          },
+          "margin": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin",
+            "description": "Margin in USDT (isolated). Give qty OR margin."
+          },
+          "margin_mode": {
+            "type": "string",
+            "enum": [
+              "isolated",
+              "cross"
+            ],
+            "title": "Margin Mode",
+            "default": "isolated"
+          },
+          "wallet_balance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wallet Balance",
+            "description": "Cross margin: whole cross wallet in USDT"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          },
+          "horizon_hours": {
+            "type": "integer",
+            "enum": [
+              1,
+              24
+            ],
+            "title": "Horizon Hours",
+            "default": 24
+          },
+          "risk_limit": {
+            "type": "number",
+            "exclusiveMaximum": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Risk Limit",
+            "description": "Max acceptable P(liquidation) for safe leverage",
+            "default": 0.01
+          },
+          "sigma_annual": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sigma Annual",
+            "description": "Override volatility (annualised, e.g. 0.6)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "side",
+          "entry",
+          "leverage"
+        ],
+        "title": "TradeIn"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
