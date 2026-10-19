@@ -10,6 +10,7 @@ import pytest
 
 from regimecast.data import binance_archive as ba
 from regimecast.data import validate as val
+from regimecast.recorder import hyperliquid as hl
 from regimecast.recorder import recorder as rec
 from regimecast.risk import liquidation as liq
 from regimecast.vol import evaluate as ev
@@ -158,8 +159,8 @@ def test_recorder_staleness_and_safe_flush(tmp_path, monkeypatch):
     r = rec.Recorder(["BTCUSDT"], tmp_path)
     assert r.stale_streams() == {}  # just started: grace period
     t = r._t0 + 1000
-    assert set(r.stale_streams(now=t)) == {"markprice", "depth", "open_interest"}
-    r.store.last_time.update(markprice=t - 5, depth=t - 5, open_interest=t - 30)
+    assert set(r.stale_streams(now=t)) == {"markprice", "depth", "open_interest", "hl_ctx", "hl_positions"}
+    r.store.last_time.update(markprice=t - 5, depth=t - 5, open_interest=t - 30, hl_ctx=t - 30, hl_positions=t - 300)
     assert r.stale_streams(now=t) == {}
     # a failed write keeps the rows in the buffer
     r.store.add("markprice", {"event_ts": pd.Timestamp("2026-01-01", tz="UTC"), "symbol": "BTCUSDT"})
@@ -169,6 +170,67 @@ def test_recorder_staleness_and_safe_flush(tmp_path, monkeypatch):
     with pytest.raises(OSError):
         r.store.flush()
     assert len(r.store.buf["markprice"]) == 1
+
+
+# ------------------------------------------------------------------ hyperliquid (Whale Watch)
+BUYER, SELLER, MM = "0xbuyer", "0xseller", "0xmaker"
+
+
+def hl_fill(tid, px, sz, side="B", h="0xabc", t=1792450647080, users=(BUYER, SELLER), coin="BTC"):
+    return {"coin": coin, "side": side, "px": str(px), "sz": str(sz), "time": t, "hash": h, "tid": tid,
+            "users": list(users)}
+
+
+def test_hl_orders_rebuilt_from_fills():
+    agg = hl.OrderAggregator(min_usd=50_000)
+    # one aggressive buy of 1 BTC filled against two makers, plus a small unrelated order
+    agg.add(hl_fill(1, 80_000, 0.5), now=0.0)
+    agg.add(hl_fill(2, 80_100, 0.5, users=(BUYER, MM)), now=0.1)
+    agg.add(hl_fill(2, 80_100, 0.5, users=(BUYER, MM)), now=0.2)  # repeated fill id: ignored
+    agg.add(hl_fill(3, 80_000, 0.01, side="A", h="0xdef"), now=0.3)
+    assert agg.pop_done(now=1.0) == []  # still within the idle window
+    rows = agg.pop_done(now=5.0)
+    assert len(rows) == 1  # the small order is dropped
+    o = rows[0]
+    assert o["taker"] == BUYER and o["side"] == "buy" and o["n_fills"] == 2 and o["n_makers"] == 2
+    assert o["notional_usd"] == pytest.approx(80_050) and o["vwap"] == pytest.approx(80_050)
+    # an aggressive SELL's taker is the seller
+    assert hl.taker_of(hl_fill(4, 1, 1, side="A")) == SELLER
+
+
+def test_hl_twap_slices_merge_into_one_order():
+    agg = hl.OrderAggregator(min_usd=50_000)
+    for i in range(3):  # three $20k slices 30 s apart, zero hash = TWAP
+        agg.add(hl_fill(10 + i, 100, 200, side="A", h=hl.ZERO_HASH, t=1792450647080 + 30_000 * i), now=30.0 * i)
+    assert agg.pop_done(now=65.0) == []  # 5 s after the last slice: TWAP not finished
+    (o,) = agg.pop_done(now=60.0 + hl.TWAP_IDLE_SECONDS)
+    assert o["twap"] and o["n_fills"] == 3 and o["notional_usd"] == pytest.approx(60_000) and o["side"] == "sell"
+
+
+def test_hl_parse_positions_ctx_and_watchlist():
+    now = pd.Timestamp("2026-10-20", tz="UTC")
+    state = {"marginSummary": {"accountValue": "1000000"}, "assetPositions": [{"position": {
+        "coin": "ETH", "szi": "-100.0", "positionValue": "240000", "entryPx": "2400", "liquidationPx": "4000",
+        "leverage": {"type": "cross", "value": 5}, "unrealizedPnl": "1000", "marginUsed": "48000"}}]}
+    rows = {r["coin"]: r for r in hl.parse_positions(state, "0xa", ["BTC", "ETH"], now, "watchlist")}
+    assert rows["ETH"]["size"] == -100 and rows["ETH"]["liquidation"] == 4000 and rows["ETH"]["leverage"] == 5
+    assert rows["BTC"]["size"] == 0 and math.isnan(rows["BTC"]["entry"])  # flat is recorded, not skipped
+    assert all(r["account_value"] == 1e6 for r in rows.values())
+
+    meta = [{"universe": [{"name": "BTC"}, {"name": "ETH"}]},
+            [{"markPx": "80000", "oraclePx": "80010", "midPx": "80001", "funding": "0.0000125", "premium": "0.0001",
+              "openInterest": "100", "dayNtlVlm": "5e9"}, {"markPx": "2400", "openInterest": "10"}]]
+    (btc,) = hl.parse_ctx(meta, ["BTC", "SOL"], now)  # SOL missing from universe: skipped
+    assert btc["open_interest_usd"] == 8_000_000 and btc["funding"] == 0.0000125
+
+    def lb(addr, value, month):
+        return {"ethAddress": addr, "accountValue": str(value), "displayName": None,
+                "windowPerformances": [["day", {"pnl": "1"}], ["month", {"pnl": str(month)}]]}
+    picked = hl.select_watchlist([lb("0xA", 5e7, 0), lb("0xB", 2e6, 9e6), lb("0xC", 3e6, 1), lb("0xD", 5e5, 1e9)], n=1)
+    by = {r["address"]: r for r in picked}
+    assert set(by) == {"0xa", "0xb"}  # biggest account + best month; 0xD is under the $1M floor
+    assert by["0xa"]["reason"] == "largest_account" and by["0xb"]["reason"] == "top_month_pnl"
+    assert hl.coin_of("SOLUSDT") == "SOL"
 
 
 # ------------------------------------------------------------------ liquidation

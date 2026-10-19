@@ -15,6 +15,11 @@ BINANCE_ARCHIVE_URL = os.environ.get("BINANCE_ARCHIVE_URL", "https://data.binanc
 BINANCE_FAPI_URL = os.environ.get("BINANCE_FAPI_URL", "https://fapi.binance.com")
 BINANCE_FSTREAM_URL = os.environ.get("BINANCE_FSTREAM_URL", "wss://fstream.binance.com")
 
+# Hyperliquid (public, no key): Whale Watch recording
+HL_INFO_URL = os.environ.get("HL_INFO_URL", "https://api.hyperliquid.xyz/info")
+HL_WS_URL = os.environ.get("HL_WS_URL", "wss://api.hyperliquid.xyz/ws")
+HL_LEADERBOARD_URL = os.environ.get("HL_LEADERBOARD_URL", "https://stats-data.hyperliquid.xyz/Mainnet/leaderboard")
+
 HOURS_PER_YEAR = 24 * 365
 
 # Final test period (includes the Oct 2025 crash). Model development never looks at

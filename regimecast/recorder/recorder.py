@@ -8,6 +8,8 @@ Runs 24/7 on Railway (see Dockerfile.recorder). It records:
 * ``markprice``    - mark price, index price and funding rate every second.
 * ``depth``        - top 20 order-book levels, sampled every DEPTH_SAMPLE_SECONDS.
 * ``open_interest``- open interest polled from REST every OI_POLL_SECONDS.
+* ``hl_*``         - Whale Watch: big Hyperliquid orders with wallet addresses, positions
+  of top accounts, market context. See ``hyperliquid.py``. RECORD_HYPERLIQUID=0 turns it off.
 
 Data goes to ``$REGIMECAST_DATA_DIR/live/<stream>/date=YYYY-MM-DD/*.parquet``.
 Small files are merged into one file per day by ``compact()``.
@@ -49,9 +51,14 @@ DEPTH_LEVELS = 20
 # A connection that is open but silent this long is reconnected (Binance can stop
 # serving a stream without closing the socket - that is how we lost mark price once).
 SILENT_RECONNECT_SECONDS = float(os.environ.get("SILENT_RECONNECT_SECONDS", "60"))
-# Max age of the last row before /health reports "stale". Liquidations are bursty, so not checked.
+# Max age of the last row before /health reports "stale". Liquidations and big orders are
+# bursty, so not checked.
 STALE_AFTER = {"markprice": 120.0, "depth": 120.0, "open_interest": 300.0}
-# Stale this long -> flush and exit, so Railway's restart policy brings up a fresh process.
+HL_STALE_AFTER = {"hl_ctx": 180.0, "hl_positions": 900.0}
+RECORD_HYPERLIQUID = os.environ.get("RECORD_HYPERLIQUID", "1") != "0"
+# Binance streams stale this long -> flush and exit, so Railway's restart policy brings up a
+# fresh process. Hyperliquid staleness only shows in /health: a Hyperliquid outage must not
+# keep restarting (and interrupting) the Binance recording.
 EXIT_AFTER_STALE_SECONDS = float(os.environ.get("EXIT_AFTER_STALE_SECONDS", "900"))
 
 
@@ -173,6 +180,13 @@ class Recorder:
         self._t0 = time.time()
         self.connected: dict[str, bool] = {"market": False, "public": False}
         self._last_depth: dict[str, float] = {}
+        self.stale_after = dict(STALE_AFTER)
+        self.hl = None
+        if RECORD_HYPERLIQUID:
+            from regimecast.recorder.hyperliquid import HyperliquidWatcher
+            self.hl = HyperliquidWatcher(self)
+            self.connected["hyperliquid"] = False
+            self.stale_after.update(HL_STALE_AFTER)
 
     def stream_urls(self) -> dict[str, str]:
         """Binance split USD-M websockets in 2026: mark price and liquidations only
@@ -253,13 +267,13 @@ class Recorder:
         """Streams whose last row is older than STALE_AFTER -> seconds since last row.
         Measured from process start for streams that have not sent anything yet."""
         now = now or time.time()
-        ages = {s: now - self.store.last_time.get(s, self._t0) for s in STALE_AFTER}
-        return {s: round(a) for s, a in ages.items() if a > STALE_AFTER[s]}
+        ages = {s: now - self.store.last_time.get(s, self._t0) for s in self.stale_after}
+        return {s: round(a) for s, a in ages.items() if a > self.stale_after[s]}
 
     async def watchdog_loop(self) -> None:
         while True:
             await asyncio.sleep(60)
-            stale = self.stale_streams()
+            stale = {s: a for s, a in self.stale_streams().items() if s in STALE_AFTER}  # Binance only
             if stale and max(stale.values()) > EXIT_AFTER_STALE_SECONDS:
                 log.error("streams stale %s, flushing and exiting so the platform restarts us", stale)
                 try:
@@ -289,8 +303,9 @@ def create_app(start_tasks: bool = True):
     async def lifespan(app):
         tasks = []
         if start_tasks:
-            tasks = [asyncio.create_task(c) for c in (rec.ws_loop("market"), rec.ws_loop("public"),
-                                                       rec.oi_loop(), rec.flush_loop(), rec.watchdog_loop())]
+            coros = [rec.ws_loop("market"), rec.ws_loop("public"), rec.oi_loop(), rec.flush_loop(),
+                     rec.watchdog_loop()] + (rec.hl.tasks() if rec.hl else [])
+            tasks = [asyncio.create_task(c) for c in coros]
         yield
         for t in tasks:
             t.cancel()
