@@ -57,7 +57,9 @@ def load(dataset: str, symbol: str) -> pd.DataFrame:
     if not files:
         return pd.DataFrame()
     df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
-    return df.sort_values("ts").reset_index(drop=True)
+    # exact duplicate rows can only come from overlapping files; same-ts rows with
+    # different values are left for the gap report to flag
+    return df.drop_duplicates().sort_values("ts").reset_index(drop=True)
 
 
 def clean_minutes(df: pd.DataFrame) -> pd.DataFrame:

@@ -14,7 +14,8 @@ import math
 from datetime import datetime, timezone
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Query
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
@@ -52,6 +53,8 @@ class TradeIn(BaseModel):
             raise ValueError("give exactly one of qty or margin")
         if self.margin_mode == "cross" and self.wallet_balance is None:
             raise ValueError("cross margin needs wallet_balance")
+        if self.stop is not None and (self.stop >= self.entry if self.side == "long" else self.stop <= self.entry):
+            raise ValueError("stop must be below entry for a long and above entry for a short")
         return self
 
 
@@ -88,6 +91,11 @@ class RiskOut(BaseModel):
 class NotReady(BaseModel):
     status: str = "not_ready"
     detail: str
+
+
+def not_ready(detail: str) -> JSONResponse:
+    """503 with a flat {"status": "not_ready", "detail": ...} body, as in the API contract."""
+    return JSONResponse(NotReady(detail=detail).model_dump(), status_code=503)
 
 
 # ------------------------------------------------------------------ helpers
@@ -173,7 +181,7 @@ def risk_check(t: TradeIn) -> RiskOut:
 def forecast(symbol: Symbol = "BTCUSDT", horizon_hours: Literal[1, 24] = 24):
     fc = _latest_forecasts().get(symbol, {}).get(f"{horizon_hours}h")
     if not fc:
-        raise HTTPException(503, detail={"status": "not_ready", "detail": "volatility model not trained yet"})
+        return not_ready("volatility model not trained yet")
     return fc
 
 
@@ -182,12 +190,12 @@ def regime(symbol: Symbol = "BTCUSDT"):
     f = config.DATA_DIR / "regimes" / "latest.json"
     data = json.loads(f.read_text()).get(symbol) if f.exists() else None
     if not data:
-        raise HTTPException(503, detail={"status": "not_ready", "detail": "regime model not trained yet"})
+        return not_ready("regime model not trained yet")
     return data
 
 
 @app.get("/track-record")
-def track_record(symbol: Symbol = "BTCUSDT", limit: int = 500):
+def track_record(symbol: Symbol = "BTCUSDT", limit: int = Query(500, ge=1, le=5000)):
     f = config.DATA_DIR / "track_record" / f"{symbol}.jsonl"
     if not f.exists():
         return {"symbol": symbol, "records": []}
@@ -195,9 +203,9 @@ def track_record(symbol: Symbol = "BTCUSDT", limit: int = 500):
     return {"symbol": symbol, "records": [json.loads(x) for x in lines]}
 
 
-@app.get("/data-health/{symbol}")
+@app.get("/data-health/{symbol}", responses={503: {"model": NotReady}})
 def data_health(symbol: Symbol):
     f = config.DATA_DIR / "reports" / f"data_health_{symbol}.json"
     if not f.exists():
-        raise HTTPException(503, detail={"status": "not_ready", "detail": "run python -m regimecast.data.validate"})
+        return not_ready("run python -m regimecast.data.validate")
     return json.loads(f.read_text())

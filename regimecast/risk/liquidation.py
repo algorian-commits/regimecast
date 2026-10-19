@@ -187,9 +187,12 @@ def max_adverse_excursion(mark_1m: pd.DataFrame, horizon_min: int) -> pd.DataFra
     over the NEXT `horizon_min` minutes, using mark-price highs and lows.
 
     mark_1m needs columns ts, open, high, low, close (1-minute mark-price klines).
-    The entry is taken at the close of minute t.
+    The entry is taken at the close of minute t. Missing minutes stay missing
+    (no forward fill), so any window with a gap gives NaN and is dropped instead
+    of silently covering more than `horizon_min` minutes.
     """
-    df = mark_1m.set_index("ts").sort_index()
+    df = mark_1m.drop_duplicates("ts", keep="last").set_index("ts").sort_index()
+    df = df.reindex(pd.date_range(df.index[0], df.index[-1], freq="1min"))
     # future window = minutes t+1 ... t+h  ->  reverse rolling trick
     fut_low = df["low"][::-1].rolling(horizon_min, min_periods=horizon_min).min()[::-1].shift(-1)
     fut_high = df["high"][::-1].rolling(horizon_min, min_periods=horizon_min).max()[::-1].shift(-1)
@@ -253,7 +256,9 @@ def max_safe_leverage(prob_fn, pos: Position, limit: float, lo: float = 1.0, hi:
     """Highest leverage with P(liquidation) <= limit, found by bisection.
 
     prob_fn(position) -> probability. Margin (isolated) is kept as the user's
-    margin; we vary leverage by changing the position size.
+    margin; we vary leverage by changing the position size. A leverage that
+    Binance would not allow for the resulting notional (bracket max leverage)
+    counts as unsafe, so the answer is always a leverage the user can set.
     """
     tiers = (pos.brackets or DEFAULT_BRACKETS)[pos.symbol.upper()]
     hi = hi or float(tiers[0].max_leverage)
@@ -261,6 +266,8 @@ def max_safe_leverage(prob_fn, pos: Position, limit: float, lo: float = 1.0, hi:
 
     def at(lev: float) -> float:
         p = Position(**{**pos.__dict__, "leverage": lev, "qty": margin * lev / pos.entry})
+        if lev > tier_for(p.symbol, p.notional, p.brackets).max_leverage:
+            return 1.0
         return prob_fn(p)
 
     if at(lo) > limit:

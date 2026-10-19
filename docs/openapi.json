@@ -206,6 +206,8 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
               "default": 500,
               "title": "Limit"
             }
@@ -261,6 +263,16 @@
                 "schema": {}
               }
             }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReady"
+                }
+              }
+            },
+            "description": "Service Unavailable"
           },
           "422": {
             "description": "Validation Error",

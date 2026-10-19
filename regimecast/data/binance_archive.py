@@ -161,7 +161,9 @@ def download_one(client, dataset: str, symbol: str, freq: str, period: str, forc
     if blob is None:
         return "missing"
     chk = _get(client, url + ".CHECKSUM")
-    if chk is not None:
+    if chk is None:
+        log.warning("no checksum published for %s, saved unverified", url)
+    else:
         expected = chk.decode().split()[0].strip().lower()
         if hashlib.sha256(blob).hexdigest() != expected:
             raise IOError(f"checksum mismatch for {url}")
@@ -173,6 +175,9 @@ def download_one(client, dataset: str, symbol: str, freq: str, period: str, forc
     tmp = out.with_suffix(".tmp")
     df.to_parquet(tmp, index=False)
     tmp.replace(out)
+    if freq == "monthly":  # daily files fetched while this month was running are now duplicates
+        for daily in out.parent.glob(f"{period}-*.parquet"):
+            daily.unlink()
     return f"ok ({len(df)} rows)"
 
 
