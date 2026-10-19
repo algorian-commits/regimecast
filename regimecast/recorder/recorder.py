@@ -14,9 +14,12 @@ Small files are merged into one file per day by ``compact()``.
 
 A small web server shows health and lets you download the files:
 
-* ``GET /health``                      - message counts, last message time, errors
-* ``GET /files?token=...``             - list recorded files
-* ``GET /files/<path>?token=...``      - download one file
+* ``GET /health``          - message counts, last message time, errors; 503 if a stream is stale
+* ``GET /files``           - list recorded files
+* ``GET /files/<path>``    - download one file
+* ``POST /flush``          - write buffers to disk now
+
+/files and /flush need the header ``Authorization: Bearer $RECORDER_TOKEN``.
 """
 from __future__ import annotations
 
@@ -24,6 +27,8 @@ import asyncio
 import json
 import logging
 import os
+import secrets
+import threading
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -40,6 +45,13 @@ DEPTH_SAMPLE_SECONDS = float(os.environ.get("DEPTH_SAMPLE_SECONDS", "5"))
 OI_POLL_SECONDS = float(os.environ.get("OI_POLL_SECONDS", "60"))
 FLUSH_SECONDS = float(os.environ.get("FLUSH_SECONDS", "600"))
 DEPTH_LEVELS = 20
+# A connection that is open but silent this long is reconnected (Binance can stop
+# serving a stream without closing the socket - that is how we lost mark price once).
+SILENT_RECONNECT_SECONDS = float(os.environ.get("SILENT_RECONNECT_SECONDS", "60"))
+# Max age of the last row before /health reports "stale". Liquidations are bursty, so not checked.
+STALE_AFTER = {"markprice": 120.0, "depth": 120.0, "open_interest": 300.0}
+# Stale this long -> flush and exit, so Railway's restart policy brings up a fresh process.
+EXIT_AFTER_STALE_SECONDS = float(os.environ.get("EXIT_AFTER_STALE_SECONDS", "900"))
 
 
 # ------------------------------------------------------------------ parsing
@@ -89,26 +101,38 @@ class Store:
         self.buf: dict[str, list[dict]] = defaultdict(list)
         self.counts: dict[str, int] = defaultdict(int)
         self.last_seen: dict[str, str] = {}
+        self.last_time: dict[str, float] = {}  # time.time() of the last row, for staleness checks
+        self._flush_lock = threading.Lock()  # /flush (thread pool) and flush_loop can overlap
 
     def add(self, stream: str, row: dict) -> None:
         self.buf[stream].append(row)
         self.counts[stream] += 1
         self.last_seen[stream] = datetime.now(timezone.utc).isoformat()
+        self.last_time[stream] = time.time()
 
     def flush(self) -> int:
+        """Write buffered rows to Parquet. Rows leave the buffer only after they are
+        on disk, so a failed write (disk full, bad row) loses nothing."""
+        with self._flush_lock:
+            return self._flush()
+
+    def _flush(self) -> int:
         written = 0
         for stream, rows in list(self.buf.items()):
             if not rows:
                 continue
-            self.buf[stream] = []
-            df = pd.DataFrame(rows)
+            n = len(rows)
+            df = pd.DataFrame(rows[:n])
             df["day"] = df["event_ts"].dt.strftime("%Y-%m-%d")
             for day, part in df.groupby("day"):
                 folder = self.root / stream / f"date={day}"
                 folder.mkdir(parents=True, exist_ok=True)
                 name = datetime.now(timezone.utc).strftime("%H%M%S_%f") + ".parquet"
-                part.drop(columns="day").to_parquet(folder / name, index=False)
+                tmp = folder / (name + ".tmp")
+                part.drop(columns="day").to_parquet(tmp, index=False)
+                tmp.replace(folder / name)
                 written += len(part)
+            del rows[:n]
         return written
 
 
@@ -145,6 +169,7 @@ class Recorder:
         self.root = root
         self.errors: list[str] = []
         self.started = datetime.now(timezone.utc).isoformat()
+        self._t0 = time.time()
         self.connected: dict[str, bool] = {"market": False, "public": False}
         self._last_depth: dict[str, float] = {}
 
@@ -183,8 +208,8 @@ class Recorder:
                 async with websockets.connect(url, ping_interval=20, max_size=2**22) as ws:
                     self.connected[name], backoff = True, 1
                     log.info("connected: %s", url)
-                    async for raw in ws:
-                        self.handle(raw)
+                    while True:
+                        self.handle(await asyncio.wait_for(ws.recv(), timeout=SILENT_RECONNECT_SECONDS))
             except asyncio.CancelledError:
                 raise
             except Exception as e:  # Binance drops connections every 24h; just reconnect
@@ -214,24 +239,45 @@ class Recorder:
         while True:
             await asyncio.sleep(FLUSH_SECONDS)
             try:
-                n = self.store.flush()
+                n = await asyncio.to_thread(self.store.flush)
                 log.info("flushed %d rows", n)
                 if time.monotonic() - last_compact > 3600:
-                    compact(self.root)
+                    # merging a day of 1-second rows takes a few seconds; keep it off the event loop
+                    await asyncio.to_thread(compact, self.root)
                     last_compact = time.monotonic()
             except Exception as e:
                 self._err(f"flush: {e!r}")
 
+    def stale_streams(self, now: float | None = None) -> dict[str, float]:
+        """Streams whose last row is older than STALE_AFTER -> seconds since last row.
+        Measured from process start for streams that have not sent anything yet."""
+        now = now or time.time()
+        ages = {s: now - self.store.last_time.get(s, self._t0) for s in STALE_AFTER}
+        return {s: round(a) for s, a in ages.items() if a > STALE_AFTER[s]}
+
+    async def watchdog_loop(self) -> None:
+        while True:
+            await asyncio.sleep(60)
+            stale = self.stale_streams()
+            if stale and max(stale.values()) > EXIT_AFTER_STALE_SECONDS:
+                log.error("streams stale %s, flushing and exiting so the platform restarts us", stale)
+                try:
+                    self.store.flush()
+                finally:
+                    os._exit(1)
+
     def health(self) -> dict:
-        return {"started": self.started, "connected": self.connected, "symbols": self.symbols,
+        stale = self.stale_streams()
+        return {"status": "stale" if stale else "ok", "stale": stale,
+                "started": self.started, "connected": self.connected, "symbols": self.symbols,
                 "messages": dict(self.store.counts), "last_message": self.store.last_seen,
                 "buffered": {k: len(v) for k, v in self.store.buf.items()}, "recent_errors": self.errors}
 
 
 # ------------------------------------------------------------------ web app
 def create_app(start_tasks: bool = True):
-    from fastapi import FastAPI, HTTPException, Query
-    from fastapi.responses import FileResponse
+    from fastapi import FastAPI, Header, HTTPException
+    from fastapi.responses import FileResponse, JSONResponse
 
     root = config.live_dir()
     root.mkdir(parents=True, exist_ok=True)
@@ -243,7 +289,7 @@ def create_app(start_tasks: bool = True):
         tasks = []
         if start_tasks:
             tasks = [asyncio.create_task(c) for c in (rec.ws_loop("market"), rec.ws_loop("public"),
-                                                       rec.oi_loop(), rec.flush_loop())]
+                                                       rec.oi_loop(), rec.flush_loop(), rec.watchdog_loop())]
         yield
         for t in tasks:
             t.cancel()
@@ -252,28 +298,31 @@ def create_app(start_tasks: bool = True):
     app = FastAPI(title="RegimeCast recorder", lifespan=lifespan)
     app.state.recorder = rec
 
-    def check(t: str) -> None:
-        if not token or t != token:
+    def check(authorization: str | None) -> None:
+        # Token goes in a header, not the URL, so it never shows up in request logs.
+        given = (authorization or "").removeprefix("Bearer ").strip()
+        if not token or not secrets.compare_digest(given.encode(), token.encode()):
             raise HTTPException(401, "bad token")
 
     @app.get("/health")
     def health():
-        return rec.health()
+        h = rec.health()
+        return JSONResponse(h, status_code=200 if h["status"] == "ok" else 503)
 
     @app.post("/flush")
-    def flush(token_: str = Query("", alias="token")):
-        check(token_)
+    def flush(authorization: str | None = Header(None)):
+        check(authorization)
         return {"rows": rec.store.flush(), "compacted_days": compact(root)}
 
     @app.get("/files")
-    def files(token_: str = Query("", alias="token")):
-        check(token_)
+    def files(authorization: str | None = Header(None)):
+        check(authorization)
         return [{"path": str(f.relative_to(root)).replace("\\", "/"), "bytes": f.stat().st_size}
                 for f in sorted(root.rglob("*.parquet"))]
 
     @app.get("/files/{path:path}")
-    def get_file(path: str, token_: str = Query("", alias="token")):
-        check(token_)
+    def get_file(path: str, authorization: str | None = Header(None)):
+        check(authorization)
         f = (root / path).resolve()
         if root.resolve() not in f.parents or not f.is_file():
             raise HTTPException(404, "not found")

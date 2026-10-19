@@ -144,11 +144,31 @@ def test_recorder_http(tmp_path, monkeypatch):
     monkeypatch.setattr(rec.config, "DATA_DIR", tmp_path)
     monkeypatch.setenv("RECORDER_TOKEN", "secret")
     app = rec.create_app(start_tasks=False)
+    auth = {"Authorization": "Bearer secret"}
     with TestClient(app) as c:
         assert c.get("/health").status_code == 200
         assert c.get("/files").status_code == 401
-        assert c.get("/files?token=secret").json() == []
-        assert c.get("/files/../../etc/passwd?token=secret").status_code == 404
+        assert c.get("/files?token=secret").status_code == 401  # token in URL no longer accepted
+        assert c.get("/files", headers={"Authorization": "Bearer wrong"}).status_code == 401
+        assert c.get("/files", headers=auth).json() == []
+        assert c.get("/files/../../etc/passwd", headers=auth).status_code == 404
+
+
+def test_recorder_staleness_and_safe_flush(tmp_path, monkeypatch):
+    r = rec.Recorder(["BTCUSDT"], tmp_path)
+    assert r.stale_streams() == {}  # just started: grace period
+    t = r._t0 + 1000
+    assert set(r.stale_streams(now=t)) == {"markprice", "depth", "open_interest"}
+    r.store.last_time.update(markprice=t - 5, depth=t - 5, open_interest=t - 30)
+    assert r.stale_streams(now=t) == {}
+    # a failed write keeps the rows in the buffer
+    r.store.add("markprice", {"event_ts": pd.Timestamp("2026-01-01", tz="UTC"), "symbol": "BTCUSDT"})
+    def boom(*a, **k):
+        raise OSError("disk full")
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", boom)
+    with pytest.raises(OSError):
+        r.store.flush()
+    assert len(r.store.buf["markprice"]) == 1
 
 
 # ------------------------------------------------------------------ liquidation
@@ -203,6 +223,24 @@ def test_fhs_model_and_safe_leverage():
     assert 1 < lev < 125
     hi = liq.Position(**{**pos.__dict__, "leverage": lev + 1, "qty": pos.initial_margin * (lev + 1) / 30000})
     assert fn(hi) > 0.01
+
+
+def test_safe_leverage_respects_bracket_max_leverage():
+    # 1000 USDT margin: up to 50x keeps notional under 50k (125x tier), above that
+    # the 50k+ tier only allows 20x, so nothing above 50x is allowed at all
+    tiers = {"BTCUSDT": liq.build_tiers([(0, 0.004, 125), (50_000, 0.005, 20)])}
+    pos = liq.Position("BTCUSDT", "long", entry=100_000, qty=0.01, leverage=1, brackets=tiers)
+    lev = liq.max_safe_leverage(lambda p: 0.0, pos, 0.01)  # zero risk: only the bracket limits
+    assert 49 < lev <= 50
+
+
+def test_mae_ignores_windows_with_gaps():
+    df = gbm_minutes(n_min=600)
+    mae = liq.max_adverse_excursion(df.drop(index=range(300, 305)), 60)
+    t = df["ts"]
+    # windows that would span the 5 missing minutes are dropped, not stretched
+    assert not mae.index.isin(t.iloc[240:305]).any()
+    assert t.iloc[[100, 239, 305]].isin(mae.index).all()
 
 
 # ------------------------------------------------------------------ volatility
@@ -263,4 +301,7 @@ def test_api_risk_check():
     assert 0 <= d["p_liquidation"] <= 1 and d["max_safe_leverage"] > 0
     assert any("placeholder" in w.lower() for w in d["warnings"])
     assert c.post("/risk-check", json={"symbol": "BTCUSDT", "side": "long", "entry": 1, "leverage": 10}).status_code == 422
-    assert c.get("/forecast").status_code == 503
+    r = c.get("/forecast")
+    assert r.status_code == 503 and r.json()["status"] == "not_ready"  # flat body, as in the contract
+    bad_stop = {"symbol": "BTCUSDT", "side": "long", "entry": 100000, "leverage": 10, "margin": 1000, "stop": 101000}
+    assert c.post("/risk-check", json=bad_stop).status_code == 422
