@@ -2,7 +2,7 @@
 
 ## Saeed: M1 Data Pipeline & Backend Foundation
 - [x] Repo skeleton, downloader, validator, live recorder, liquidation engine, HAR baselines, API contract
-- [ ] Deploy recorder on Railway (non-US region) and check `/health` shows messages
+- [x] Deploy recorder on Railway (non-US region) and check `/health` shows messages
 - [ ] Download BTC history 2020 to now; fix anything the validator flags
 - [ ] Run `scripts/run_har_baseline.py` and put the table in the P1 Mid slides
 - [ ] Run `scripts/fetch_brackets.py` with a read-only Binance key

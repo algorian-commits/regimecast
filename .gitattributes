@@ -1,0 +1,7 @@
+# Store text files with LF in the repo whatever the OS, so Linux builds (Docker,
+# CI) and Windows checkouts agree and diffs never show whole-file line-ending churn.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.parquet binary
+*.png binary
+*.zip binary

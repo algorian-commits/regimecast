@@ -1,5 +1,7 @@
 # RegimeCast
 
+![tests](https://github.com/algorian-commits/regimecast/actions/workflows/tests.yml/badge.svg)
+
 Explainable crypto risk forecasting for BTC, ETH and SOL perpetual futures.
 Final Year Project, BS Artificial Intelligence, SZABIST Islamabad (Fall 2026).
 **Paper trading only. Not financial advice.**
@@ -19,10 +21,12 @@ Team: Saeed Ahmad Jan (22108199), Ryan Ali (22108197), Aila Jabeen (22108167). S
 
 ## Setup (Windows)
 
+Use Python 3.12, the same version as the recorder image and CI.
+
 ```bat
 git clone https://github.com/algorian-commits/regimecast.git
 cd regimecast
-python -m venv .venv
+py -3.12 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python -m pytest
@@ -38,7 +42,7 @@ python -m regimecast.data.binance_archive --symbols BTCUSDT --start 2020-01
 python -m regimecast.data.validate --symbols BTCUSDT
 
 :: 3. HAR baselines, walk-forward, out of sample from 2024
-python scripts/run_har_baseline.py --symbol BTCUSDT --test-start 2024-01-01
+python scripts/run_har_baseline.py --symbol BTCUSDT --test-start 2024-01-01   :: stops before the final test period
 
 :: 4. run the API and open http://127.0.0.1:8000/docs
 uvicorn regimecast.api.main:app --reload
@@ -53,8 +57,12 @@ Deployed from this repo with `Dockerfile.recorder`. It needs:
 * a region **outside the US** (Binance blocks US servers)
 * env var `RECORDER_TOKEN` (any long random text) to protect file downloads
 
-Check it: `https://<recorder-url>/health`. Copy files to your PC:
-`python scripts/pull_live_data.py` (set `RECORDER_URL` and `RECORDER_TOKEN` first).
+Check it: `https://<recorder-url>/health` returns 200 when every stream is fresh and 503 with a `stale` list when one is not. A connection that goes silent for 60 s is reopened, and if data stays stale for 15 min the process exits so Railway restarts it.
+
+Copy files to your PC (do this often: it is the only backup):
+`python scripts/pull_live_data.py` (set `RECORDER_URL` and `RECORDER_TOKEN` first). `/files` and `/flush` take the token as `Authorization: Bearer <token>`, never in the URL.
+
+Only changes to the recorder's own files redeploy it (`watchPatterns` in `railway.json`), so other pushes do not interrupt recording.
 
 ## Rules we follow (to keep results honest)
 
@@ -62,7 +70,7 @@ Check it: `https://<recorder-url>/health`. Copy files to your PC:
 2. Liquidations use **mark price**, not last price.
 3. Walk-forward only, with a purge gap equal to the forecast horizon. No random K-fold.
 4. QLIKE on variance (not log variance). Log models are bias-corrected.
-5. Every model we try is logged. The final test period (from 2025-Q4, including the Oct 2025 crash) is touched once.
+5. Every model we try is logged. The final test period (from `config.HOLDOUT_START` = 2025-10-01, including the Oct 2025 crash) is touched once: scripts stop before it unless run with `--final-test`.
 6. Margin tiers in `liquidation.py` are placeholders until `scripts/fetch_brackets.py` is run with a read-only key.
 
 See `docs/TEAM_TASKS.md` for who does what.
