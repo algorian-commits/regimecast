@@ -25,9 +25,14 @@ def mse(y, f) -> np.ndarray:
     return (np.asarray(y, float) - np.asarray(f, float)) ** 2
 
 
+def _utc(t) -> pd.Timestamp:
+    t = pd.Timestamp(t)
+    return t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
+
+
 def walk_forward(X: pd.DataFrame, y: pd.Series, make_model: Callable[[], object], test_start: str,
                  horizon_hours: int, refit_every_hours: int = 24 * 30, min_train_hours: int = 24 * 90,
-                 end: str | None = None) -> pd.Series:
+                 end: str | pd.Timestamp | None = None) -> pd.Series:
     """Out-of-sample forecasts.
 
     For each block of `refit_every_hours` test origins we fit on all origins
@@ -35,8 +40,8 @@ def walk_forward(X: pd.DataFrame, y: pd.Series, make_model: Callable[[], object]
     - horizon). That gap is the purge that stops overlapping targets leaking.
     """
     idx = X.index
-    t0 = pd.Timestamp(test_start, tz="UTC") if pd.Timestamp(test_start).tzinfo is None else pd.Timestamp(test_start)
-    t_end = idx[-1] if end is None else pd.Timestamp(end, tz="UTC")
+    t0 = _utc(test_start)
+    t_end = idx[-1] if end is None else _utc(end)
     preds = []
     block_start = t0
     while block_start <= t_end:

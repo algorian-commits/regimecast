@@ -17,6 +17,10 @@ BINANCE_FSTREAM_URL = os.environ.get("BINANCE_FSTREAM_URL", "wss://fstream.binan
 
 HOURS_PER_YEAR = 24 * 365
 
+# Final test period (includes the Oct 2025 crash). Model development never looks at
+# targets from here on; the final evaluation reads it once (README, rule 5).
+HOLDOUT_START = "2025-10-01"
+
 
 def raw_dir() -> Path:
     return DATA_DIR / "raw"
