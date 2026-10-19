@@ -134,7 +134,9 @@ def test_recorder_parsing_and_store(tmp_path):
     assert rec.compact(tmp_path, today="2030-01-01") == 2
     files = list(tmp_path.rglob("*.parquet"))
     assert all(f.name == "day.parquet" for f in files)
-    assert "!forceOrder@arr" in r.stream_url() and "btcusdt@depth20@500ms" in r.stream_url()
+    urls = r.stream_urls()
+    assert "/market/" in urls["market"] and "!forceOrder@arr" in urls["market"] and "btcusdt@markPrice@1s" in urls["market"]
+    assert "/public/" in urls["public"] and "btcusdt@depth20@500ms" in urls["public"]
 
 
 def test_recorder_http(tmp_path, monkeypatch):

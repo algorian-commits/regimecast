@@ -145,14 +145,17 @@ class Recorder:
         self.root = root
         self.errors: list[str] = []
         self.started = datetime.now(timezone.utc).isoformat()
-        self.connected = False
+        self.connected: dict[str, bool] = {"market": False, "public": False}
         self._last_depth: dict[str, float] = {}
 
-    def stream_url(self) -> str:
-        streams = ["!forceOrder@arr"]
-        for s in self.symbols:
-            streams += [f"{s}@markPrice@1s", f"{s}@depth20@500ms"]
-        return f"{config.BINANCE_FSTREAM_URL}/stream?streams=" + "/".join(streams)
+    def stream_urls(self) -> dict[str, str]:
+        """Binance split USD-M websockets in 2026: mark price and liquidations only
+        come on /market, order-book depth on /public (the old root URL is depth only)."""
+        market = ["!forceOrder@arr"] + [f"{s}@markPrice@1s" for s in self.symbols]
+        public = [f"{s}@depth20@500ms" for s in self.symbols]
+        base = config.BINANCE_FSTREAM_URL
+        return {"market": f"{base}/market/stream?streams=" + "/".join(market),
+                "public": f"{base}/public/stream?streams=" + "/".join(public)}
 
     def _err(self, text: str) -> None:
         log.warning(text)
@@ -170,22 +173,23 @@ class Recorder:
             self._last_depth[row["symbol"]] = now
         self.store.add(stream, row)
 
-    async def ws_loop(self) -> None:
+    async def ws_loop(self, name: str) -> None:
         import websockets
 
+        url = self.stream_urls()[name]
         backoff = 1
         while True:
             try:
-                async with websockets.connect(self.stream_url(), ping_interval=20, max_size=2**22) as ws:
-                    self.connected, backoff = True, 1
-                    log.info("connected: %s", self.stream_url())
+                async with websockets.connect(url, ping_interval=20, max_size=2**22) as ws:
+                    self.connected[name], backoff = True, 1
+                    log.info("connected: %s", url)
                     async for raw in ws:
                         self.handle(raw)
             except asyncio.CancelledError:
                 raise
             except Exception as e:  # Binance drops connections every 24h; just reconnect
-                self._err(f"websocket: {e!r}")
-            self.connected = False
+                self._err(f"websocket {name}: {e!r}")
+            self.connected[name] = False
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, 60)
 
@@ -238,7 +242,8 @@ def create_app(start_tasks: bool = True):
     async def lifespan(app):
         tasks = []
         if start_tasks:
-            tasks = [asyncio.create_task(c) for c in (rec.ws_loop(), rec.oi_loop(), rec.flush_loop())]
+            tasks = [asyncio.create_task(c) for c in (rec.ws_loop("market"), rec.ws_loop("public"),
+                                                       rec.oi_loop(), rec.flush_loop())]
         yield
         for t in tasks:
             t.cancel()
