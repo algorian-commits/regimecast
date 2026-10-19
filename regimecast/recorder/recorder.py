@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import secrets
+import sys
 import threading
 import time
 from collections import defaultdict
@@ -334,8 +335,18 @@ def create_app(start_tasks: bool = True):
 def main() -> None:
     import uvicorn
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    uvicorn.run(create_app(), host="0.0.0.0", port=int(os.environ.get("PORT", "8080")))
+    # Railway marks everything on stderr as an error, so only WARNING and up go there.
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+    out, err = logging.StreamHandler(sys.stdout), logging.StreamHandler(sys.stderr)
+    out.addFilter(lambda r: r.levelno < logging.WARNING)
+    err.setLevel(logging.WARNING)
+    for h in (out, err):
+        h.setFormatter(fmt)
+    logging.basicConfig(level=logging.INFO, handlers=[out, err])
+    logging.getLogger("httpx").setLevel(logging.WARNING)  # one line per open-interest poll otherwise
+    # log_config=None: uvicorn logs through the handlers above. No access log: Railway keeps HTTP logs.
+    uvicorn.run(create_app(), host="0.0.0.0", port=int(os.environ.get("PORT", "8080")),
+                log_config=None, access_log=False)
 
 
 if __name__ == "__main__":
