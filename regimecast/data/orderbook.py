@@ -159,6 +159,30 @@ def _url_for(symbol: str, day: date) -> list[str]:
     return [URL.format(symbol=symbol, day=day.isoformat(), levels=n) for n in (200, 500)]
 
 
+def _download(client, symbol: str, day: date, dest: Path, attempts: int = 4) -> bool:
+    """Download the day's file (200-level name first, then 500). False if Bybit has neither.
+    Retries on network errors: a 300 MB download can stall (e.g. when the PC sleeps)."""
+    for url in _url_for(symbol, day):
+        for attempt in range(attempts):
+            try:
+                with client.stream("GET", url, timeout=120) as r:
+                    if r.status_code == 404:
+                        break  # try the other file name
+                    r.raise_for_status()
+                    tmp = dest.with_suffix(".part")
+                    with open(tmp, "wb") as f:
+                        for chunk in r.iter_bytes(1 << 20):
+                            f.write(chunk)
+                    tmp.replace(dest)
+                    return True
+            except Exception as e:  # network hiccup: wait and retry
+                if attempt == attempts - 1:
+                    raise
+                log.warning("retry %s (%r)", url, e)
+                time.sleep(10 * (attempt + 1))
+    return False
+
+
 def process_day(client, symbol: str, day: date, keep_raw: bool = False, force: bool = False) -> str:
     out = config.parquet_dir() / "orderbook" / symbol / f"{day.isoformat()}.parquet"
     if out.exists() and not force:
@@ -167,18 +191,8 @@ def process_day(client, symbol: str, day: date, keep_raw: bool = False, force: b
     raw_dir.mkdir(parents=True, exist_ok=True)
     raw = raw_dir / f"{day.isoformat()}_{symbol}.zip"
     try:
-        if not raw.exists():
-            for url in _url_for(symbol, day):
-                with client.stream("GET", url, timeout=600) as r:
-                    if r.status_code == 404:
-                        continue
-                    r.raise_for_status()
-                    with open(raw, "wb") as f:
-                        for chunk in r.iter_bytes(1 << 20):
-                            f.write(chunk)
-                break
-            else:
-                return "missing"
+        if not raw.exists() and not _download(client, symbol, day, raw):
+            return "missing"
         t0 = time.time()
         with zipfile.ZipFile(raw) as z, z.open(z.namelist()[0]) as fh:
             df = replay(io.TextIOWrapper(fh, encoding="utf-8"), symbol)

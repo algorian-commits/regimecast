@@ -93,6 +93,44 @@ def test_download_one_verifies_checksum(tmp_path, monkeypatch):
         ba.download_one(Client(b"0" * 64), "klines", "BTCUSDT", "monthly", "2024-02")
 
 
+def test_monthly_file_keeps_dailies_it_lacks_and_repair_fills_holes(tmp_path, monkeypatch):
+    from regimecast.data import store
+    monkeypatch.setattr(ba.config, "DATA_DIR", tmp_path)
+    day_ms = {d: 1704067200000 + 86_400_000 * (d - 1) for d in (1, 2, 3)}  # 2024-01-01/02/03 00:00 UTC
+
+    def zipped(*days):  # one-minute candles for whole days, as a Binance zip
+        rows = [f"{day_ms[d] + 60_000 * i},1,2,0.5,1.5,1,{day_ms[d] + 60_000 * i + 59_999},1,1,1,1,0"
+                for d in days for i in range(1440)]
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            z.writestr("x.csv", "\n".join(rows) + "\n")
+        return buf.getvalue()
+
+    archive = {"monthly/klines/BTCUSDT/1m/BTCUSDT-1m-2024-01.zip": zipped(1, 3),  # monthly file lacks Jan 2
+               "daily/klines/BTCUSDT/1m/BTCUSDT-1m-2024-01-02.zip": zipped(2)}
+
+    class R:
+        def __init__(self, c): self.content, self.status_code = c, 200 if c is not None else 404
+        def raise_for_status(self): pass
+
+    class Client:
+        def get(self, url, timeout=60):
+            key = url.split("/futures/um/")[1]
+            return R(None if key.endswith("CHECKSUM") else archive.get(key))
+
+    folder = tmp_path / "parquet" / "klines" / "BTCUSDT"
+    folder.mkdir(parents=True)
+    for d in ("2024-01-01", "2024-01-02"):  # daily files fetched while January was running
+        pd.DataFrame({"ts": pd.date_range(d, periods=2, freq="1min", tz="UTC")}).to_parquet(folder / f"{d}.parquet")
+    assert ba.download_one(Client(), "klines", "BTCUSDT", "monthly", "2024-01").startswith("ok")
+    assert not (folder / "2024-01-01.parquet").exists()  # the monthly file covers Jan 1: daily removed
+    assert (folder / "2024-01-02.parquet").exists()      # the monthly file lacks Jan 2: daily kept
+
+    (folder / "2024-01-02.parquet").unlink()  # now Jan 2 is a hole; repair fetches it from the daily file
+    assert ba.repair(Client(), "klines", "BTCUSDT") == {"ok": 1}
+    assert len(store.minute_bars("BTCUSDT", "last")) == 3 * 1440
+
+
 # ------------------------------------------------------------------ validation
 def test_gap_report_and_metrics_fix(tmp_path, monkeypatch):
     ts = pd.Series(pd.date_range("2024-01-01", periods=10, freq="1min", tz="UTC"))

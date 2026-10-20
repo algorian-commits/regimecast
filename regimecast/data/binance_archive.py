@@ -175,9 +175,11 @@ def download_one(client, dataset: str, symbol: str, freq: str, period: str, forc
     tmp = out.with_suffix(".tmp")
     df.to_parquet(tmp, index=False)
     tmp.replace(out)
-    if freq == "monthly":  # daily files fetched while this month was running are now duplicates
+    if freq == "monthly":  # daily files of days this monthly file covers are now duplicates
+        covered = set(df["ts"].dt.strftime("%Y-%m-%d"))
         for daily in out.parent.glob(f"{period}-*.parquet"):
-            daily.unlink()
+            if daily.stem in covered:  # keep dailies for days the monthly file is missing
+                daily.unlink()
     return f"ok ({len(df)} rows)"
 
 
@@ -197,6 +199,31 @@ def run(symbols: list[str], datasets: list[str], start: date, end: date, force: 
     return stats
 
 
+def repair(client, dataset: str, symbol: str) -> dict:
+    """Fill holes in 1-minute datasets from Binance's daily files.
+
+    Some monthly archive files are missing whole days (e.g. BTC markPriceKlines
+    2021-07-24..27) that the daily files do have. Finds every day with missing
+    minutes and downloads that day's daily file next to the monthly one; the
+    store merges them. Days still missing afterwards are missing at Binance too.
+    """
+    from regimecast.data import store
+
+    if not DATASETS[dataset].interval or not DATASETS[dataset].daily:
+        return {}
+    df = store.archive(dataset, symbol, columns=["ts"])
+    if df.empty:
+        return {}
+    full = pd.date_range(df["ts"].min(), df["ts"].max(), freq="1min")
+    days = sorted({t.strftime("%Y-%m-%d") for t in full.difference(df["ts"])})
+    stats: dict[str, int] = {}
+    for day in days:
+        status = download_one(client, dataset, symbol, "daily", day)
+        stats[status.split(" ")[0]] = stats.get(status.split(" ")[0], 0) + 1
+        log.info("repair %s %s %s %s", symbol, dataset, day, status)
+    return stats
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--symbols", nargs="+", default=["BTCUSDT"])
@@ -206,12 +233,23 @@ def main() -> None:
     p.add_argument("--start", default="2020-01", help="YYYY-MM or YYYY-MM-DD")
     p.add_argument("--end", default=None, help="YYYY-MM-DD (default: yesterday UTC)")
     p.add_argument("--force", action="store_true")
+    p.add_argument("--repair", action="store_true",
+                   help="after downloading, fill missing days of 1-minute datasets from daily files")
     a = p.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     start = datetime.strptime(a.start + ("-01" if len(a.start) == 7 else ""), "%Y-%m-%d").date()
     end = (datetime.strptime(a.end, "%Y-%m-%d").date() if a.end
            else datetime.now(timezone.utc).date() - timedelta(days=1))
-    print(run([s.upper() for s in a.symbols], a.datasets, start, end, a.force))
+    symbols = [s.upper() for s in a.symbols]
+    print(run(symbols, a.datasets, start, end, a.force))
+    if a.repair:
+        import httpx
+
+        with httpx.Client(follow_redirects=True) as client:
+            for sym in symbols:
+                for name in a.datasets:
+                    if (r := repair(client, name, sym)):
+                        print("repair", sym, name, r)
 
 
 if __name__ == "__main__":
