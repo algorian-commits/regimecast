@@ -113,6 +113,44 @@ def test_gap_report_and_metrics_fix(tmp_path, monkeypatch):
     assert m.available_at[1] == pd.Timestamp("2026-06-25 10:05", tz="UTC")
 
 
+def test_store_archive_minutes_and_time_rules(tmp_path, monkeypatch):
+    from regimecast.data import store
+    monkeypatch.setattr(store.config, "DATA_DIR", tmp_path)
+    d = tmp_path / "parquet" / "markPriceKlines" / "BTCUSDT"
+    d.mkdir(parents=True)
+    ts = pd.date_range("2025-10-01", periods=6, freq="1min", tz="UTC")
+    bars = pd.DataFrame({"ts": ts, "open": 1.0, "high": 2.0, "low": 0.5, "close": np.arange(6.0), "symbol": "BTCUSDT"})
+    bars.to_parquet(d / "2025-10.parquet")
+    # a daily file repeats minute 2 exactly and has a different close for minute 3
+    daily = bars.iloc[[2, 3]].copy()
+    daily.loc[daily.index[1], "close"] = 99.0
+    daily.to_parquet(d / "2025-10-01.parquet")
+
+    raw = store.archive("markPriceKlines", "btcusdt")
+    assert len(raw) == 7 and str(raw["ts"].dt.tz) == "UTC"  # exact duplicate removed, conflict kept
+    m = store.minute_bars("BTCUSDT", "mark")
+    assert len(m) == 6 and m.loc[m.ts == ts[3], "close"].item() == 3.0  # the monthly (final) file wins
+    # start inclusive, end exclusive, naive times read as UTC
+    w = store.minute_bars("BTCUSDT", "mark", start="2025-10-01 00:01", end="2025-10-01 00:04")
+    assert list(w["ts"]) == list(ts[1:4])
+    assert store.available("markPriceKlines", "BTCUSDT") == (ts[0], ts[-1])
+    assert store.archive("klines", "BTCUSDT").empty and store.available("klines", "BTCUSDT") is None
+
+
+def test_store_live_reads_recorder_layout(tmp_path, monkeypatch):
+    from regimecast.data import store
+    monkeypatch.setattr(store.config, "DATA_DIR", tmp_path)
+    for day, coin in (("2026-10-19", "BTC"), ("2026-10-20", "ETH")):
+        f = tmp_path / "live" / "hl_positions" / f"date={day}"
+        f.mkdir(parents=True)
+        pd.DataFrame({"event_ts": [pd.Timestamp(day, tz="UTC")], "coin": [coin], "size": [1.0]}).to_parquet(f / "a.parquet")
+    allrows = store.live("hl_positions")
+    assert list(allrows.columns) == ["event_ts", "coin", "size"]  # no partition column leaks in
+    assert list(store.live("hl_positions", coin="ETH")["coin"]) == ["ETH"]
+    assert len(store.live("hl_positions", start="2026-10-20")) == 1
+    assert store.live("nothing_here").empty
+
+
 # ------------------------------------------------------------------ recorder
 def test_recorder_parsing_and_store(tmp_path):
     fo = {"stream": "!forceOrder@arr", "data": {"e": "forceOrder", "E": 1760126100000, "o": {

@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from regimecast import config
+from regimecast.data import store
 
 # Known problems in data.binance.vision (open GitHub issues, Sep 2026).
 KNOWN_ISSUES = {
@@ -47,19 +48,12 @@ KNOWN_ISSUES = {
     },
 }
 
-METRICS_LABEL_CHANGE = pd.Timestamp("2026-06-25", tz="UTC")
+METRICS_LABEL_CHANGE = store.METRICS_LABEL_CHANGE
 
 
 def load(dataset: str, symbol: str) -> pd.DataFrame:
-    """Load all Parquet files of one dataset into one sorted DataFrame."""
-    folder = config.parquet_dir() / dataset / symbol
-    files = sorted(folder.glob("*.parquet"))
-    if not files:
-        return pd.DataFrame()
-    df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
-    # exact duplicate rows can only come from overlapping files; same-ts rows with
-    # different values are left for the gap report to flag
-    return df.drop_duplicates().sort_values("ts").reset_index(drop=True)
+    """All rows of one archive dataset (thin wrapper over store.archive)."""
+    return store.archive(dataset, symbol)
 
 
 def clean_minutes(df: pd.DataFrame) -> pd.DataFrame:
@@ -68,21 +62,8 @@ def clean_minutes(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_metrics(symbol: str) -> pd.DataFrame:
-    """Metrics (open interest etc.) with ONE consistent time convention.
-
-    Output column ``available_at`` = the moment the value was known. Use only
-    that column when joining to features, otherwise you leak the future.
-    """
-    df = load("metrics", symbol)
-    if df.empty:
-        return df
-    df = clean_minutes(df)
-    before = df["ts"] < METRICS_LABEL_CHANGE
-    start = df["ts"].copy()
-    start[before] = start[before] - pd.Timedelta(minutes=5)  # end-label -> start-label
-    df["period_start"] = start
-    df["available_at"] = start + pd.Timedelta(minutes=5)
-    return df
+    """Metrics with one time convention (thin wrapper over store.metrics)."""
+    return store.metrics(symbol)
 
 
 def gap_report(ts: pd.Series, freq: str = "1min") -> dict:
