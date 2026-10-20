@@ -163,6 +163,14 @@ def adverse_log_distance(pos: Position, price: float) -> float:
     return math.log(pos.entry / price) if pos.s == 1 else math.log(price / pos.entry)
 
 
+def adverse_move_pct(pos: Position, price: float) -> float:
+    """The same distance as a plain percentage of the entry price, for people:
+    a 10x long liquidated at 90.36 from an entry of 100 is a 9.64% move."""
+    if price <= 0 or math.isinf(price):
+        return math.inf
+    return 100 * abs(price / pos.entry - 1)
+
+
 def fees_round_trip(pos: Position) -> float:
     return 2 * pos.taker_fee * pos.notional
 

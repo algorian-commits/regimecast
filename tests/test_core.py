@@ -359,6 +359,12 @@ def test_api_risk_check():
     assert r.status_code == 200, r.text
     d = r.json()
     assert 89000 < d["liquidation_price"] < 91000
+    # distance is a % of the ENTRY price: (100000 - liq) / 100000, not entry / liq - 1
+    assert d["liquidation_distance_pct"] == pytest.approx(100 * (1 - d["liquidation_price"] / 100000), abs=1e-2)
+    assert f"{d['liquidation_distance_pct']:.2f}% adverse move" in " ".join(d["explanation"])
+    short = c.post("/risk-check", json={"symbol": "BTCUSDT", "side": "short", "entry": 100000, "leverage": 10,
+                                        "margin": 1000}).json()
+    assert short["liquidation_distance_pct"] == pytest.approx(100 * (short["liquidation_price"] / 100000 - 1), abs=1e-2)
     assert d["stop"]["stop_inside_liquidation"] is True
     assert 0 <= d["p_liquidation"] <= 1 and d["max_safe_leverage"] > 0
     assert any("placeholder" in w.lower() for w in d["warnings"])

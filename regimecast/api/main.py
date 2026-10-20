@@ -157,17 +157,18 @@ def risk_check(t: TradeIn) -> RiskOut:
             warnings.append("Your stop is beyond the liquidation price: you would be liquidated first.")
 
     finite = math.isfinite(lp) and lp > 0
+    move_pct = liq.adverse_move_pct(pos, lp)
     expl = [
         f"Liquidation is triggered by the mark price at about {lp:,.2f} USDT." if finite
         else "This position cannot be liquidated at this margin.",
-        f"That is a {100 * (math.exp(dist) - 1):.2f}% adverse move from your entry." if finite else "",
+        f"That is a {move_pct:.2f}% adverse move from your entry." if finite else "",
         f"Expected volatility over {t.horizon_hours}h is about {100 * sigma_h:.2f}% ({source}).",
         f"Highest leverage keeping P(liquidation) under {100 * t.risk_limit:.1f}% is {safe_lev}x.",
     ]
     return RiskOut(
         symbol=t.symbol, side=t.side, notional_usdt=round(pos.notional, 2), margin_usdt=round(margin, 2),
         liquidation_price=round(lp, 2) if finite else None,
-        liquidation_distance_pct=round(100 * (math.exp(dist) - 1), 3) if finite else None,
+        liquidation_distance_pct=round(move_pct, 3) if finite else None,
         horizon_hours=t.horizon_hours, p_liquidation=round(p, 5), model="first_passage_baseline",
         sigma_horizon_pct=round(100 * sigma_h, 3), volatility_source=source,
         max_safe_leverage=safe_lev, max_position_usdt=round(safe_lev * pos.initial_margin, 2),
