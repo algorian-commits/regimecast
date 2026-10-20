@@ -163,6 +163,9 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 | 2026-10-20 | Past data is the main source for building and testing | Archives cover prices, funding, open interest, trades, order books and news, so nothing waits for recordings to build up. |
 | 2026-10-20 | Recorder kept as is, no new features | Only liquidations, Whale Watch and track-record outcomes have no archive. |
 | 2026-10-20 | Live app pulls current data from exchange APIs | Always current, and no dependency on stored recordings. |
+| 2026-10-20 | Order-book depth measured within 1 and 2 bps and over the best 10/50/200 levels | Bybit's 200 levels reach only ~2-3 bps for BTC, so the planned 10-100 bps bands were always cut off. |
+| 2026-10-20 | Zero-volume minutes treated as missing | Binance prints frozen candles during halts; they looked like zero volatility and distorted HAR. |
+| 2026-10-20 | Archive holes repaired from daily files | Monthly files miss whole days that daily files have (13,015 mark-price minutes for BTC). |
 | 2026-10-20 | News mood backfilled from GDELT | Months of history to test against price right away, including the crash, instead of waiting for a live collector to build up. |
 
 ## Parking list (not now)

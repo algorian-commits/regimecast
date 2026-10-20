@@ -34,7 +34,8 @@ KNOWN_ISSUES = {
     "markprice_gaps_duplicates": {
         "date": "2023-2025",
         "what": "missing and duplicate minutes in USD-M markPriceKlines for BTC/ETH.",
-        "fix": "dedupe on ts (keep last); gaps are reported and forward-filled at most 5 minutes.",
+        "fix": "binance_archive --repair fills whole missing days from daily files; dedupe on ts (monthly "
+               "file wins); remaining short gaps are reported and forward-filled at most 5 minutes.",
     },
     "bookdepth_frozen_ask_bands": {
         "date": "2026-09-03",
