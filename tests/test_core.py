@@ -151,6 +151,36 @@ def test_store_live_reads_recorder_layout(tmp_path, monkeypatch):
     assert store.live("nothing_here").empty
 
 
+def test_orderbook_replay_features_and_no_lookahead():
+    from regimecast.data import orderbook as ob
+
+    def msg(ts_ms, kind, b, a):
+        return json.dumps({"topic": "orderbook.200.BTCUSDT", "type": kind, "ts": ts_ms,
+                           "data": {"s": "BTCUSDT", "b": [[str(p), str(q)] for p, q in b],
+                                    "a": [[str(p), str(q)] for p, q in a]}})
+    t0 = 1760054400000  # 2025-10-10 00:00:00 UTC
+    lines = [
+        msg(t0 + 10, "snapshot", [(100.0, 2), (99.9, 3)], [(100.1, 1), (100.2, 4)]),
+        msg(t0 + 500, "delta", [(100.0, 5)], []),              # more bid at the best: OFI +3
+        msg(t0 + 1200, "delta", [(100.0, 0)], [(100.1, 0)]),   # second 1: both best levels removed
+        msg(t0 + 3100, "delta", [(99.95, 1)], []),             # second 3 (second 2 had no updates)
+    ]
+    df = ob.replay(lines, "BTCUSDT")
+    ts = list(df["ts"])
+    assert ts == list(pd.to_datetime([t0 // 1000 + k for k in (1, 2, 3)], unit="s", utc=True))
+    r1, r2, r3 = df.to_dict("records")
+    # row at T = book just before T: the 1.2 s update is NOT in the 00:00:01 row
+    assert r1["mid"] == pytest.approx(100.05) and r1["bid1_qty"] == 5 and r1["ofi"] == pytest.approx(3)
+    assert r1["n_updates"] == 2
+    # after the best bid and ask vanish, the next levels become the best
+    assert r2["mid"] == pytest.approx((99.9 + 100.2) / 2) and r2["spread_bps"] > r1["spread_bps"]
+    assert r3["mid"] == r2["mid"] and r3["ofi"] == 0 and r3["n_updates"] == 0  # quiet second carried forward
+    assert r1["depth_bid_2bps_usd"] == 0  # this toy book's best bid is 5 bps below mid: outside the 2 bps band
+    assert r1["depth_bid_top10_usd"] == pytest.approx(100.0 * 5 + 99.9 * 3)  # top levels: no distance limit
+    assert r1["depth_ask_top10_usd"] == pytest.approx(100.1 * 1 + 100.2 * 4)
+    assert -1 < r1["imbalance_top10"] < 1
+
+
 # ------------------------------------------------------------------ recorder
 def test_recorder_parsing_and_store(tmp_path):
     fo = {"stream": "!forceOrder@arr", "data": {"e": "forceOrder", "E": 1760126100000, "o": {
