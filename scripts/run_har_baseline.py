@@ -44,13 +44,16 @@ for horizon, target in ((1, "y_1h"), (24, "y_24h")):
     if horizon == 24:  # non-overlapping daily origins as a robustness check
         daily = {k: v[v.index.hour == 0] for k, v in preds.items()}
         tab["qlike_daily_origins"] = ev.summary_table(y, daily, "har", 24)["qlike"]
-    losses = pd.DataFrame({k: ev.qlike(y.reindex(v.index), v) for k, v in preds.items()}).dropna()
+    # same rows as summary_table: target and every forecast positive
+    both = pd.concat({"y": y, **preds}, axis=1).dropna()
+    both = both[(both > 0).all(axis=1)]
+    losses = pd.DataFrame({k: ev.qlike(both["y"], both[k]) for k in preds}, index=both.index)
     mcs = ev.model_confidence_set(losses, block=max(24, horizon))
     tab["in_MCS_90"] = [m in mcs["included"] for m in tab.index]
     tab.insert(0, "horizon_h", horizon)
     tables.append(tab)
     print(f"\n=== {a.symbol} {horizon}h ahead (test {a.test_start} to {end or 'end of data'}) ===")
-    print(tab.round(4).to_string())
+    print(tab.to_string(float_format=lambda x: f"{x:.4g}"))
 out = config.DATA_DIR / "reports" / f"har_baseline_{a.symbol}{'_FINAL' if a.final_test else ''}.csv"
 out.parent.mkdir(parents=True, exist_ok=True)
 pd.concat(tables).to_csv(out)

@@ -29,7 +29,8 @@ def har_features(h: pd.DataFrame, horizon: int, rv_col: str | None = None) -> pd
     w = WINDOWS[horizon]
     X = pd.DataFrame(index=h.index)
     for name, win in zip(("short", "mid", "long"), w):
-        X[f"rv_{name}"] = h[rv_col].rolling(win, min_periods=win).mean() * horizon  # per-horizon scale
+        # mean of the hours we have; a few missing hours (halts) must not wipe out a month of forecasts
+        X[f"rv_{name}"] = h[rv_col].rolling(win, min_periods=max(1, int(0.8 * win))).mean() * horizon
     X["rq_short"] = h["rq"].rolling(w[0], min_periods=w[0]).mean() * horizon if "rq" in h else np.nan
     if "jump" in h:
         X["jump_share"] = (h["jump"].rolling(w[0]).sum() / (h["rv"].rolling(w[0]).sum() + EPS)).clip(0, 1)

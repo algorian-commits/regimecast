@@ -389,6 +389,18 @@ def test_targets_alignment():
     assert h.loc[t, "y_24h"] == pytest.approx(h.loc[t + pd.Timedelta(hours=1): t + pd.Timedelta(hours=24), "rv5"].sum())
 
 
+def test_trading_halt_is_missing_not_zero_volatility():
+    df = gbm_minutes(n_min=60 * 6)
+    df["volume"] = 1.0
+    halt = (df.ts >= "2024-01-01 02:00") & (df.ts < "2024-01-01 02:40")  # 40-minute halt, frozen price
+    df.loc[halt, ["open", "high", "low", "close"]] = df.loc[halt.idxmax() - 1, "close"]
+    df.loc[halt, "volume"] = 0.0
+    h = realized.build_targets(realized.minute_close(df))
+    hour = pd.Timestamp("2024-01-01 03:00", tz="UTC")  # the hour 02:00-03:00, labelled by its end
+    assert np.isnan(h.loc[hour, "rv"]) and np.isnan(h.loc[hour, "rv5"])  # not 0
+    assert (h["rv"].dropna() > 0).all()
+
+
 def test_har_walk_forward_and_tests():
     df = gbm_minutes(n_min=60 * 24 * 150)
     h = realized.build_targets(realized.minute_close(df))

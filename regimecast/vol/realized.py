@@ -15,9 +15,20 @@ import numpy as np
 import pandas as pd
 
 
+MIN_RETURNS_PER_HOUR = 50  # hours with fewer real 1-minute returns get no measure (NaN)
+
+
 def minute_close(df: pd.DataFrame, max_ffill: int = 5) -> pd.Series:
-    """Clean 1-minute close series on a full minute grid (small gaps forward-filled)."""
-    s = df.drop_duplicates("ts", keep="last").set_index("ts")["close"].sort_index()
+    """Clean 1-minute close series on a full minute grid (small gaps forward-filled).
+
+    Minutes with zero traded volume carry no price information: during exchange
+    halts Binance keeps printing candles with a frozen price, which would look
+    like zero volatility. They are treated as missing.
+    """
+    df = df.drop_duplicates("ts", keep="last")
+    if "volume" in df:
+        df = df[df["volume"] > 0]
+    s = df.set_index("ts")["close"].sort_index()
     grid = pd.date_range(s.index[0], s.index[-1], freq="1min")
     return s.reindex(grid).ffill(limit=max_ffill)
 
@@ -44,6 +55,8 @@ def hourly_measures(close_1m: pd.Series) -> pd.DataFrame:
         "n": _end_label_hourly(r.notna().astype(float)),
     })
     out["rq"] = out["n"] / 3 * out["rq"]
+    thin = out["n"] < MIN_RETURNS_PER_HOUR  # mostly missing (e.g. a trading halt): don't trust it
+    out.loc[thin, ["rv", "rs_pos", "rs_neg", "bpv", "rq", "ret"]] = np.nan
     out["jump"] = (out["rv"] - out["bpv"]).clip(lower=0)
     return out
 
@@ -63,7 +76,7 @@ def hourly_rv5_subsampled(close_1m: pd.Series) -> pd.Series:
 def build_targets(close_1m: pd.Series) -> pd.DataFrame:
     """Hourly frame with measures (known at t) and future targets y_1h, y_24h."""
     h = hourly_measures(close_1m)
-    h["rv5"] = hourly_rv5_subsampled(close_1m)
+    h["rv5"] = hourly_rv5_subsampled(close_1m).where(h["n"] >= MIN_RETURNS_PER_HOUR)
     h["y_1h"] = h["rv"].shift(-1)
     fut24 = h["rv5"][::-1].rolling(24, min_periods=24).sum()[::-1]
     h["y_24h"] = fut24.shift(-1)
