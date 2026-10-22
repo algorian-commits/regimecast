@@ -167,6 +167,11 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 | 2026-10-20 | Zero-volume minutes treated as missing | Binance prints frozen candles during halts; they looked like zero volatility and distorted HAR. |
 | 2026-10-20 | Archive holes repaired from daily files | Monthly files miss whole days that daily files have (13,015 mark-price minutes for BTC). |
 | 2026-10-20 | News mood backfilled from GDELT | Months of history to test against price right away, including the crash, instead of waiting for a live collector to build up. |
+| 2026-10-23 | Web app forwards `/api/*` to the backend at run time | The browser only talks to the website: no CORS, and the API address is set on Railway without rebuilding. |
+| 2026-10-23 | Live market data endpoint `/market/{symbol}`, cached 5 s, last value shown as "delayed" for up to 5 min if Binance fails | Pre-fills Risk Check with the current price; one Binance call serves many visitors. |
+| 2026-10-23 | Data health report JSONs committed (`data/reports/data_health_*.json`) | The deployed API has no copy of `data/`; the report is small and changes only when the validator reruns. |
+| 2026-10-23 | Wireframes as static HTML (`docs/wireframes/`) instead of Figma | The Figma account connected to our tools is not a team account. The live app is the clickable prototype. |
+| 2026-10-23 | Next.js 16 and Node 24 (current releases) | Latest stable at build time; Next's own docs ship in `node_modules/next/dist/docs`. |
 
 ## Parking list (not now)
 
@@ -176,3 +181,7 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 - Full Bybit order-book history for ETH and SOL (Phase 4).
 - Direct feeds from X or Truth Social. RSS covers it for now; X's API costs about $200/month.
 - Deribit DVOL as a volatility feature (Phase 6).
+- `/forecast?horizon_hours=24` is rejected (422): FastAPI does not turn the query text "24" into the `Literal[1, 24]` number. The app calls it without the parameter (24 h is the default). Fix when the forecaster lands (Phase 6).
+- Pin the API image's Python packages like the recorder's (`requirements-api.txt`), so a redeploy never picks up a surprise upgrade.
+- Risk Check explanation repeats brackets ("(PLACEHOLDER (volatility model not trained yet))"); tidy the wording in the API.
+- Track Record page (wireframe ready; built in Phase 9).

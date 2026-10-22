@@ -9,15 +9,14 @@
 - [ ] Ask Mr. Awais about rewording success criteria 1 and 4 ("report either way")
 
 ## Ryan: M2 Front-End Architecture & UI/UX
-Stack: React + Vite + TypeScript, Tailwind, Recharts (or TradingView lightweight-charts).
-- [ ] Wireframes (Figma) for: Risk Check, Risk Radar, Data Health, Track Record
-- [ ] Generate a typed API client from `docs/openapi.json`
-      (`npx openapi-typescript docs/openapi.json -o src/api/schema.d.ts`)
-- [ ] Risk Check page working against the real `/risk-check` endpoint
-      (run the backend with `uvicorn regimecast.api.main:app --reload`)
-- [ ] Handle `503 {"status":"not_ready"}` from `/forecast` and `/regime` with a friendly placeholder
-- [ ] Data Health page reading `/data-health/BTCUSDT`
-- Put the code in `frontend/`.
+Built in Phase 2 (Saeed + Claude). Ryan presents it: read `docs/M2_WALKTHROUGH.md` and run the demo script.
+Stack: Next.js + TypeScript, Tailwind, Recharts. Code in `web/`.
+- [x] Wireframes for Risk Check, Risk Radar, Data Health, Track Record (`docs/wireframes/index.html`)
+- [x] Typed API client generated from `docs/openapi.json` (`npm run gen:api` in `web/`), checked in CI
+- [x] Risk Check page working against the real `/risk-check` endpoint, entry pre-filled with the live price
+- [x] `503 {"status":"not_ready"}` from `/forecast` and `/regime` shown as a friendly placeholder
+- [x] Data Health page reading `/data-health/BTCUSDT`; Live Status page; News Mood panel
+- [ ] Live URL on Railway (`docs/DEPLOY_RAILWAY.md`)
 
 ## Aila: M3 News Sentiment Pipeline
 Sources: RSS feeds (CoinDesk, Cointelegraph, The Block, Decrypt) + GDELT.
