@@ -20,3 +20,25 @@ jobs:
         run: |
           python scripts/export_openapi.py
           git diff --exit-code docs/openapi.json
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"  # same as web/Dockerfile
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Typed API client matches docs/openapi.json
+        run: |
+          npm run gen:api
+          git diff --exit-code src/api/schema.d.ts || (echo "Run 'npm run gen:api' in web/ and commit src/api/schema.d.ts" && exit 1)
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

@@ -1,0 +1,24 @@
+# Run the API and the web app locally with one command:  docker compose up --build
+# Then open http://localhost:3000 (API docs at http://localhost:8000/docs).
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+    volumes:
+      # your local reports (data health etc.), read-only
+      - ./data/reports:/app/data/reports:ro
+
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
+    environment:
+      API_URL: http://api:8000
+      RECORDER_URL: https://recorder-production-796f.up.railway.app
+    depends_on:
+      - api

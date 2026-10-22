@@ -1,5 +1,9 @@
 data/*
 !data/.gitkeep
+# small validator reports are committed so the deployed API can serve them
+!data/reports/
+data/reports/*
+!data/reports/data_health_*.json
 __pycache__/
 *.pyc
 .venv/
