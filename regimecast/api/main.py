@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from regimecast import config
+from regimecast.api import market
 from regimecast.risk import liquidation as liq
 
 app = FastAPI(title="RegimeCast API", version="0.1.0",
@@ -119,6 +120,13 @@ def _sigma(symbol: str, horizon: int, override: float | None) -> tuple[float, st
 @app.get("/health")
 def health():
     return {"status": "ok", "time": datetime.now(timezone.utc).isoformat(), "version": app.version}
+
+
+@app.get("/market/{symbol}", response_model=market.MarketOut, responses={503: {"model": NotReady}})
+def market_now(symbol: Symbol):
+    """Current mark price, funding and open interest from Binance (cached a few seconds)."""
+    m = market.cache.get(symbol)
+    return m if m else not_ready("live market data unavailable (Binance not reachable)")
 
 
 @app.post("/risk-check", response_model=RiskOut)

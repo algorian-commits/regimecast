@@ -22,6 +22,61 @@
         }
       }
     },
+    "/market/{symbol}": {
+      "get": {
+        "summary": "Market Now",
+        "description": "Current mark price, funding and open interest from Binance (cached a few seconds).",
+        "operationId": "market_now_market__symbol__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReady"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/risk-check": {
       "post": {
         "summary": "Risk Check",
@@ -302,6 +357,73 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "MarketOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "mark_price": {
+            "type": "number",
+            "title": "Mark Price"
+          },
+          "index_price": {
+            "type": "number",
+            "title": "Index Price"
+          },
+          "funding_rate": {
+            "type": "number",
+            "title": "Funding Rate",
+            "description": "Last funding rate per 8h interval (0.0001 = 0.01%)"
+          },
+          "next_funding_time": {
+            "type": "string",
+            "title": "Next Funding Time"
+          },
+          "open_interest": {
+            "type": "number",
+            "title": "Open Interest",
+            "description": "Open interest in coins"
+          },
+          "open_interest_usdt": {
+            "type": "number",
+            "title": "Open Interest Usdt"
+          },
+          "exchange_time": {
+            "type": "string",
+            "title": "Exchange Time",
+            "description": "Binance timestamp of the mark price"
+          },
+          "fetched_at": {
+            "type": "string",
+            "title": "Fetched At"
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale",
+            "description": "True if Binance could not be reached and this is an older value",
+            "default": false
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "binance_usdm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "mark_price",
+          "index_price",
+          "funding_rate",
+          "next_funding_time",
+          "open_interest",
+          "open_interest_usdt",
+          "exchange_time",
+          "fetched_at"
+        ],
+        "title": "MarketOut"
       },
       "NotReady": {
         "properties": {
