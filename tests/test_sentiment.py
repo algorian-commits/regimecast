@@ -121,7 +121,7 @@ def test_score_maps_probabilities_and_batches():
         calls.append(len(titles))
         return np.array([[0.7, 0.1, 0.2] if "up" in t else [0.1, 0.8, 0.1] for t in titles])
 
-    s = models.score(["btc up", "btc down", "eth up"], fake, batch_size=2)
+    s = models.score(["btc up", "btc down!!", "eth up"], fake, batch_size=2)
     assert calls == [2, 1]
     assert s["label"].tolist() == ["positive", "negative", "positive"]
     assert s["score"].round(2).tolist() == [0.6, -0.7, 0.6] and s["conf"].round(2).tolist() == [0.7, 0.8, 0.7]

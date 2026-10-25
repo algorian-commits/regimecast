@@ -55,12 +55,15 @@ def load(name: str, device: str = "cpu", max_length: int = 64) -> ProbFn:
 def score(titles: Iterable[str], probs: ProbFn, batch_size: int = 64, progress: bool = False) -> pd.DataFrame:
     """Columns ``p_pos, p_neg, p_neu, label, conf, score`` for each title, in order."""
     titles = list(titles)
+    order = np.argsort([len(t) for t in titles], kind="stable")  # similar lengths per batch = less padding
     parts = []
     for i in range(0, len(titles), batch_size):
-        parts.append(probs(titles[i:i + batch_size]))
+        parts.append(probs([titles[j] for j in order[i:i + batch_size]]))
         if progress and (i // batch_size) % 50 == 0:
             print(f"  {i + len(parts[-1])}/{len(titles)}", flush=True)
-    p = np.vstack(parts) if parts else np.zeros((0, 3))
+    p = np.zeros((len(titles), 3))
+    if parts:
+        p[order] = np.vstack(parts)
     return from_probs(p)
 
 
