@@ -3,13 +3,7 @@
   "build": {
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile.api",
-    "watchPatterns": [
-      "regimecast/**",
-      "requirements.txt",
-      "Dockerfile.api",
-      "data/reports/*.json",
-      "deploy/api/railway.json"
-    ]
+    "watchPatterns": ["regimecast/**", "requirements.txt", "Dockerfile.api", "data/reports/*.json", "railway.json"]
   },
   "deploy": { "healthcheckPath": "/health", "restartPolicyType": "ON_FAILURE" }
 }

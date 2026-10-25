@@ -93,8 +93,8 @@ blocks US servers).
   live URL has not been done.
 - `docker compose up` was not run: Docker is not installed on the development PC. The same
   Dockerfiles are what Railway builds. The web image's production build was tested locally.
-- Wireframes are static HTML, not Figma: the Figma account connected to our tools is not a team
-  account. The working website itself serves as the clickable prototype.
+- Wireframes are static HTML, not Figma: the connected Figma account has a view-only seat, so we
+  could not create design files. The working website itself serves as the clickable prototype.
 - The News Mood panel was tested with sample data in the agreed shape; it shows real data once
   Phase 3's `/news-mood` endpoint is merged.
 - The volatility in Risk Check is still a labelled placeholder until the forecaster (Phase 6).

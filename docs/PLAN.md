@@ -170,7 +170,8 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 | 2026-10-23 | Web app forwards `/api/*` to the backend at run time | The browser only talks to the website: no CORS, and the API address is set on Railway without rebuilding. |
 | 2026-10-23 | Live market data endpoint `/market/{symbol}`, cached 5 s, last value shown as "delayed" for up to 5 min if Binance fails | Pre-fills Risk Check with the current price; one Binance call serves many visitors. |
 | 2026-10-23 | Data health report JSONs committed (`data/reports/data_health_*.json`) | The deployed API has no copy of `data/`; the report is small and changes only when the validator reruns. |
-| 2026-10-23 | Wireframes as static HTML (`docs/wireframes/`) instead of Figma | The Figma account connected to our tools is not a team account. The live app is the clickable prototype. |
+| 2026-10-23 | Wireframes as static HTML (`docs/wireframes/`) instead of Figma | The connected Figma account has a view-only seat (cannot create design files). The live app is the clickable prototype. |
+| 2026-10-26 | `api` and `web` deploy from generated branches `railway/api` and `railway/web` | Railway reads the repo-root `railway.json` (the recorder's) for every service from this repo and no longer lets new services pick another config path. Each branch is the source with `railway.json` swapped for `deploy/railway.<service>.json`, regenerated on every push; the recorder (on `main`) is untouched. |
 | 2026-10-23 | Next.js 16 and Node 24 (current releases) | Latest stable at build time; Next's own docs ship in `node_modules/next/dist/docs`. |
 
 ## Parking list (not now)
@@ -185,3 +186,4 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 - Pin the API image's Python packages like the recorder's (`requirements-api.txt`), so a redeploy never picks up a surprise upgrade.
 - Risk Check explanation repeats brackets ("(PLACEHOLDER (volatility model not trained yet))"); tidy the wording in the API.
 - Track Record page (wireframe ready; built in Phase 9).
+- Move all three Railway services to Infrastructure as Code (`.railway/railway.ts`) before 2026-12-01, when Railway stops reading the recorder's `railway.json`.

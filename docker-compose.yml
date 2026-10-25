@@ -14,7 +14,9 @@ services:
       - ./data/reports:/app/data/reports:ro
 
   web:
-    build: ./web
+    build:
+      context: .
+      dockerfile: web/Dockerfile
     ports:
       - "3000:3000"
     environment:
