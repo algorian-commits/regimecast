@@ -180,6 +180,74 @@
         }
       }
     },
+    "/news-mood": {
+      "get": {
+        "summary": "News Mood",
+        "description": "Hourly news mood (M3), oldest hour first, ending at the last complete hour.",
+        "operationId": "news_mood_news_mood_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "default": "BTCUSDT",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2160,
+              "minimum": 1,
+              "default": 168,
+              "title": "Hours"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsMoodOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReady"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/track-record": {
       "get": {
         "summary": "Track Record",
@@ -302,6 +370,70 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "MoodHour": {
+        "properties": {
+          "hour_end": {
+            "type": "string",
+            "title": "Hour End",
+            "description": "End of the hour (UTC). A headline at 10:20 counts for 11:00."
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "Crypto headlines about this coin or the whole market"
+          },
+          "mean_score": {
+            "type": "number",
+            "title": "Mean Score",
+            "description": "Average sentiment, -1 (negative) to +1 (positive); 0 when count is 0"
+          },
+          "share_negative": {
+            "type": "number",
+            "title": "Share Negative",
+            "description": "Share of headlines labelled negative (0..1); 0 when count is 0"
+          },
+          "policy_shock_count": {
+            "type": "integer",
+            "title": "Policy Shock Count",
+            "description": "Tariff, sanctions and regulation headlines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hour_end",
+          "count",
+          "mean_score",
+          "share_negative",
+          "policy_shock_count"
+        ],
+        "title": "MoodHour"
+      },
+      "NewsMoodOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "hours": {
+            "items": {
+              "$ref": "#/components/schemas/MoodHour"
+            },
+            "type": "array",
+            "title": "Hours"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "updated_at",
+          "hours"
+        ],
+        "title": "NewsMoodOut"
       },
       "NotReady": {
         "properties": {

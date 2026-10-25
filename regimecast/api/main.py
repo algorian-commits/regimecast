@@ -195,6 +195,31 @@ def regime(symbol: Symbol = "BTCUSDT"):
     return data
 
 
+class MoodHour(BaseModel):
+    hour_end: str = Field(description="End of the hour (UTC). A headline at 10:20 counts for 11:00.")
+    count: int = Field(description="Crypto headlines about this coin or the whole market")
+    mean_score: float = Field(description="Average sentiment, -1 (negative) to +1 (positive); 0 when count is 0")
+    share_negative: float = Field(description="Share of headlines labelled negative (0..1); 0 when count is 0")
+    policy_shock_count: int = Field(description="Tariff, sanctions and regulation headlines")
+
+
+class NewsMoodOut(BaseModel):
+    symbol: str
+    updated_at: str
+    hours: list[MoodHour]
+
+
+@app.get("/news-mood", response_model=NewsMoodOut, responses={503: {"model": NotReady}})
+def news_mood(symbol: Symbol = "BTCUSDT", hours: int = Query(168, ge=1, le=24 * 90)):
+    """Hourly news mood (M3), oldest hour first, ending at the last complete hour."""
+    from regimecast.sentiment.pipeline import latest
+
+    data = latest(symbol, hours)
+    if not data:
+        return not_ready("news mood not built yet: python -m regimecast.sentiment.pipeline collect")
+    return data
+
+
 @app.get("/track-record")
 def track_record(symbol: Symbol = "BTCUSDT", limit: int = Query(500, ge=1, le=5000)):
     f = config.DATA_DIR / "track_record" / f"{symbol}.jsonl"
