@@ -138,6 +138,29 @@ def orderbook(symbol: str, start: Time = None, end: Time = None, columns: list[s
     return archive("orderbook", symbol, start, end, columns)
 
 
+# ------------------------------------------------------------------ news (M3)
+def headlines(start: Time = None, end: Time = None, columns: list[str] | None = None) -> pd.DataFrame:
+    """De-duplicated news headlines (data/parquet/news/headlines/*.parquet), filtered on
+    ``known_at``: when the headline was first available to us. See regimecast/sentiment."""
+    folder = config.parquet_dir() / "news" / "headlines"
+    if not any(folder.glob("*.parquet")):
+        return pd.DataFrame(columns=columns or [])
+    if columns and "known_at" not in columns:
+        columns = ["known_at", *columns]
+    df = _query(str(folder / "*.parquet"), "known_at", start, end, columns)
+    for c in ("published_at", "fetched_at"):
+        if c in df:
+            df[c] = pd.to_datetime(df[c], utc=True)
+    return df
+
+
+def news_mood(symbol: str, start: Time = None, end: Time = None) -> pd.DataFrame:
+    """Hourly news mood: ``ts`` = hour END (a headline at 10:20 counts for 11:00), ``count``,
+    ``mean_score`` (-1..1), ``share_negative``, ``policy_shock_count``. Hours without news
+    have count 0 and empty score columns."""
+    return archive("sentiment", symbol, start, end)
+
+
 # ------------------------------------------------------------------ live recordings
 def live(stream: str, start: Time = None, end: Time = None, columns: list[str] | None = None,
          **equals) -> pd.DataFrame:
