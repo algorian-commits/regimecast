@@ -58,8 +58,13 @@ def _write(df: pd.DataFrame, path: Path) -> None:
 def from_gdelt(raw: pd.DataFrame) -> pd.DataFrame:
     """GDELT scan rows -> headline rows. GDELT's batch time is both fetched and known time.
     Its 'precise publish time' is sometimes in local time (later than the batch), so it is
-    capped at the batch time."""
+    capped at the batch time. Rows are re-checked with the current word lists, so a scan
+    made with an older list gives the same result."""
     df = raw.copy()
+    crypto = df["title"].map(gdelt.is_crypto)
+    macro = df["title"].str.contains(gdelt.POLICY_MACRO_RE)
+    df["scope"] = ["crypto" if c else "macro_policy" if m else "" for c, m in zip(crypto, macro)]
+    df = df[df["scope"] != ""]
     df["fetched_at"] = df["seen_at"]
     df["known_at"] = df["seen_at"]
     df["published_at"] = df[["published_at", "seen_at"]].min(axis=1)
@@ -123,7 +128,7 @@ def load_scores(model: str) -> pd.DataFrame:
                                                                       "p_neu", "label", "conf", "score"])
 
 
-def score_new(model: str, probs: models.ProbFn | None = None, batch_size: int = 64) -> int:
+def score_new(model: str, probs: models.ProbFn | None = None, batch_size: int = 64, save_every: int = 5000) -> int:
     """Score every crypto title not scored yet by ``model``. Returns how many were scored."""
     h = stored_headlines(None, None, ["title", "title_key", "scope", "stale"])
     if h.empty:
@@ -136,12 +141,15 @@ def score_new(model: str, probs: models.ProbFn | None = None, batch_size: int = 
     probs = probs or models.load(model)
     print(f"{model}: scoring {len(todo)} titles", flush=True)
     t0 = time.time()
-    s = models.score(todo["title"].tolist(), probs, batch_size, progress=len(todo) > 5000)
-    s.insert(0, "title", todo["title"].to_numpy())
-    s.insert(0, "title_key", todo["title_key"].to_numpy())
-    out = pd.concat([have, s], ignore_index=True) if len(have) else s
-    _write(out, scores_path(model))
-    print(f"{model}: {len(todo)} titles in {time.time() - t0:.0f}s", flush=True)
+    for i in range(0, len(todo), save_every):  # save as we go, so a crash loses little
+        part = todo.iloc[i:i + save_every]
+        s = models.score(part["title"].tolist(), probs, batch_size)
+        s.insert(0, "title", part["title"].to_numpy())
+        s.insert(0, "title_key", part["title_key"].to_numpy())
+        have = pd.concat([have, s], ignore_index=True) if len(have) else s
+        _write(have, scores_path(model))
+        done = i + len(part)
+        print(f"{model}: {done}/{len(todo)} titles, {done / (time.time() - t0):.0f}/s", flush=True)
     return len(todo)
 
 

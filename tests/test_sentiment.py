@@ -27,6 +27,7 @@ def test_gdelt_parse_keeps_crypto_and_macro_policy_titles():
         gkg_line("20251010204500", "https://c.com/z", "Local team wins the cup"),
         gkg_line("20251010204500", "https://d.com/w", "El sol brilla en Madrid"),  # Spanish "sol", not Solana
         gkg_line("20251010204500", "https://e.com/v", "SOL &amp; ETH rally"),
+        gkg_line("20251010204500", "https://f.com/u", "New cryptographic signing for JavaScript"),
         "too\tshort",
     ])
     rows = gdelt.parse_gkg(text)
@@ -45,7 +46,7 @@ def test_gdelt_stamps_every_15_minutes_end_exclusive():
 
 def test_from_gdelt_caps_local_time_publish_stamps():
     raw = pd.DataFrame({"seen_at": [T("2025-10-10 20:00")], "published_at": [T("2025-10-10 21:42")],
-                        "title": ["x"], "link": ["l"], "source": ["s"], "gdelt_tone": [0.0], "scope": ["crypto"]})
+                        "title": ["Bitcoin up"], "link": ["l"], "source": ["s"], "gdelt_tone": [0.0], "scope": ["crypto"]})
     h = pipeline.from_gdelt(raw)
     assert h.loc[0, "published_at"] == h.loc[0, "known_at"] == h.loc[0, "fetched_at"] == T("2025-10-10 20:00")
 

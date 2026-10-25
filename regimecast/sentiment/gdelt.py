@@ -36,7 +36,7 @@ GKG_URL = "http://data.gdeltproject.org/gdeltv2/{stamp}.gkg.csv.zip"
 
 # Broad on purpose: the tagger (tagging.py) decides later what each headline is about.
 _CRYPTO_CI = re.compile(
-    r"\b(bitcoins?|btc|ethereum|ether|solana|crypto\w*|stablecoins?|blockchain|defi|altcoins?|"
+    r"\b(bitcoins?|btc|ethereum|ether|solana|crypto(?!graph)\w*|stablecoins?|blockchain|defi|altcoins?|"
     r"binance|coinbase|memecoins?|xrp|dogecoin|web3|satoshi|microstrategy|tether|usdt|usdc)\b", re.I)
 _CRYPTO_CS = re.compile(r"\b(?:ETH|SOL)\b")  # case-sensitive: "sol" is Spanish for sun
 POLICY_MACRO_RE = re.compile(r"\b(tariffs?|sanctions?|sanctioned|trade war|export controls?|export bans?)\b", re.I)
