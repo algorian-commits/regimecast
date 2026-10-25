@@ -167,6 +167,12 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 | 2026-10-20 | Zero-volume minutes treated as missing | Binance prints frozen candles during halts; they looked like zero volatility and distorted HAR. |
 | 2026-10-20 | Archive holes repaired from daily files | Monthly files miss whole days that daily files have (13,015 mark-price minutes for BTC). |
 | 2026-10-20 | News mood backfilled from GDELT | Months of history to test against price right away, including the crash, instead of waiting for a live collector to build up. |
+| 2026-10-26 | GDELT read from its raw 15-minute files on GitHub Actions, not its search API | The search API answers 429 to our network and returns at most 250 articles per query. The raw files are complete but ~250 GB; on Actions the scan takes 10 minutes, at home it would take days. |
+| 2026-10-26 | Headline time = when GDELT had it (its batch time), not the page's publish stamp | Publish stamps are often missing or in local time. Headlines first seen more than 24 h after publication are old news and left out. |
+| 2026-10-26 | Macro tariff and sanctions headlines collected too, not only crypto ones | The headline that moves the market (e.g. Trump's China tariff post) usually doesn't mention crypto. They count toward the policy-shock count only. |
+| 2026-10-26 | GDELT's own outage (15 Jun - 1 Jul 2025) left as a gap | Those hours are missing in the mood table rather than shown as "no news". |
+| 2026-10-26 | Mood vs price statistics on May-Sep 2025 only; the 10 Oct 2025 crash as a descriptive case study | Keeps the final test period untouched for M7, where sentiment is tested "with vs without". |
+| 2026-10-26 | Live collector reads new GDELT batches as well as the four RSS feeds | RSS alone covers four sites while the backfill covers thousands, so headline counts would jump when the live data takes over. |
 
 ## Parking list (not now)
 
@@ -176,3 +182,7 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 - Full Bybit order-book history for ETH and SOL (Phase 4).
 - Direct feeds from X or Truth Social. RSS covers it for now; X's API costs about $200/month.
 - Deribit DVOL as a volatility feature (Phase 6).
+- News worker as a Railway `worker` service (runs from the PC with Task Scheduler for now).
+- Fine-tune a sentiment model on our own crypto headlines (needs ~1,000 labels, not 100).
+- Weight headlines by how many outlets ran them (`copies`) and use GDELT's tone as an extra feature (M7).
+- Fill GDELT's 15 Jun - 1 Jul 2025 outage from the news sites' own archives or sitemaps.
