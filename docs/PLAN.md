@@ -1,6 +1,6 @@
 # RegimeCast build plan
 
-Status: **draft for review**, 20 Oct 2026. Nothing below is executed until Saeed approves the queued phases.
+Status: Phases 1-6 approved (1-3 on 23 Oct, 4-6 on 26 Oct). Phases 7+ are an outline until approved.
 
 ## How we work
 
@@ -56,20 +56,15 @@ Status: **draft for review**, 20 Oct 2026. Nothing below is executed until Saeed
 
 Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/` (Next.js), `docs/`, `tests/`.
 
-## Where we are (20 Oct 2026)
+## Where we are (26 Oct 2026)
 
-**Working**
-- Live recorder on Railway since 19 Oct: Binance mark price, order book (top 20), liquidations, open interest; Hyperliquid big orders with wallets, top-account positions, funding and open interest. Kept as is; only its liquidation and Whale Watch data are needed (see Data strategy).
-- Binance archive downloader and data validator (code, not run on real data yet).
-- Liquidation price engine, safe-leverage search, first-passage baseline probability.
-- HAR baselines and evaluation (QLIKE, Diebold-Mariano, Model Confidence Set) with the final test period protected (from 2025-10-01).
-- FastAPI backend with `/risk-check`; CI runs 21 tests on every push.
+| Phase | Status |
+|---|---|
+| 1 Data foundation (M1) | Done. BTC 2020-now validated, HAR table, crash order-book features, real margin tiers. |
+| 2 App skeleton + API online (M2) | Done on branch `phase2-app`, live at https://web-production-210f7.up.railway.app. Merge into main pending. |
+| 3 News sentiment (M3) | In progress on its branch. Labels: two blind AI passes, kappa 0.92. |
 
-**Known problems**
-- `/risk-check` explanation shows the wrong distance to liquidation for longs (10.67% instead of 9.64% for a 10x long). Fix is in Phase 1.
-- Order-book history for the October 2025 crash isn't downloaded yet. Bybit has it (200 levels, about 300 MB per coin per day), and a replay prototype exists outside the repo.
-
-## Queued phases (to approve)
+## Phases 1-3: P1 Mid (approved 23 Oct)
 
 These three phases cover M1–M3 and end in the P1 Mid working demo.
 
@@ -135,17 +130,75 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 
 **P1 Mid demo:** Phase 1 charts and HAR table (M1), the live app with the risk check (M2), and the news mood panel (M3).
 
+## Phases 4-6 (approved 26 Oct)
+
+Order changed from the earlier outline: the core model (M7) comes before the dashboard and accounts (M5, M6), because results matter more than screens. M5/M6 can run in parallel as their own session from Phase 4 on, since they only touch the app.
+
+**The final test period stays closed.** The October 2025 crash is inside it (from 2025-10-01). Models are built and tuned on data up to 2025-09-30, using the four earlier crashes (Mar 2020, May 2021, Nov 2022, Aug 2024). October 2025 is scored once, at the final evaluation. Descriptive studies (charts, the forensic timeline) may show it, as long as no model is tuned on it.
+
+### Phase 4: Features, regimes and full data (M4)
+
+Goal: every model after this reads the same leak-free features, and we can see the market's regime at any minute since 2020.
+
+Tasks
+1. ETH and SOL: download the same Binance history as BTC (from 2020), validate, and document it in `docs/DATA_HEALTH.md`. Also Binance's `bookDepth` archive (depth at 1-5% from the price) for all three.
+2. Full Bybit order-book features from May 2025 to now for BTC, ETH and SOL, run as a Modal batch job in the EU region (pipeline: `regimecast/data/orderbook.py`), results on the Modal Volume with a small copy for the PC. Then a daily job keeps it current.
+3. Feature builder: 1-minute and 1-hour features using only past data. Returns, realised volatility, funding, open interest, premium/basis, and from May 2025 the order-book features (spread, depth, imbalance, order-flow imbalance).
+4. Leakage tests in CI that every model must pass: shifting future data must not change any feature, and a change after time T must not change anything at T.
+5. One walk-forward harness for all models (purge and embargo gaps), with the baselines registered (HAR family, historical volatility, no-change).
+6. Gaussian HMM regimes (calm, active, stressed): fitted inside each training window only, filtered probabilities (no smoothing, which looks ahead), states sorted by volatility. One version on 2020-now features, one adding order-book features from May 2025.
+7. Regime study: how early the regime turns "stressed" before each of the four dev-period crashes, and volatility by regime.
+
+Done when
+- ETH and SOL data health documented; order-book features cover May 2025 to now for all three coins (gaps documented).
+- Leakage tests pass in CI.
+- `data/reports/` has the six-year BTC regime chart and the crash lead-time table.
+
+Demo: six years of BTC price coloured by regime, with each crash marked.
+
+### Phase 5: Volatility forecaster and calibrated liquidation risk (M7)
+
+Goal: the risk check's numbers come from a tested model, not a placeholder.
+
+Tasks
+1. Quick win first: the HAR-S forecast (already tested on real BTC data) is written to `data/forecasts/latest.json` on a schedule and used by `/risk-check`, replacing the placeholder volatility.
+2. Volatility forecaster: gradient-boosted trees (LightGBM or XGBoost) with quantile outputs on the Phase 4 features, a forecast combination with HAR-S, and Deribit's DVOL (options-implied volatility) for BTC and ETH.
+3. Compare with HAR-RV and HAR-S, 1 h and 24 h, walk-forward on the dev period: QLIKE, Diebold-Mariano, Model Confidence Set. Reported whatever the result.
+4. Worst-move model: quantiles of the maximum adverse move of the mark price, turned into the probability of reaching a liquidation or stop price.
+5. Calibration with isotonic or Platt scaling on held-back dev data; Brier score, ECE and reliability diagrams pooled over coins, sides and a leverage grid (2x to 100x), with block-bootstrap confidence intervals; results per dev-period crash.
+6. SHAP explanation for every estimate, shown in the risk check as "what is driving your risk".
+
+Done when
+- Result tables and reliability diagrams saved in `data/reports/`.
+- `/risk-check` uses the model; the placeholder warning is gone.
+
+Demo: the reliability diagram ("we said 20%, it happened about 20% of the time") and a risk check with its explanation.
+
+### Phase 6: Stress early warning and the 10 October forensics (M10, part 1)
+
+Goal: a calibrated "stress in the next hour" probability, and the full story of the crash on one timeline.
+
+Tasks
+1. Stress labels made separately from any model: spread or realised volatility above a high percentile of its recent values for several minutes.
+2. Stress classifier for the next hour: order-book signals (Hiremath and Hiremath), regime, funding and open interest. Whale Watch tilt only as a live-period feature, since it starts in Oct 2026.
+3. Evaluate against simple volatility-threshold rules: precision, recall, false alarms per day, warning lead time, calibration.
+4. 10 October 2025 forensic timeline (descriptive): the tariff post, the large Hyperliquid shorts placed before it (wallet fill histories), the order-book collapse, open interest and funding, the news mood.
+5. Stress gauge in the API and app: low, elevated or high, with its probability.
+
+Done when
+- Classifier results saved; the forensic chart exists; the gauge shows in the app.
+
+Demo: the 10 October timeline and the live stress gauge.
+
 ## Later phases (outline only, detailed when we get there)
 
 | Phase | Modules | What |
 |---|---|---|
-| 4 | M4 | Features every minute and hour, walk-forward harness with leakage tests, HMM regimes (calm, active, stressed). ETH and SOL data. Full Bybit order-book history. Data jobs run on Modal; data lives on a Modal Volume. |
-| 5 | M5, M6 | Live dashboard (prices over WebSocket, regime-coloured charts); accounts and profiles in Postgres. |
-| 6 | M7 | Volatility forecaster vs HAR, max-adverse-move model, calibrated liquidation probability, SHAP explanations. |
 | 7 | M8, M9 | LLM trade parser (200-case test set, 95% target); full risk-check UI with explanation charts and history. |
-| 8 | M10 | Stress-risk classifier (with Whale Watch features); paper-trading risk agent vs buy-and-hold. |
-| 9 | M11 | Public track record, Playwright end-to-end tests, final deployment hardening, user and admin guides. |
-| 10 | M12 | October 2025 crash replay; alert engine including Whale Watch alerts (whale move, fresh wallet, suspicious timing). |
+| 8 | M5, M6 | Live dashboard (prices over WebSocket, regime-coloured charts); accounts and profiles in Postgres. Can run in parallel from Phase 4 on. |
+| 9 | M10, part 2 | Paper-trading risk agent vs buy-and-hold, after fees and funding. |
+| 10 | M11 | Public track record, Playwright end-to-end tests, final deployment hardening, user and admin guides. Final evaluation on the held-out period, once. |
+| 11 | M12 | October 2025 crash replay; alert engine including Whale Watch alerts (whale move, fresh wallet, suspicious timing). |
 
 ## Open questions
 
@@ -169,12 +222,12 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 | 2026-10-20 | News mood backfilled from GDELT | Months of history to test against price right away, including the crash, instead of waiting for a live collector to build up. |
 | 2026-10-26 | Real Binance margin tiers shipped with the code, replacing placeholders | They differ from the placeholders (BTC/ETH first tier to $300k at up to 150x, not $50k at 125x; SOL up to 100x). Public numbers, so they live in the repo and the API on Railway uses the same ones. |
 | 2026-10-26 | Modal for heavy batch jobs, Railway Pro for always-on services | The PC has ~5 GB free disk and a slow link for ~400 GB of order-book files. Modal's $30/month credit covers backfills, GPU scoring and training; Railway Pro hosts the recorder, api, web, worker and Postgres. Modal workspace: `saeed355ahmed` (the active CLI profile on Saeed's laptop; jobs pin it with `MODAL_PROFILE=saeed355ahmed` because a second profile also exists). |
+| 2026-10-26 | Core model (M7) moved ahead of dashboard and accounts (M5, M6); new order: M4, M7, M10 part 1, then M8/M9 | Results are the project's main claim; M5/M6 can run in parallel since they only touch the app. |
+| 2026-10-26 | HAR-S forecast feeds the risk check before the full M7 model | It is already tested on real data, so the placeholder volatility goes away now. |
 
 ## Parking list (not now)
 
 - Any new recorder streams. The recorder stays as is.
 
-- Whale Watch alerts and UI (Phase 10).
-- Full Bybit order-book history for ETH and SOL (Phase 4).
+- Whale Watch alerts and UI (Phase 11).
 - Direct feeds from X or Truth Social. RSS covers it for now; X's API costs about $200/month.
-- Deribit DVOL as a volatility feature (Phase 6).
