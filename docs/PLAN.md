@@ -13,8 +13,9 @@ Status: **draft for review**, 20 Oct 2026. Nothing below is executed until Saeed
 ## Architecture (target)
 
 ```
- PAST DATA (main source)                     Your PC: download, build features, train, evaluate
- Binance archive, Bybit order books, GDELT ─►  data/ (Parquet) ─► models + result tables
+ PAST DATA (main source)                     Modal (batch, region eu): download, build features, train
+ Binance archive, Bybit order books, GDELT ─►  Modal Volume (Parquet) ─► models + result tables
+                                              Your PC: code, small extracts, reports, demos
 
                       ┌──────────────── Railway ─────────────────────────────────┐
  Exchange APIs ─────► │ api       ── FastAPI: pulls current market data on       │
@@ -49,6 +50,8 @@ Status: **draft for review**, 20 Oct 2026. Nothing below is executed until Saeed
 | Backend | Python, FastAPI | All the AI libraries are Python. One language for data, models and API. |
 | Front end | Next.js + TypeScript + Tailwind | Matches the proposal. Built-in routing and auth for accounts; public track-record pages get real URLs. Typed client generated from the API contract. |
 | Background jobs | One `worker` service | News collection, feature updates and forecasts on a schedule, kept separate from the API so a slow job never slows the app. |
+| Heavy batch jobs | Modal (Starter plan, `region="eu"`) | Backfills, GPU scoring and model training run in parallel containers: the Bybit order-book history (~400 GB raw, ~1,600 coin-days) takes hours for ~$8, inside the $30/month free credit, and never touches the PC's disk. EU because Binance and Bybit block US servers. |
+| Hosting | Railway Pro | Everything always-on: recorder, api, web, worker, Postgres. Cheaper than Modal for 24/7 containers. |
 | Models | Files versioned by date + every forecast logged | So the track record shows what we predicted *before* the outcome. |
 
 Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/` (Next.js), `docs/`, `tests/`.
@@ -136,7 +139,7 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 
 | Phase | Modules | What |
 |---|---|---|
-| 4 | M4 | Features every minute and hour, walk-forward harness with leakage tests, HMM regimes (calm, active, stressed). ETH and SOL data. Full Bybit order-book history. |
+| 4 | M4 | Features every minute and hour, walk-forward harness with leakage tests, HMM regimes (calm, active, stressed). ETH and SOL data. Full Bybit order-book history. Data jobs run on Modal; data lives on a Modal Volume. |
 | 5 | M5, M6 | Live dashboard (prices over WebSocket, regime-coloured charts); accounts and profiles in Postgres. |
 | 6 | M7 | Volatility forecaster vs HAR, max-adverse-move model, calibrated liquidation probability, SHAP explanations. |
 | 7 | M8, M9 | LLM trade parser (200-case test set, 95% target); full risk-check UI with explanation charts and history. |
@@ -146,8 +149,7 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 
 ## Open questions
 
-1. **Railway plan:** you're on a $20/month plan. Is that Railway? Five services plus Postgres fit in it, but I'd like to confirm.
-2. **Criteria 1 and 4:** do you want to ask Mr. Awais to word them as "we test and report either way", or leave them as they are?
+1. **Criteria 1 and 4:** do you want to ask Mr. Awais to word them as "we test and report either way", or leave them as they are?
 
 ## Decision log
 
@@ -166,6 +168,7 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 | 2026-10-20 | Archive holes repaired from daily files | Monthly files miss whole days that daily files have (13,015 mark-price minutes for BTC). |
 | 2026-10-20 | News mood backfilled from GDELT | Months of history to test against price right away, including the crash, instead of waiting for a live collector to build up. |
 | 2026-10-26 | Real Binance margin tiers shipped with the code, replacing placeholders | They differ from the placeholders (BTC/ETH first tier to $300k at up to 150x, not $50k at 125x; SOL up to 100x). Public numbers, so they live in the repo and the API on Railway uses the same ones. |
+| 2026-10-26 | Modal for heavy batch jobs, Railway Pro for always-on services | The PC has ~5 GB free disk and a slow link for ~400 GB of order-book files. Modal's $30/month credit covers backfills, GPU scoring and training; Railway Pro hosts the recorder, api, web, worker and Postgres. **Needs from you:** a Modal account and `modal token new` once. |
 
 ## Parking list (not now)
 
