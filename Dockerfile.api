@@ -8,4 +8,5 @@ COPY regimecast ./regimecast
 COPY data/reports ./data/reports
 ENV REGIMECAST_DATA_DIR=/app/data PYTHONUNBUFFERED=1
 EXPOSE 8000
-CMD ["sh", "-c", "uvicorn regimecast.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
+# uvicorn logs to stderr; send it to stdout so Railway does not flag normal lines as errors.
+CMD ["sh", "-c", "uvicorn regimecast.api.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*' 2>&1"]

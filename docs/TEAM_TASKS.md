@@ -16,7 +16,7 @@ Stack: Next.js + TypeScript, Tailwind, Recharts. Code in `web/`.
 - [x] Risk Check page working against the real `/risk-check` endpoint, entry pre-filled with the live price
 - [x] `503 {"status":"not_ready"}` from `/forecast` and `/regime` shown as a friendly placeholder
 - [x] Data Health page reading `/data-health/BTCUSDT`; Live Status page; News Mood panel
-- [ ] Live URL on Railway (`docs/DEPLOY_RAILWAY.md`)
+- [x] Live URL: https://web-production-210f7.up.railway.app (`docs/DEPLOY_RAILWAY.md`)
 
 ## Aila: M3 News Sentiment Pipeline
 Sources: RSS feeds (CoinDesk, Cointelegraph, The Block, Decrypt) + GDELT.

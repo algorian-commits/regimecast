@@ -82,7 +82,7 @@ Only changes to the recorder's own files redeploy it (`watchPatterns` in `railwa
 | Live market data | `regimecast/api/market.py` | `/market/{symbol}`: Binance mark price, funding and open interest, cached 5 s. |
 | Typed client | `web/src/api/schema.d.ts` | Generated from `docs/openapi.json` (`npm run gen:api` in `web/`). CI fails if it is out of date. |
 | Run both locally | `docker-compose.yml` | `docker compose up --build`, then http://localhost:3000 |
-| Hosting | `docs/DEPLOY_RAILWAY.md` | `api` and `web` services on Railway (EU West), each with its own config. |
+| Hosting | `docs/DEPLOY_RAILWAY.md` | Live at https://web-production-210f7.up.railway.app. `api` and `web` on Railway (EU West), deployed from generated branches `railway/api` and `railway/web`. |
 
 Plain-English overview for the defence: `docs/M2_WALKTHROUGH.md`. Wireframes: `docs/wireframes/index.html`.
 

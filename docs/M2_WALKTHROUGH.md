@@ -60,9 +60,12 @@ blocks US servers).
 
 ## Live URLs
 
-- Website: _(added once the Railway services are created, see `docs/DEPLOY_RAILWAY.md`)_
-- API docs: _(same)_ `/docs`
+- Website: **https://web-production-210f7.up.railway.app**
+- API docs: https://api-production-bb6a.up.railway.app/docs
 - Recorder health: https://recorder-production-796f.up.railway.app/health
+
+All three run on Railway in EU West. `api` and `web` deploy from the branches `railway/api` and
+`railway/web`, generated from `phase2-app` (from `main` once merged); see `docs/DEPLOY_RAILWAY.md`.
 
 ## Demo script (3 minutes)
 
@@ -88,13 +91,13 @@ blocks US servers).
 
 ## Not done or not verified (Phase 2)
 
-- **Railway deployment is waiting on a Railway login.** Code, Dockerfiles and per-service configs are
-  ready; the 10-minute click-through is in `docs/DEPLOY_RAILWAY.md`. Until then the phone test of the
-  live URL has not been done.
+- Verified on the live site (26 Oct 2026) in a phone-sized browser: live prices, Risk Check (10x long:
+  liquidation 9.64% below entry, as expected), Data Health, Live Status and the placeholders. Not yet
+  opened on a real phone.
 - `docker compose up` was not run: Docker is not installed on the development PC. The same
-  Dockerfiles are what Railway builds. The web image's production build was tested locally.
+  Dockerfiles are what Railway builds, and those builds succeed.
 - Wireframes are static HTML, not Figma: the connected Figma account has a view-only seat, so we
   could not create design files. The working website itself serves as the clickable prototype.
-- The News Mood panel was tested with sample data in the agreed shape; it shows real data once
-  Phase 3's `/news-mood` endpoint is merged.
+- The News Mood panel was tested with sample data in the agreed shape; on the live site it shows the
+  "being prepared" placeholder until Phase 3's `/news-mood` endpoint is merged and deployed.
 - The volatility in Risk Check is still a labelled placeholder until the forecaster (Phase 6).
