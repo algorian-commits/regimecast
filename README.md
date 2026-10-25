@@ -72,6 +72,6 @@ Only changes to the recorder's own files redeploy it (`watchPatterns` in `railwa
 3. Walk-forward only, with a purge gap equal to the forecast horizon. No random K-fold.
 4. QLIKE on variance (not log variance). Log models are bias-corrected.
 5. Every model we try is logged. The final test period (from `config.HOLDOUT_START` = 2025-10-01, including the Oct 2025 crash) is touched once: scripts stop before it unless run with `--final-test`.
-6. Margin tiers in `liquidation.py` are placeholders until `scripts/fetch_brackets.py` is run with a read-only key.
+6. Margin tiers are Binance's real ones (`regimecast/risk/binance_brackets.json`, with its fetch date). Refresh them with `scripts/fetch_brackets.py` (read-only key, set up with `scripts/set_binance_key.ps1`) and commit the file.
 
 See `docs/TEAM_TASKS.md` for who does what.

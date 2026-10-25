@@ -18,6 +18,7 @@ import urllib.parse
 import httpx
 
 from regimecast import config
+from regimecast.risk import liquidation
 
 key, secret = os.environ["BINANCE_API_KEY"], os.environ["BINANCE_API_SECRET"]
 q = urllib.parse.urlencode({"timestamp": int(time.time() * 1000)})
@@ -26,7 +27,11 @@ r = httpx.get(f"{config.BINANCE_FAPI_URL}/fapi/v1/leverageBracket?{q}&signature=
               headers={"X-MBX-APIKEY": key}, timeout=20)
 r.raise_for_status()
 data = [d for d in r.json() if d["symbol"] in config.SYMBOLS]
-out = config.DATA_DIR / "brackets.json"
-out.parent.mkdir(parents=True, exist_ok=True)
-out.write_text(json.dumps(data, indent=2))
+# Tiers are public numbers, not secrets: they ship with the code so the API on
+# Railway uses the same ones. Commit the updated file.
+out = liquidation.BRACKETS_FILE
+out.write_text(json.dumps({"source": "Binance USD-M GET /fapi/v1/leverageBracket (scripts/fetch_brackets.py)",
+                           "fetched_at": time.strftime("%Y-%m-%d", time.gmtime()), "symbols": data}, indent=2) + "
+",
+               encoding="utf-8")
 print("saved", len(data), "symbols to", out)

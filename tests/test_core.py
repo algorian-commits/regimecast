@@ -359,11 +359,15 @@ def test_liquidation_price_matches_binance_examples():
 
 
 def test_tier_cum_continuity():
-    t = liq.DEFAULT_BRACKETS["BTCUSDT"]
-    for a, b in zip(t, t[1:]):
-        mm_a = b.floor * a.mmr - a.cum
-        mm_b = b.floor * b.mmr - b.cum
-        assert mm_a == pytest.approx(mm_b)
+    # Binance's maintenance amounts make the margin continuous at every tier edge,
+    # the same rule build_tiers uses; checks the shipped real tiers are consistent
+    for sym in ("BTCUSDT", "ETHUSDT", "SOLUSDT"):
+        t = liq.DEFAULT_BRACKETS[sym]
+        assert t[0].floor == 0 and all(a.cap == b.floor for a, b in zip(t, t[1:]))
+        for a, b in zip(t, t[1:]):
+            assert b.floor * a.mmr - a.cum == pytest.approx(b.floor * b.mmr - b.cum)
+        built = liq.build_tiers([(x.floor, x.mmr, x.max_leverage) for x in t])
+        assert [x.cum for x in built] == pytest.approx([x.cum for x in t])
 
 
 def test_first_passage_matches_monte_carlo():

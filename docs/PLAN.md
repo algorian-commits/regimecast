@@ -64,7 +64,6 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 
 **Known problems**
 - `/risk-check` explanation shows the wrong distance to liquidation for longs (10.67% instead of 9.64% for a 10x long). Fix is in Phase 1.
-- Margin tiers are placeholders until a read-only Binance key is used.
 - Order-book history for the October 2025 crash isn't downloaded yet. Bybit has it (200 levels, about 300 MB per coin per day), and a replay prototype exists outside the repo.
 
 ## Queued phases (to approve)
@@ -82,7 +81,7 @@ Tasks
 4. Run the HAR baseline on real BTC data (test 2024-01 to 2025-09) and save the result table. This is our first real result.
 5. Bybit order-book pipeline: download, replay, and keep 1-second features (spread, depth at 10/25/50/100 bps, imbalance, order-flow imbalance), then delete the raw file. **Scope now:** BTC, 3 Oct to 17 Oct 2025 (the crash plus a week each side). The full May 2025 onward history runs later as a background job, when M4 needs it.
 6. Backup routine: `pull_live_data.py` run on a schedule from your PC (Windows Task Scheduler), so the Railway volume isn't the only copy.
-7. Real margin tiers via `fetch_brackets.py`. **Needs from you:** a read-only Binance API key.
+7. Real margin tiers via `fetch_brackets.py`. **Done 26 Oct:** fetched with Saeed's read-only key and shipped in `regimecast/risk/binance_brackets.json`.
 
 Done when
 - The data health report for BTC exists, and every issue is fixed or explained.
@@ -147,9 +146,8 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 
 ## Open questions
 
-1. **Read-only Binance API key** for real margin tiers (Phase 1, task 7). Can you make one?
-2. **Railway plan:** you're on a $20/month plan. Is that Railway? Five services plus Postgres fit in it, but I'd like to confirm.
-3. **Criteria 1 and 4:** do you want to ask Mr. Awais to word them as "we test and report either way", or leave them as they are?
+1. **Railway plan:** you're on a $20/month plan. Is that Railway? Five services plus Postgres fit in it, but I'd like to confirm.
+2. **Criteria 1 and 4:** do you want to ask Mr. Awais to word them as "we test and report either way", or leave them as they are?
 
 ## Decision log
 
@@ -167,6 +165,7 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 | 2026-10-20 | Zero-volume minutes treated as missing | Binance prints frozen candles during halts; they looked like zero volatility and distorted HAR. |
 | 2026-10-20 | Archive holes repaired from daily files | Monthly files miss whole days that daily files have (13,015 mark-price minutes for BTC). |
 | 2026-10-20 | News mood backfilled from GDELT | Months of history to test against price right away, including the crash, instead of waiting for a live collector to build up. |
+| 2026-10-26 | Real Binance margin tiers shipped with the code, replacing placeholders | They differ from the placeholders (BTC/ETH first tier to $300k at up to 150x, not $50k at 125x; SOL up to 100x). Public numbers, so they live in the repo and the API on Railway uses the same ones. |
 
 ## Parking list (not now)
 

@@ -56,37 +56,25 @@ def build_tiers(rows: list[tuple[float, float, int]]) -> list[Tier]:
     return tiers
 
 
-# PLACEHOLDER brackets. Binance changes these often and the official endpoint
-# (/fapi/v1/leverageBracket) needs an API key. Before any reported result, run
-# scripts/fetch_brackets.py with a READ-ONLY key and use data/brackets.json.
-DEFAULT_BRACKETS: dict[str, list[Tier]] = {
-    "BTCUSDT": build_tiers([(0, 0.004, 125), (50_000, 0.005, 100), (600_000, 0.01, 75),
-                            (3_000_000, 0.025, 50), (12_000_000, 0.05, 25), (70_000_000, 0.1, 20),
-                            (100_000_000, 0.125, 10), (230_000_000, 0.15, 5), (480_000_000, 0.25, 4),
-                            (600_000_000, 0.5, 1)]),
-    "ETHUSDT": build_tiers([(0, 0.004, 125), (50_000, 0.005, 100), (600_000, 0.01, 75),
-                            (3_000_000, 0.025, 50), (12_000_000, 0.05, 25), (50_000_000, 0.1, 20),
-                            (65_000_000, 0.125, 10), (150_000_000, 0.15, 5), (320_000_000, 0.25, 4),
-                            (400_000_000, 0.5, 1)]),
-    "SOLUSDT": build_tiers([(0, 0.005, 75), (10_000, 0.01, 50), (50_000, 0.015, 40),
-                            (250_000, 0.02, 25), (1_000_000, 0.05, 20), (5_000_000, 0.1, 10),
-                            (10_000_000, 0.125, 5), (15_000_000, 0.15, 4), (25_000_000, 0.25, 2),
-                            (50_000_000, 0.5, 1)]),
-}
+BRACKETS_FILE = Path(__file__).with_name("binance_brackets.json")
 
 
 def load_brackets(path: str | Path | None = None) -> dict[str, list[Tier]]:
-    """Load brackets saved from Binance's API (fetch_brackets.py); fall back to defaults."""
-    p = Path(path) if path else None
-    if not p or not p.exists():
-        return DEFAULT_BRACKETS
-    raw = json.loads(p.read_text())
+    """Maintenance-margin tiers saved from Binance's API by scripts/fetch_brackets.py.
+
+    Default: the copy shipped with the code (binance_brackets.json, see its
+    ``fetched_at``). Binance changes tiers now and then; re-run the script to refresh.
+    """
+    raw = json.loads(Path(path or BRACKETS_FILE).read_text(encoding="utf-8"))
     out = {}
-    for item in raw:
+    for item in raw["symbols"] if isinstance(raw, dict) else raw:
         tiers = [Tier(b["notionalFloor"], b["notionalCap"], b["maintMarginRatio"],
                       b["initialLeverage"], b["cum"]) for b in item["brackets"]]
         out[item["symbol"]] = sorted(tiers, key=lambda t: t.floor)
     return out
+
+
+DEFAULT_BRACKETS: dict[str, list[Tier]] = load_brackets()
 
 
 def tier_for(symbol: str, notional: float, brackets: dict | None = None) -> Tier:
