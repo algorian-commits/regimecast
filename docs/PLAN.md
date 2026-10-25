@@ -168,7 +168,7 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 | 2026-10-20 | Archive holes repaired from daily files | Monthly files miss whole days that daily files have (13,015 mark-price minutes for BTC). |
 | 2026-10-20 | News mood backfilled from GDELT | Months of history to test against price right away, including the crash, instead of waiting for a live collector to build up. |
 | 2026-10-26 | Real Binance margin tiers shipped with the code, replacing placeholders | They differ from the placeholders (BTC/ETH first tier to $300k at up to 150x, not $50k at 125x; SOL up to 100x). Public numbers, so they live in the repo and the API on Railway uses the same ones. |
-| 2026-10-26 | Modal for heavy batch jobs, Railway Pro for always-on services | The PC has ~5 GB free disk and a slow link for ~400 GB of order-book files. Modal's $30/month credit covers backfills, GPU scoring and training; Railway Pro hosts the recorder, api, web, worker and Postgres. **Needs from you:** a Modal account and `modal token new` once. |
+| 2026-10-26 | Modal for heavy batch jobs, Railway Pro for always-on services | The PC has ~5 GB free disk and a slow link for ~400 GB of order-book files. Modal's $30/month credit covers backfills, GPU scoring and training; Railway Pro hosts the recorder, api, web, worker and Postgres. Modal workspace: `saeed355ahmed` (the active CLI profile on Saeed's laptop; jobs pin it with `MODAL_PROFILE=saeed355ahmed` because a second profile also exists). |
 
 ## Parking list (not now)
 
