@@ -172,6 +172,7 @@ Demo: the mood chart through the October crash, the accuracy table, and the live
 | 2026-10-26 | Macro tariff and sanctions headlines collected too, not only crypto ones | The headline that moves the market (e.g. Trump's China tariff post) usually doesn't mention crypto. They count toward the policy-shock count only. |
 | 2026-10-26 | GDELT's own outage (15 Jun - 1 Jul 2025) left as a gap | Those hours are missing in the mood table rather than shown as "no news". |
 | 2026-10-26 | Mood vs price statistics on May-Sep 2025 only; the 10 Oct 2025 crash as a descriptive case study | Keeps the final test period untouched for M7, where sentiment is tested "with vs without". |
+| 2026-10-26 | The 100 sentiment labels checked by a second, blind AI labelling pass instead of by Saeed | Saeed asked for it to be handled. Two independent passes (Claude), 95% agreement, Cohen's kappa 0.92, 5 disagreements settled by the written rule. Reported as AI-labelled, not human-labelled. |
 | 2026-10-26 | Live collector reads new GDELT batches as well as the four RSS feeds | RSS alone covers four sites while the backfill covers thousands, so headline counts would jump when the live data takes over. |
 
 ## Parking list (not now)

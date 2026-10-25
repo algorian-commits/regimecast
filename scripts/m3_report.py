@@ -1,8 +1,11 @@
 """Phase 3 (M3) results: model accuracy on hand labels, news mood vs BTC price, and the
 10 Oct 2025 tariff crash as a case study.
 
-    python scripts/m3_report.py                 # labels as drafted (not yet checked)
-    python scripts/m3_report.py --checked       # after Saeed has checked docs/m3/labels_100.csv
+    python scripts/m3_report.py
+
+Ground truth for accuracy: ``final_label`` in docs/m3/labels_100_review2.csv when it
+exists (two blind labelling passes, disagreements settled by the written rule), else
+the draft labels in docs/m3/labels_100.csv; a filled ``saeed_label`` always wins.
 
 Writes to data/reports/:
     m3_accuracy.md / .csv         accuracy, macro F1 and confusion matrices, both models
@@ -31,15 +34,25 @@ from regimecast.sentiment import models, pipeline
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 LABELS = ROOT / "docs" / "m3" / "labels_100.csv"
+REVIEW = ROOT / "docs" / "m3" / "labels_100_review2.csv"  # second, blind labelling pass + settled labels
 DEV_START = "2025-05-01"
 CASE_FROM, CASE_TO = "2025-10-10 06:00", "2025-10-11 13:00"  # hour ends
 
 
 # ------------------------------------------------------------------ 1. accuracy
-def accuracy_tables(checked: bool) -> tuple[pd.DataFrame, dict, pd.DataFrame]:
+def accuracy_tables() -> tuple[pd.DataFrame, dict, pd.DataFrame, dict]:
     lab = pd.read_csv(LABELS, encoding="utf-8-sig", keep_default_na=False)
-    lab["truth"] = np.where(lab["saeed_label"].str.strip() != "", lab["saeed_label"].str.strip().str.lower(),
-                            lab["draft_label"])
+    base = lab["draft_label"]
+    agree = {}
+    if REVIEW.exists():
+        rv = pd.read_csv(REVIEW, encoding="utf-8-sig", keep_default_na=False)
+        lab = lab.merge(rv, on="id", how="left", validate="one_to_one")
+        base = lab["final_label"]
+        agree = {"agreement": float((lab["draft_label"] == lab["review2_label"]).mean()),
+                 "kappa": cohen_kappa(lab["draft_label"], lab["review2_label"]),
+                 "disagreements": int((lab["draft_label"] != lab["review2_label"]).sum())}
+    human = lab["saeed_label"].str.strip() != ""
+    lab["truth"] = np.where(human, lab["saeed_label"].str.strip().str.lower(), base)
     rows, conf = [], {}
     for m in models.MODELS:
         s = pipeline.load_scores(m)
@@ -52,9 +65,21 @@ def accuracy_tables(checked: bool) -> tuple[pd.DataFrame, dict, pd.DataFrame]:
         rows.append({"model": m, "hf_repo": models.MODELS[m], **a})
         conf[m] = ev.confusion(lab["truth"], lab[f"pred_{m}"])
     acc = pd.DataFrame(rows)
-    acc["labels"] = "checked by Saeed" if checked else "Claude's draft, NOT yet checked"
-    acc["changed_by_check"] = int((lab["saeed_label"].str.strip() != "").sum())
-    return acc, conf, lab
+    if human.any():
+        acc["labels"] = f"checked by a person ({int(human.sum())} changed)"
+    elif agree:
+        acc["labels"] = (f"two independent AI annotators (Claude), labelled blind, agreement {agree['agreement']:.0%}, "
+                         f"Cohen's kappa {agree['kappa']:.2f}, {agree['disagreements']} disagreements settled by the "
+                         f"written rule; not human-labelled")
+    else:
+        acc["labels"] = "one AI annotator's draft (Claude), not checked"
+    return acc, conf, lab, agree
+
+
+def cohen_kappa(a: pd.Series, b: pd.Series) -> float:
+    po = float((a == b).mean())
+    pe = sum(float((a == c).mean()) * float((b == c).mean()) for c in ev.CLASSES)
+    return (po - pe) / (1 - pe)
 
 
 # ------------------------------------------------------------------ 2. against price
@@ -64,7 +89,7 @@ def hourly_btc(start, end) -> pd.Series:
 
 def mood_features(m: pd.DataFrame, end) -> pd.DataFrame:
     m = m.set_index("ts")
-    grid = pd.date_range(m.index.min(), pd.Timestamp(end, tz="UTC"), freq="h")
+    grid = pd.date_range(m.index.min(), end, freq="h")
     m = m.reindex(grid)  # source outages stay missing, not zero
     return pd.DataFrame({
         "count_z": ev.abnormal(m["count"].astype(float)),
@@ -147,18 +172,21 @@ def case_study() -> tuple[pd.DataFrame, list[dict]]:
     t = pd.DataFrame({"btc_close": close, "btc_return_pct": 100 * np.log(close).diff()}).reindex(m.index)
     t = t.join(m).join(macro.rename("macro_tariff_headlines")).fillna({"macro_tariff_headlines": 0})
     t["china_tariff_headlines"] = h[china].groupby("ts").size().reindex(t.index).fillna(0).astype(int)
+    minute = store.minute_bars("BTCUSDT", "last", lo, hi).set_index("ts")["close"]
     firsts = []
-    for name, pat in (("China tariff threat", r"(?=.*tariff)(?=.*(china|xi\b))"), ("100% tariff", r"(?=.*100\s?%)(?=.*tariff)"),
-                      ("crypto + tariffs", None)):
-        if pat:
-            hit = h[h["title"].str.contains(pat, case=False, regex=True)]
-        else:
-            hit = h[(h["scope"] == "crypto") & (h["policy"] == "tariffs")]
-        hit = hit[hit["known_at"] >= pd.Timestamp("2025-10-10 12:00", tz="UTC")]
+    for name, pat in (
+            ("Trump threatens China with 'massive' tariffs (1st post)",
+             r"(?=.*trump)(?=.*(china|xi\b|beijing))(?=.*(threat|massive))(?=.*tariff)"),
+            ("100% tariff on China (2nd post)", r"(?=.*100\s?(%|percent))(?=.*china)(?=.*tariff)"),
+            ("crypto headline mentioning the tariffs", None)):
+        hit = h[h["title"].str.contains(pat, case=False, regex=True)] if pat else \
+            h[(h["scope"] == "crypto") & (h["policy"] == "tariffs")]
+        hit = hit[hit["known_at"] >= pd.Timestamp("2025-10-10 14:00", tz="UTC")]
         if len(hit):
             r = hit.iloc[0]
+            px = minute[minute.index < r["known_at"]]
             firsts.append({"what": name, "known_at": f"{r['known_at']:%Y-%m-%d %H:%M} UTC", "title": r["title"],
-                           "source": r["source"]})
+                           "source": r["source"], "btc_then": round(float(px.iloc[-1]), 1) if len(px) else None})
     return t.reset_index().rename(columns={"ts": "hour_end"}), firsts
 
 
@@ -182,7 +210,8 @@ def page(acc, conf, price_md, case, firsts, mood_all) -> str:
              "score": wk["mean_score"].round(3).where(wk["mean_score"].notna(), None).tolist(),
              "policy": wk["policy_shock_count"].tolist()}
     firsts_html = "".join(f"<li><b>{esc(f['known_at'])}</b> first {esc(f['what'])} headline: "
-                          f"&ldquo;{esc(f['title'])}&rdquo; ({esc(f['source'])})</li>" for f in firsts)
+                          f"&ldquo;{esc(f['title'])}&rdquo; ({esc(f['source'])}); BTC then: {f['btc_then']:,.0f}</li>"
+                          for f in firsts)
     price_html = "<pre>" + esc(price_md) + "</pre>"
     return f"""<!doctype html><html><head><meta charset="utf-8"><title>RegimeCast news mood</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -231,17 +260,16 @@ Plotly.newPlot('daily', [sw(w.count, 1, 'bar'), sw(w.score, 2), sw(w.policy, 3, 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--checked", action="store_true", help="the labels have been checked by Saeed")
     ap.add_argument("--final-test", action="store_true", help="run the price statistics on the final test period too (once)")
     a = ap.parse_args()
     out = config.DATA_DIR / "reports"
     out.mkdir(parents=True, exist_ok=True)
 
-    acc, conf, lab = accuracy_tables(a.checked)
+    acc, conf, lab, agree = accuracy_tables()
     acc.to_csv(out / "m3_accuracy.csv", index=False)
     lab.to_csv(out / "m3_labels_with_predictions.csv", index=False)
-    md = ["# Sentiment model accuracy (M3)", "", f"100 headlines, labels: **{acc['labels'].iloc[0]}** "
-          f"({acc['changed_by_check'].iloc[0]} changed by the check).", "",
+    md = ["# Sentiment model accuracy (M3)", "", f"100 headlines (random, 6 per month). Labels: {acc['labels'].iloc[0]}.",
+          f"Class split: {lab['truth'].value_counts().to_dict()}.", "",
           "| model | accuracy | macro F1 | recall positive | recall negative | recall neutral |", "|---|---|---|---|---|---|"]
     md += [f"| {r.model} ({r.hf_repo}) | {r.accuracy:.2f} | {r.macro_f1:.2f} | {r.recall_positive:.2f} | "
            f"{r.recall_negative:.2f} | {r.recall_neutral:.2f} |" for r in acc.itertuples()]
