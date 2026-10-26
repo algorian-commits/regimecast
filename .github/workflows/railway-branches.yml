@@ -1,0 +1,20 @@
+name: railway branches
+
+# Regenerates railway/api and railway/web (see scripts/sync_railway_branches.sh).
+# Switch the branch below to main once Phase 2 is merged.
+on:
+  push:
+    branches: [phase2-app]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: bash scripts/sync_railway_branches.sh "${GITHUB_REF_NAME}"

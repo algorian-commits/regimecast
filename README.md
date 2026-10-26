@@ -74,4 +74,16 @@ Only changes to the recorder's own files redeploy it (`watchPatterns` in `railwa
 5. Every model we try is logged. The final test period (from `config.HOLDOUT_START` = 2025-10-01, including the Oct 2025 crash) is touched once: scripts stop before it unless run with `--final-test`.
 6. Margin tiers are Binance's real ones (`regimecast/risk/binance_brackets.json`, with its fetch date). Refresh them with `scripts/fetch_brackets.py` (read-only key, set up with `scripts/set_binance_key.ps1`) and commit the file.
 
+## Web app and live API (Module M2)
+
+| Part | File | What it does |
+|---|---|---|
+| Web app | `web/` | Next.js + TypeScript + Tailwind. Risk Radar, Risk Check, Data Health, Live Status, News Mood panel. See `web/README.md`. |
+| Live market data | `regimecast/api/market.py` | `/market/{symbol}`: Binance mark price, funding and open interest, cached 5 s. |
+| Typed client | `web/src/api/schema.d.ts` | Generated from `docs/openapi.json` (`npm run gen:api` in `web/`). CI fails if it is out of date. |
+| Run both locally | `docker-compose.yml` | `docker compose up --build`, then http://localhost:3000 |
+| Hosting | `docs/DEPLOY_RAILWAY.md` | Live at https://web-production-210f7.up.railway.app. `api` and `web` on Railway (EU West), deployed from generated branches `railway/api` and `railway/web`. |
+
+Plain-English overview for the defence: `docs/M2_WALKTHROUGH.md`. Wireframes: `docs/wireframes/index.html`.
+
 See `docs/TEAM_TASKS.md` for who does what.

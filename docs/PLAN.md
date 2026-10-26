@@ -220,10 +220,16 @@ Demo: the 10 October timeline and the live stress gauge.
 | 2026-10-20 | Zero-volume minutes treated as missing | Binance prints frozen candles during halts; they looked like zero volatility and distorted HAR. |
 | 2026-10-20 | Archive holes repaired from daily files | Monthly files miss whole days that daily files have (13,015 mark-price minutes for BTC). |
 | 2026-10-20 | News mood backfilled from GDELT | Months of history to test against price right away, including the crash, instead of waiting for a live collector to build up. |
+| 2026-10-23 | Web app forwards `/api/*` to the backend at run time | The browser only talks to the website: no CORS, and the API address is set on Railway without rebuilding. |
+| 2026-10-23 | Live market data endpoint `/market/{symbol}`, cached 5 s, last value shown as "delayed" for up to 5 min if Binance fails | Pre-fills Risk Check with the current price; one Binance call serves many visitors. |
+| 2026-10-23 | Data health report JSONs committed (`data/reports/data_health_*.json`) | The deployed API has no copy of `data/`; the report is small and changes only when the validator reruns. |
+| 2026-10-23 | Wireframes as static HTML (`docs/wireframes/`) instead of Figma | The connected Figma account has a view-only seat (cannot create design files). The live app is the clickable prototype. |
+| 2026-10-23 | Next.js 16 and Node 24 (current releases) | Latest stable at build time; Next's own docs ship in `node_modules/next/dist/docs`. |
 | 2026-10-26 | Real Binance margin tiers shipped with the code, replacing placeholders | They differ from the placeholders (BTC/ETH first tier to $300k at up to 150x, not $50k at 125x; SOL up to 100x). Public numbers, so they live in the repo and the API on Railway uses the same ones. |
 | 2026-10-26 | Modal for heavy batch jobs, Railway Pro for always-on services | The PC has ~5 GB free disk and a slow link for ~400 GB of order-book files. Modal's $30/month credit covers backfills, GPU scoring and training; Railway Pro hosts the recorder, api, web, worker and Postgres. Modal workspace: `saeed355ahmed` (the active CLI profile on Saeed's laptop; jobs pin it with `MODAL_PROFILE=saeed355ahmed` because a second profile also exists). |
 | 2026-10-26 | Core model (M7) moved ahead of dashboard and accounts (M5, M6); new order: M4, M7, M10 part 1, then M8/M9 | Results are the project's main claim; M5/M6 can run in parallel since they only touch the app. |
 | 2026-10-26 | HAR-S forecast feeds the risk check before the full M7 model | It is already tested on real data, so the placeholder volatility goes away now. |
+| 2026-10-26 | `api` and `web` deploy from generated branches `railway/api` and `railway/web` | Railway reads the repo-root `railway.json` (the recorder's) for every service from this repo and no longer lets new services pick another config path. Each branch is the source with `railway.json` swapped for `deploy/railway.<service>.json`, regenerated on every push; the recorder (on `main`) is untouched. |
 
 ## Parking list (not now)
 
@@ -231,3 +237,8 @@ Demo: the 10 October timeline and the live stress gauge.
 
 - Whale Watch alerts and UI (Phase 11).
 - Direct feeds from X or Truth Social. RSS covers it for now; X's API costs about $200/month.
+- `/forecast?horizon_hours=24` is rejected (422): FastAPI does not turn the query text "24" into the `Literal[1, 24]` number. The app calls it without the parameter (24 h is the default). Fix when the forecaster lands (Phase 5).
+- Pin the API image's Python packages like the recorder's (`requirements-api.txt`), so a redeploy never picks up a surprise upgrade.
+- Risk Check explanation repeats brackets ("(PLACEHOLDER (volatility model not trained yet))"); tidy the wording in the API.
+- Track Record page (wireframe ready; built in Phase 10).
+- Move all three Railway services to Infrastructure as Code (`.railway/railway.ts`) before 2026-12-01, when Railway stops reading the recorder's `railway.json`.
