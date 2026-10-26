@@ -127,10 +127,28 @@ def features_symbol(symbol: str) -> dict:
     return out
 
 
+@app.function(**common, cpu=1, memory=1024, timeout=4 * 3600)
+def features_run(symbols: list[str]) -> list:
+    """Runs on Modal and fans out there, so the PC can disconnect (a detached run only keeps
+    the last call the PC made alive). Writes reports/features_status.json when done."""
+    import json
+
+    from regimecast import config
+
+    out = list(features_symbol.map(symbols, return_exceptions=True))
+    status = [o if isinstance(o, dict) else {"error": repr(o)} for o in out]
+    volume.reload()
+    path = config.DATA_DIR / "reports" / "features_status.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"finished": datetime.now(timezone.utc).isoformat(), "results": status}, indent=2))
+    volume.commit()
+    return status
+
+
 @app.local_entrypoint()
 def features_all(symbols: str = ",".join(SYMBOLS)):
-    for sym, out in zip(symbols.split(","), features_symbol.map(symbols.split(","))):
-        print(sym, out)
+    for out in features_run.remote(symbols.split(",")):
+        print(out)
 
 
 # ------------------------------------------------------------------ daily upkeep

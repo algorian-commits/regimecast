@@ -133,6 +133,8 @@ def hourly_features(inp: dict[str, pd.DataFrame], minute: pd.DataFrame | None = 
     m = (minute if minute is not None else minute_features(inp)).set_index("ts")
     g = m.resample("1h", label="right", closed="right")   # minute ends in (H-1h, H] -> hour H
     agg = pd.DataFrame({
+        "close": g["close"].last(),          # traded price at the hour's end
+        "mark": g["mark"].last(),
         "volume_usd": g["volume_usd"].sum(min_count=1),
         "taker_buy_share": g["taker_buy_share"].mean(),
         "premium_mean": g["premium"].mean(),

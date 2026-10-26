@@ -81,9 +81,9 @@ def fit_walk_forward(x: pd.DataFrame, cols: list[str], test_start=None, refit_ev
     return res
 
 
-def hourly_close(minute: pd.DataFrame) -> pd.Series:
-    """Last price of each hour (index = hour end), from the minute feature table."""
-    return minute.set_index("ts")["close"].resample("1h", label="right", closed="right").last()
+def hourly_close(h: pd.DataFrame) -> pd.Series:
+    """Traded price at each hour's end, from the hourly feature table."""
+    return (h.set_index("ts") if "ts" in h else h)["close"]
 
 
 def crash_study(close: pd.Series, reg: pd.DataFrame, events: dict = EVENTS, drop: float = 0.10,
