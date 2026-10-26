@@ -130,6 +130,21 @@ python scripts/fit_live_fhs.py        :: refit the models the app uses (dev peri
 
 See `docs/M7_WALKTHROUGH.md`.
 
+## Stress early warning (Module M10, part 1)
+
+| Part | File | What it does |
+|---|---|---|
+| Stress label | `regimecast/features/build.py` (`stress_minutes`) | Model-free, past-only stress events (about 4% of hours). |
+| Classifier | `regimecast/models/stress.py` | P(stress in the next hour), walk-forward vs simple rules; the app's saved models in `models/stress_live/`. |
+| Live inputs | `regimecast/features/live.py` | Binance/Deribit public data through the training feature code (`scripts/check_live_features.py`). |
+| Forensics | `scripts/oct10_forensics.py` | 10 October 2025, minute by minute. |
+
+```bat
+python scripts/run_phase6.py && python scripts/phase6_report.py && python scripts/oct10_forensics.py
+```
+
+See `docs/M10_STRESS_WALKTHROUGH.md`.
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.

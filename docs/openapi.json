@@ -183,6 +183,60 @@
         }
       }
     },
+    "/stress": {
+      "get": {
+        "summary": "Stress",
+        "description": "Probability of a market stress event in the next hour (M10 stress classifier, live data).",
+        "operationId": "stress_stress_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "default": "BTCUSDT",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReady"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/regime": {
       "get": {
         "summary": "Regime",
@@ -702,6 +756,29 @@
             "title": "Drivers",
             "description": "What moves the volatility forecast (exact SHAP values of HAR-S)",
             "default": []
+          },
+          "stress_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress Level",
+            "description": "Market stress in the next hour: low, elevated or high"
+          },
+          "p_stress_next_hour": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Stress Next Hour"
           },
           "explanation": {
             "items": {

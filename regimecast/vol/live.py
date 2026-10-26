@@ -147,6 +147,26 @@ def regime_from_bars(bars: pd.DataFrame, model: dict, now: pd.Timestamp) -> dict
             "typical_next_24h_vol_pct": {k: round(100 * v, 1) for k, v in model.get("next_24h_vol_by_regime", {}).items()}}
 
 
+def stress_from_bars(bars: pd.DataFrame, symbol: str, stress_model, regime_model: dict, now: pd.Timestamp,
+                     fetch_inputs=None) -> dict | None:
+    """Stress gauge for the last complete hour: the live inputs go through the same feature
+    code as training (features/build.py), then the saved classifier (models/stress.py)."""
+    from regimecast.features import build, live as flive
+    from regimecast.models import regimes, stress
+
+    inp = (fetch_inputs or flive.fetch_inputs)(symbol, last=bars)
+    h = build.hourly_features(inp)
+    h = h[h["ts"] <= now.floor("1h")]
+    if h.empty or h["ts"].iloc[-1] != now.floor("1h"):
+        return None
+    reg = regimes.live_probabilities(regimes.regime_inputs(h).iloc[24:], regime_model)
+    dv = flive.fetch_dvol(symbol) if fetch_inputs is None else pd.DataFrame()
+    t = pd.DataFrame({"ts": h["ts"], "y_1h": np.nan, "y_24h": np.nan})
+    X, _ = stress.dataset(h, t, reg, dv if not dv.empty else None)
+    booster, meta = stress_model
+    return stress.live_gauge(booster, meta, X)
+
+
 def fetch_bars(symbol: str, minutes: int = HISTORY_MINUTES, client=None) -> pd.DataFrame:
     """Last `minutes` 1-minute candles from Binance USD-M, oldest first."""
     import httpx
@@ -173,8 +193,9 @@ def fetch_bars(symbol: str, minutes: int = HISTORY_MINUTES, client=None) -> pd.D
     df = pd.DataFrame(rows, columns=["open_time", "open", "high", "low", "close", "volume", "close_time",
                                      "quote_volume", "count", "taker_buy_volume", "taker_buy_quote_volume", "ignore"])
     out = pd.DataFrame({"ts": pd.to_datetime(df["open_time"], unit="ms", utc=True)})
-    for c in ("open", "high", "low", "close", "volume"):
+    for c in ("open", "high", "low", "close", "volume", "quote_volume", "taker_buy_volume"):
         out[c] = df[c].astype(float)
+    out["count"] = df["count"].astype(int)
     return out.drop_duplicates("ts").sort_values("ts").reset_index(drop=True)
 
 
@@ -187,6 +208,9 @@ class ForecastCache:
         self.regime_models = None   # loaded on first refresh (models/regimes_live.json)
         self.data: dict[str, dict] = {}
         self.regimes: dict[str, dict] = {}
+        self.stress: dict[str, dict] = {}
+        self.stress_models = None   # loaded on first refresh (models/stress_live/)
+        self.fetch_inputs = None    # None -> features.live.fetch_inputs; tests inject a fake
         self._lock = threading.Lock()
         self._thread: threading.Thread | None = None
 
@@ -208,6 +232,15 @@ class ForecastCache:
             if rg:
                 with self._lock:
                     self.regimes[symbol] = {**rg, "made_at": made}
+        if self.stress_models is None:
+            from regimecast.models import stress
+            self.stress_models = {s: m for s in self.symbols if (m := stress.load_live(s)) is not None}
+        if symbol in self.stress_models and symbol in self.regime_models:
+            g = stress_from_bars(bars, symbol, self.stress_models[symbol], self.regime_models[symbol], now,
+                                 self.fetch_inputs)
+            if g:
+                with self._lock:
+                    self.stress[symbol] = {**g, "made_at": made}
 
     def refresh_all(self) -> None:
         for s in self.symbols:
@@ -223,6 +256,14 @@ class ForecastCache:
             return None
         age = (datetime.now(timezone.utc) - datetime.fromisoformat(fc["made_at"])).total_seconds()
         return fc if age <= max_age_s else None
+
+    def get_stress(self, symbol: str, max_age_s: float = 3 * 3600) -> dict | None:
+        with self._lock:
+            g = self.stress.get(symbol)
+        if not g:
+            return None
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(g["made_at"])).total_seconds()
+        return g if age <= max_age_s else None
 
     def get_regime(self, symbol: str, max_age_s: float = 3 * 3600) -> dict | None:
         with self._lock:

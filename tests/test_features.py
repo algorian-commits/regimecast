@@ -111,3 +111,19 @@ def test_time_conventions():
     assert h.loc["2025-01-02 01:00":, "ob_spread_bps_mean"].notna().all()
     # hourly rows are labelled by the hour END: the 10:00 row sums the 09:00-10:00 minutes
     assert h.loc[t, "volume_usd"] == pytest.approx(m.loc[t - pd.Timedelta(minutes=59): t, "volume_usd"].sum())
+
+
+def test_stress_minutes_need_a_run_and_use_only_the_past():
+    idx = pd.date_range("2025-01-01", periods=60 * 24 * 40, freq="1min", tz="UTC")
+    rng = np.random.default_rng(5)
+    rv = pd.Series(rng.uniform(1, 2, len(idx)), index=idx)
+    burst = idx[len(idx) - 2000: len(idx) - 1990]       # 10 very high minutes
+    rv[burst] = 100.0
+    s = build.stress_minutes(rv)
+    assert s[burst[:4]].sum() == 0                       # first 4 minutes of the run don't count (yet)
+    assert s[burst[4:]].all()                            # from the 5th minute it is a stress event
+    assert s[: idx[len(idx) - 2001]].sum() < 20          # quiet data: almost never
+    # changing anything later never changes earlier flags
+    later = rv.copy()
+    later[idx[-500:]] = 1000.0
+    assert (build.stress_minutes(later)[: idx[-501]] == s[: idx[-501]]).all()

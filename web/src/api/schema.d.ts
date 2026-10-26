@@ -78,6 +78,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stress
+         * @description Probability of a market stress event in the next hour (M10 stress classifier, live data).
+         */
+        get: operations["stress_stress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/regime": {
         parameters: {
             query?: never;
@@ -303,6 +323,13 @@ export interface components {
              * @default []
              */
             drivers: components["schemas"]["Driver"][];
+            /**
+             * Stress Level
+             * @description Market stress in the next hour: low, elevated or high
+             */
+            stress_level?: string | null;
+            /** P Stress Next Hour */
+            p_stress_next_hour?: number | null;
             /** Explanation */
             explanation: string[];
             /** Warnings */
@@ -507,6 +534,46 @@ export interface operations {
             query?: {
                 symbol?: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
                 horizon_hours?: 1 | 24;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotReady"];
+                };
+            };
+        };
+    };
+    stress_stress_get: {
+        parameters: {
+            query?: {
+                symbol?: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
             };
             header?: never;
             path?: never;

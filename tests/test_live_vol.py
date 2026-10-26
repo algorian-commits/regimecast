@@ -144,3 +144,36 @@ def test_drivers_are_exact_shap_values_of_har_s():
     total = sum(np.log(1 + d["effect_pct"] / 100) * 2 for d in fc["drivers"])
     base = np.exp(np.dot(model["beta"], model["means"])) * model["smear"]
     assert np.log(fc["variance"] / base) == pytest.approx(total, abs=0.02)   # 1-decimal rounding of each effect
+
+
+def test_stress_gauge_end_to_end_with_fake_live_inputs(monkeypatch):
+    from regimecast.api import main
+    from regimecast.models import regimes, stress
+
+    b = bars(end=pd.Timestamp.now(tz="UTC"))
+    b["quote_volume"], b["taker_buy_volume"], b["count"] = b["close"] * b["volume"], b["volume"] / 2, 10
+
+    def fake_inputs(symbol, last):
+        bb = last[["ts", "open", "high", "low", "close"]]
+        idx = pd.date_range(end=pd.Timestamp.now(tz="UTC").floor("5min"), periods=500, freq="5min")
+        m = pd.DataFrame({"available_at": idx, "sum_open_interest": 1000.0, "sum_open_interest_value": 8e7,
+                          "sum_toptrader_long_short_ratio": 1.5, "count_long_short_ratio": 2.0,
+                          "sum_taker_long_short_vol_ratio": 1.0})
+        m["period_start"] = m["ts"] = m["available_at"] - pd.Timedelta(minutes=5)
+        f = pd.DataFrame({"ts": pd.date_range(end=pd.Timestamp.now(tz="UTC"), periods=3, freq="8h"),
+                          "funding_rate": 1e-4, "interval_hours": 8})
+        return {"last": last, "mark": bb, "index": bb, "premium": bb.assign(close=0.0), "funding": f,
+                "metrics": m, "ob": pd.DataFrame()}
+
+    cache = live.ForecastCache(symbols=["BTCUSDT"], fetch=lambda s: b)
+    cache.fetch_inputs = fake_inputs
+    cache.refresh_all()
+    g = cache.get_stress("BTCUSDT")
+    assert g and 0 <= g["p_stress_next_hour"] <= 1 and g["level"] in ("low", "elevated", "high")
+    assert g["inputs_until"] == pd.Timestamp.now(tz="UTC").floor("1h").isoformat() and len(g["drivers"]) == 4
+    monkeypatch.setattr(main.vol_live, "cache", cache)
+    c = TestClient(main.app)
+    assert c.get("/stress", params={"symbol": "BTCUSDT"}).json()["level"] == g["level"]
+    r = c.post("/risk-check", json={"symbol": "BTCUSDT", "side": "long", "entry": 80000, "leverage": 10,
+                                    "margin": 100, "horizon_hours": 24}).json()
+    assert r["stress_level"] == g["level"] and any(e.startswith("Stress risk for the next hour") for e in r["explanation"])

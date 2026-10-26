@@ -8,8 +8,14 @@ import { Card, LoadView, NotReady } from "./ui";
 export function ModelStatus() {
   const [fc, r1] = useLoad(() => load(() => api.GET("/forecast", { params: { query: { symbol: "BTCUSDT" } } })), "btc");
   const [rg, r2] = useLoad(() => load(() => api.GET("/regime", { params: { query: { symbol: "BTCUSDT" } } })), "btc");
+  const [st, r3] = useLoad(() => load(() => api.GET("/stress", { params: { query: { symbol: "BTCUSDT" } } })), "btc");
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-4 sm:grid-cols-3">
+      <Card title="Stress risk, next hour (BTC)">
+        <LoadView load={st} onRetry={r3} lines={2} notReady={() => <NotReady title="Stress gauge refreshing">The API recomputes the stress probability from live Binance data every 10 minutes.</NotReady>}>
+          {(d) => <pre className="overflow-x-auto text-xs">{JSON.stringify(d, null, 2)}</pre>}
+        </LoadView>
+      </Card>
       <Card title="Market regime (BTC)">
         <LoadView load={rg} onRetry={r2} lines={2} notReady={() => <NotReady title="Regime refreshing">Calm, active or stressed: the API recomputes the regime from live Binance data every 10 minutes.</NotReady>}>
           {(d) => <pre className="overflow-x-auto text-xs">{JSON.stringify(d, null, 2)}</pre>}

@@ -1,6 +1,6 @@
 # RegimeCast build plan
 
-Status: Phases 1-6 approved (1-3 on 23 Oct, 4-6 on 26 Oct); 1-5 done. Phases 7+ are an outline until approved.
+Status: Phases 1-6 approved (1-3 on 23 Oct, 4-6 on 26 Oct) and done. Phases 7+ are an outline until approved.
 
 ## How we work
 
@@ -65,6 +65,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 3 News sentiment (M3) | Done, merged 26 Oct. Hourly mood May 2025 to now; labels from two blind AI passes (kappa 0.92). |
 | 4 Features, regimes, full data (M4) | Done, merged 26 Oct. Features for 3 coins (2020-now, order book from May 2025) on Modal with a daily update; regimes: next-day volatility 43% / 63% / 109% for calm / active / stressed. |
 | 5 Volatility forecaster + liquidation risk (M7) | Done 26 Oct. HAR-S + LightGBM beats HAR on all 3 coins x 2 horizons (-5.7% to -18.1% QLIKE, p < 0.002); FHS liquidation probabilities calibrated to 0.06-0.65% ECE (random walk 1.1-3.9%). App: FHS on live HAR-S with SHAP drivers. Weak spot: long-side risk understated in crashes (Phase 6). |
+| 6 Stress early warning (M10 part 1) | Done 26 Oct. Classifier AUC 0.80-0.83 vs 0.66-0.71 for the best simple rule; average precision about 2x. Live stress gauge (identical live features, checked hour by hour). 10 Oct forensic timeline. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -250,6 +251,10 @@ Demo: the 10 October timeline and the live stress gauge.
 | 2026-10-26 | Quantile LightGBM for the worst move tried, not adopted | Worse Brier score and calibration than FHS at 24 h; slightly better at 1 h only. Logged in phase5_liquidation.csv. |
 | 2026-10-26 | Explanations in the app are exact SHAP values of HAR-S | HAR-S is linear in its inputs, so beta x (input - training mean) is its exact SHAP value. LightGBM SHAP is reported in the research results. |
 | 2026-10-26 | Results scored from 2022-01 (vol walk-forward from 2021-01) | Gives the liquidation models a year of out-of-sample volatility to learn from, and brings the FTX and Yen-carry crashes into the scored period. |
+| 2026-10-26 | Stress label: 5+ minutes of 15-minute volatility above the trailing 30-day 99th percentile | Model-free, past-only, about 4% of hours; spread-based labels would only exist from May 2025. |
+| 2026-10-26 | App's stress model trained without order-book inputs | They added nothing at the hourly level (identical AUC May-Sep 2025), and there is no live order book in the API. |
+| 2026-10-26 | Live features built by the training feature code from live API data | Same definitions by construction; scripts/check_live_features.py found them identical to the archive. The taker ratio endpoint is stamped at the period start (others at the end), handled. |
+| 2026-10-26 | 10 Oct forensic timeline uses reported times for the whale short and the post | The wallet address is not in the public reports and the ENS lookup was blocked by a bot check; its fill history needs the address (HypurrScan/Arkham). |
 
 ## Parking list (not now)
 
@@ -263,6 +268,8 @@ Demo: the 10 October timeline and the live stress gauge.
 - Track Record page (wireframe ready; built in Phase 10).
 - Live HAR-S + LightGBM combination in the app: needs live funding, open interest, basis, long/short ratios and DVOL inputs (1-5% lower QLIKE than HAR-S).
 - Direction-aware liquidation risk: FHS understates long-side risk in crashes; condition on the Phase 6 stress model, funding and crowding.
+- Minute-level stress model with order-book inputs (the book collapsed within 5 minutes of the 10 Oct post), once more order-book history exists.
+- 10 Oct whale wallet fill history: needs the address from HypurrScan or Arkham.
 - Download BTC from Sep 2019 (perpetual launch), so the COVID crash has more than two months of history before the first regime fit.
 - Move all three Railway services to Infrastructure as Code (`.railway/railway.ts`) before 2026-12-01, when Railway stops reading the recorder's `railway.json`.
 - Fine-tune a sentiment model on our own crypto headlines (needs ~1,000 labels, not 100).

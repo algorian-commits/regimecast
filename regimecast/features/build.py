@@ -77,9 +77,31 @@ def _asof(grid: pd.DatetimeIndex, df: pd.DataFrame, time_col: str, cols: dict[st
             out[new] = np.nan
         return out
     right = df[[time_col, *cols]].dropna(subset=[time_col]).sort_values(time_col).rename(columns=cols)
-    left = pd.DataFrame({"t": grid})
+    right[time_col] = right[time_col].astype("datetime64[us, UTC]")   # live data is in ms, archive in us
+    left = pd.DataFrame({"t": pd.DatetimeIndex(grid).astype("datetime64[us, UTC]")})
     m = pd.merge_asof(left, right.rename(columns={time_col: "t"}), on="t", direction="backward")
     return m.set_index("t")[list(cols.values())]
+
+
+# ------------------------------------------------------------------ stress (M10 labels)
+STRESS_QUANTILE = 0.99      # "high" = above the 99th percentile of the trailing window
+STRESS_LOOKBACK_15M = 2880  # 30 days of 15-minute samples
+STRESS_MIN_RUN = 5          # minutes in a row before it counts as a stress event
+
+
+def stress_minutes(rv_15m: pd.Series) -> pd.Series:
+    """1 for every minute of a stress event, known at that minute.
+
+    A minute is "hot" when its 15-minute realised variance exceeds the 99th percentile
+    of the previous 30 days (sampled every 15 minutes, current value excluded). It counts
+    as stress once the hot run has lasted STRESS_MIN_RUN minutes: the first minutes of a
+    run are never marked afterwards, which would use the future. Independent of every model.
+    """
+    s15 = rv_15m[rv_15m.index.minute % 15 == 0]
+    thr = s15.rolling(STRESS_LOOKBACK_15M, min_periods=STRESS_LOOKBACK_15M // 2).quantile(STRESS_QUANTILE).shift(1)
+    hot = (rv_15m > thr.reindex(rv_15m.index, method="ffill")).astype(int)
+    run = hot.groupby((hot == 0).cumsum()).cumsum()          # length of the current hot run, so far
+    return (run >= STRESS_MIN_RUN).astype(int)
 
 
 # ------------------------------------------------------------------ minute features
@@ -97,6 +119,7 @@ def minute_features(inp: dict[str, pd.DataFrame]) -> pd.DataFrame:
     f["ret_60m"] = r.rolling(60, min_periods=50).sum()
     f["rv_15m"] = (r ** 2).rolling(15, min_periods=12).sum()
     f["rv_60m"] = (r ** 2).rolling(60, min_periods=50).sum()
+    f["stress"] = stress_minutes(f["rv_15m"])
     hi, lo = _close_at_end(last, "high").reindex(grid), _close_at_end(last, "low").reindex(grid)
     f["range_1m"] = np.log(hi / lo)
     vol = _close_at_end(last, "volume").reindex(grid)
@@ -136,6 +159,7 @@ def hourly_features(inp: dict[str, pd.DataFrame], minute: pd.DataFrame | None = 
         "close": g["close"].last(),          # traded price at the hour's end
         "mark": g["mark"].last(),
         "volume_usd": g["volume_usd"].sum(min_count=1),
+        "stress_minutes": g["stress"].sum(min_count=1),   # stress-event minutes in the hour (M10 label source)
         "taker_buy_share": g["taker_buy_share"].mean(),
         "premium_mean": g["premium"].mean(),
         "mark_index_gap": g["mark_index_gap"].last(),

@@ -100,6 +100,8 @@ class RiskOut(BaseModel):
     stop: StopInfo | None = None
     regime: str | None = None
     drivers: list[Driver] = Field([], description="What moves the volatility forecast (exact SHAP values of HAR-S)")
+    stress_level: str | None = Field(None, description="Market stress in the next hour: low, elevated or high")
+    p_stress_next_hour: float | None = None
     explanation: list[str]
     warnings: list[str]
     generated_at: str
@@ -222,6 +224,10 @@ def risk_check(t: TradeIn) -> RiskOut:
     finite = math.isfinite(lp) and lp > 0
     move_pct = liq.adverse_move_pct(pos, lp)
     rg = vol_live.cache.get_regime(t.symbol)
+    st = vol_live.cache.get_stress(t.symbol)
+    if st and st["level"] != "low":
+        warnings.append(f"Stress risk is {st['level']}: {100 * st['p_stress_next_hour']:.0f}% chance of a market stress "
+                        f"event in the next hour (normally {100 * st['base_rate']:.0f}%).")
     fc_drivers = (_forecast(t.symbol, t.horizon_hours) or {}).get("drivers", []) if source.startswith("HAR-S") else []
     expl = [
         f"Liquidation is triggered by the mark price at about {lp:,.2f} USDT." if finite
@@ -231,6 +237,8 @@ def risk_check(t: TradeIn) -> RiskOut:
         f"Highest leverage keeping P(liquidation) under {100 * t.risk_limit:.1f}% is {safe_lev}x.",
         _regime_line(rg),
         _drivers_line(fc_drivers),
+        f"Stress risk for the next hour: {st['level']} ({100 * st['p_stress_next_hour']:.0f}%, normally "
+        f"{100 * st['base_rate']:.0f}%)." if st else "",
     ]
     return RiskOut(
         symbol=t.symbol, side=t.side, notional_usdt=round(pos.notional, 2), margin_usdt=round(margin, 2),
@@ -240,7 +248,9 @@ def risk_check(t: TradeIn) -> RiskOut:
         sigma_horizon_pct=round(100 * sigma_h, 3), volatility_source=source,
         max_safe_leverage=safe_lev, max_position_usdt=round(safe_lev * pos.initial_margin, 2),
         fees_round_trip_usdt=round(liq.fees_round_trip(pos), 4), maintenance_margin_rate=tier.mmr,
-        stop=stop_info, regime=rg["regime"] if rg else None, drivers=fc_drivers, explanation=[e for e in expl if e], warnings=warnings,
+        stop=stop_info, regime=rg["regime"] if rg else None, drivers=fc_drivers,
+        stress_level=st["level"] if st else None, p_stress_next_hour=round(st["p_stress_next_hour"], 4) if st else None,
+        explanation=[e for e in expl if e], warnings=warnings,
         generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -252,6 +262,15 @@ def forecast(symbol: Symbol = "BTCUSDT", horizon_hours: Literal[1, 24] = 24):
     if not fc:
         return not_ready("no volatility forecast yet (the API refreshes every 10 minutes)")
     return {"symbol": symbol, "horizon_hours": horizon_hours, **fc}
+
+
+@app.get("/stress", responses={503: {"model": NotReady}})
+def stress(symbol: Symbol = "BTCUSDT"):
+    """Probability of a market stress event in the next hour (M10 stress classifier, live data)."""
+    st = vol_live.cache.get_stress(symbol)
+    if not st:
+        return not_ready("no stress estimate yet (the API refreshes every 10 minutes)")
+    return {"symbol": symbol, **st}
 
 
 @app.get("/regime", responses={503: {"model": NotReady}})
