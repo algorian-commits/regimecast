@@ -1,10 +1,10 @@
 name: railway branches
 
 # Regenerates railway/api and railway/web (see scripts/sync_railway_branches.sh).
-# Switch the branch below to main once Phase 2 is merged.
+# Source branch: main (Phase 2 merged on 26 Oct).
 on:
   push:
-    branches: [phase2-app]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

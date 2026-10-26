@@ -34,7 +34,7 @@ export function buildTrade(f: TradeForm): { ok: true; body: Schemas["TradeIn"] }
   const errors: Record<string, string> = {};
   const entry = num(f.entry), lev = num(f.leverage), margin = num(f.margin), stop = num(f.stop), wallet = num(f.wallet_balance);
   if (!(entry && entry > 0)) errors.entry = "Enter the entry price.";
-  if (!(lev && lev > 0 && lev <= 125)) errors.leverage = "Leverage must be above 0 and at most 125.";
+  if (!(lev && lev > 0 && lev <= 150)) errors.leverage = "Leverage must be above 0 and at most 150.";
   if (!(margin && margin > 0)) errors.margin = "Enter how much margin (USDT) you put in.";
   if (stop !== undefined) {
     if (!(stop > 0)) errors.stop = "Stop must be a positive price.";

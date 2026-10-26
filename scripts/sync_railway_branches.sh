@@ -4,11 +4,11 @@
 # branches, railway/api and railway/web: the source branch's files with railway.json
 # replaced by deploy/railway.<service>.json. The recorder (branch main) never sees them.
 #
-#   bash scripts/sync_railway_branches.sh [source-branch]    (default: phase2-app)
+#   bash scripts/sync_railway_branches.sh [source-branch]    (default: main)
 #
 # The "railway branches" GitHub workflow runs this on every push to the source branch.
 set -euo pipefail
-SRC="${1:-phase2-app}"
+SRC="${1:-main}"
 git fetch -q origin "$SRC"
 for svc in api web; do
   tmp="$(mktemp -d)"

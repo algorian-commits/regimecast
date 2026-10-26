@@ -38,7 +38,7 @@ class TradeIn(BaseModel):
     symbol: Symbol
     side: Literal["long", "short"]
     entry: float = Field(gt=0, description="Entry price in USDT")
-    leverage: float = Field(gt=0, le=125)
+    leverage: float = Field(gt=0, le=150, description="Binance allows up to 150x on BTC and ETH, 100x on SOL, less for big positions")
     qty: float | None = Field(None, gt=0, description="Size in coins. Give qty OR margin.")
     margin: float | None = Field(None, gt=0, description="Margin in USDT (isolated). Give qty OR margin.")
     margin_mode: Literal["isolated", "cross"] = "isolated"

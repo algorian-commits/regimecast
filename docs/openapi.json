@@ -770,9 +770,10 @@
           },
           "leverage": {
             "type": "number",
-            "maximum": 125.0,
+            "maximum": 150.0,
             "exclusiveMinimum": 0.0,
-            "title": "Leverage"
+            "title": "Leverage",
+            "description": "Binance allows up to 150x on BTC and ETH, 100x on SOL, less for big positions"
           },
           "qty": {
             "anyOf": [

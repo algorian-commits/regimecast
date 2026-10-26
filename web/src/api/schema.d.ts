@@ -92,6 +92,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/news-mood": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * News Mood
+         * @description Hourly news mood (M3), oldest hour first, ending at the last complete hour.
+         */
+        get: operations["news_mood_news_mood_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/track-record": {
         parameters: {
             query?: never;
@@ -176,6 +196,43 @@ export interface components {
              */
             source: string;
         };
+        /** MoodHour */
+        MoodHour: {
+            /**
+             * Hour End
+             * @description End of the hour (UTC). A headline at 10:20 counts for 11:00.
+             */
+            hour_end: string;
+            /**
+             * Count
+             * @description Crypto headlines about this coin or the whole market
+             */
+            count: number;
+            /**
+             * Mean Score
+             * @description Average sentiment, -1 (negative) to +1 (positive); 0 when count is 0
+             */
+            mean_score: number;
+            /**
+             * Share Negative
+             * @description Share of headlines labelled negative (0..1); 0 when count is 0
+             */
+            share_negative: number;
+            /**
+             * Policy Shock Count
+             * @description Tariff, sanctions and regulation headlines
+             */
+            policy_shock_count: number;
+        };
+        /** NewsMoodOut */
+        NewsMoodOut: {
+            /** Symbol */
+            symbol: string;
+            /** Updated At */
+            updated_at: string;
+            /** Hours */
+            hours: components["schemas"]["MoodHour"][];
+        };
         /** NotReady */
         NotReady: {
             /**
@@ -259,7 +316,10 @@ export interface components {
              * @description Entry price in USDT
              */
             entry: number;
-            /** Leverage */
+            /**
+             * Leverage
+             * @description Binance allows up to 150x on BTC and ETH, 100x on SOL, less for big positions
+             */
             leverage: number;
             /**
              * Qty
@@ -476,6 +536,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotReady"];
+                };
+            };
+        };
+    };
+    news_mood_news_mood_get: {
+        parameters: {
+            query?: {
+                symbol?: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
+                hours?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewsMoodOut"];
                 };
             };
             /** @description Validation Error */
