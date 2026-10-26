@@ -174,7 +174,10 @@ DRIVER_NAMES = {"log_rv_vs_week": "volatility vs the past week", "hours_since_st
                 "ret_24h": "last day's return", "log_iv_h": "options-implied volatility (DVOL)",
                 "funding_rate": "funding rate", "p_stressed": "regime: stressed", "p_calm": "regime: calm",
                 "log_rv_short": "recent volatility", "log_range_max_1m": "largest 1-minute range",
-                "mark_index_gap": "mark vs index price", "premium_mean": "futures premium"}
+                "mark_index_gap": "mark vs index price", "premium_mean": "futures premium",
+                "taker_buy_share": "share of aggressive buying", "log_rv_mid": "volatility over the last day",
+                "log_rv_long": "volatility over the last week", "neg_share": "share of downside volatility",
+                "jump_share": "share of price jumps", "p_active": "regime: active"}
 
 
 def fit_live(symbol: str, X: pd.DataFrame, y: pd.Series) -> dict:
