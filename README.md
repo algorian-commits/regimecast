@@ -86,8 +86,12 @@ python -m regimecast.sentiment.pipeline import-backfill               :: ~600k r
 python -m regimecast.sentiment.pipeline score --model all             :: FinBERT + CryptoBERT, about an hour on a laptop CPU
 python -m regimecast.sentiment.pipeline collect                       :: catch up to now (GDELT + RSS) and build the mood
 python scripts/m3_report.py                                           :: tables and demo page in data/reports/
-powershell -ExecutionPolicy Bypass -File scripts\news_worker.ps1 -Register   :: keep it current every 15 min
+powershell -ExecutionPolicy Bypass -File scripts\news_worker.ps1 -Register   :: keep the PC copy current every 15 min
 ```
+
+Live without the PC: `.github/workflows/news_live.yml` runs the same `collect` every 15 minutes on GitHub Actions and
+publishes the state to the branch `news-data`; the deployed API serves `news-data/api/<SYMBOL>.json` when it has no
+local data (cached 5 minutes).
 
 ## Rules we follow (to keep results honest)
 

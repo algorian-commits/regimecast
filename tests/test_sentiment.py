@@ -213,6 +213,7 @@ def test_pipeline_end_to_end_store_and_api(tmp_path, monkeypatch):
 
     from regimecast.api.main import app
     monkeypatch.setattr(store.config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(pipeline, "NEWS_MOOD_URL", "")  # no published copy either
     c = TestClient(app)
     r = c.get("/news-mood", params={"symbol": "BTCUSDT"})
     assert r.status_code == 503 and r.json()["status"] == "not_ready"
@@ -319,3 +320,87 @@ def test_source_outage_hours_are_dropped_not_zero():
     assert len(gaps) == 6 and gaps.min() == T("2025-06-15 07:00") and gaps.max() == T("2025-06-15 12:00")
     m = mood.hourly(h, _scores(h), "BTCUSDT", drop_hours=gaps)
     assert T("2025-06-15 03:00") in set(m["ts"]) and T("2025-06-15 08:00") not in set(m["ts"])
+
+
+# ------------------------------------------------------------------ live without the PC
+def _seed(tmp_path, monkeypatch, until="2025-10-10 13:00"):
+    monkeypatch.setattr(store.config, "DATA_DIR", tmp_path)
+    raw = pd.DataFrame({
+        "seen_at": [T("2025-10-10 10:15"), T("2025-10-10 10:30"), T("2025-10-10 12:00")],
+        "published_at": [T("2025-10-10 10:05"), T("2025-10-10 10:30"), T("2025-10-10 12:00")],
+        "title": ["Bitcoin falls 4%", "Crypto market crash deepens", "Ether rises"],
+        "link": ["https://a.com/1", "https://c.com/3", "https://d.com/4"],
+        "source": ["a.com", "c.com", "d.com"], "gdelt_tone": [-3.0, -5.0, 2.0], "scope": ["crypto"] * 3})
+    pipeline.add_headlines(pipeline.from_gdelt(raw))
+    pipeline.score_new("finbert", _fake_probs)
+    pipeline.build_mood("finbert", until=T(until))
+
+
+def test_incremental_mood_matches_full_rebuild(tmp_path, monkeypatch):
+    _seed(tmp_path, monkeypatch)
+    late = pd.DataFrame({"seen_at": [T("2025-10-10 12:30"), T("2025-10-10 13:20")],
+                         "published_at": [T("2025-10-10 12:30"), T("2025-10-10 13:20")],
+                         "title": ["Bitcoin crash worsens", "Solana rises"], "link": ["https://e.com/5", "https://f.com/6"],
+                         "source": ["e.com", "f.com"], "gdelt_tone": [0.0, 0.0], "scope": ["crypto"] * 2})
+    pipeline.add_headlines(pipeline.from_gdelt(late))
+    pipeline.score_new("finbert", _fake_probs)
+    pipeline.build_mood("finbert", until=T("2025-10-10 14:00"), since=T("2025-10-10 12:00"))
+    part = {s: store.news_mood(s) for s in mood.COIN_OF}
+    pipeline.build_mood("finbert", until=T("2025-10-10 14:00"))
+    for s in mood.COIN_OF:
+        pd.testing.assert_frame_equal(part[s], store.news_mood(s))
+    assert store.news_mood("BTCUSDT")["count"].tolist() == [2, 0, 1, 0]
+
+
+def test_export_import_live_state_round_trip(tmp_path, monkeypatch):
+    _seed(tmp_path / "pc", monkeypatch)
+    monkeypatch.setattr(pipeline, "LIVE_KEEP", pd.Timedelta(days=36500))
+    pipeline.export_live(tmp_path / "state")
+    before = pipeline.latest("ETHUSDT", 24)
+    published = json.loads((tmp_path / "state" / "api" / "ETHUSDT.json").read_text())
+    assert published == before and len(published["hours"]) == 3
+
+    monkeypatch.setattr(store.config, "DATA_DIR", tmp_path / "cloud")
+    pipeline.import_live(tmp_path / "state")
+    assert pipeline.latest("ETHUSDT", 24) == before
+    assert len(store.headlines()) == 3 and len(pipeline.load_scores("finbert")) == 3
+    pipeline.import_live(tmp_path / "state")  # importing twice changes nothing
+    assert len(store.headlines()) == 3 and len(pipeline.load_scores("finbert")) == 3
+
+
+def test_api_falls_back_to_published_copy_and_caches_it(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from regimecast.api.main import app
+    monkeypatch.setattr(store.config, "DATA_DIR", tmp_path)  # nothing on this machine
+    monkeypatch.setattr(pipeline, "NEWS_MOOD_URL", "https://example.test/{symbol}.json")
+    monkeypatch.setattr(pipeline, "_remote_cache", {})
+    hours = [{"hour_end": f"2025-10-10T{h:02d}:00:00+00:00", "count": h, "mean_score": 0.1,
+              "share_negative": 0.2, "policy_shock_count": 1} for h in range(10, 14)]
+    calls = []
+
+    class Resp:
+        def __init__(self, ok):
+            self.ok = ok
+
+        def raise_for_status(self):
+            if not self.ok:
+                raise pipeline.httpx.HTTPStatusError("down", request=None, response=None)
+
+        def json(self):
+            return {"symbol": "BTCUSDT", "updated_at": "2025-10-10T13:05:00+00:00", "hours": hours}
+
+    def fake_get(url, **kw):
+        calls.append(url)
+        return Resp(len(calls) == 1)
+
+    monkeypatch.setattr(pipeline.httpx, "get", fake_get)
+    c = TestClient(app)
+    r = c.get("/news-mood", params={"symbol": "BTCUSDT", "hours": 2})
+    assert r.status_code == 200 and [x["count"] for x in r.json()["hours"]] == [12, 13]
+    assert calls == ["https://example.test/BTCUSDT.json"]
+    assert c.get("/news-mood", params={"symbol": "BTCUSDT"}).json()["hours"] == hours  # from the cache
+    assert len(calls) == 1
+    monkeypatch.setattr(pipeline, "REMOTE_TTL_S", 0)  # cache expired and the source is down:
+    assert c.get("/news-mood", params={"symbol": "BTCUSDT"}).status_code == 200  # last good copy
+    assert c.get("/news-mood", params={"symbol": "ETHUSDT"}).status_code == 503
