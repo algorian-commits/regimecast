@@ -67,6 +67,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 5 Volatility forecaster + liquidation risk (M7) | Done 26 Oct. HAR-S + LightGBM beats HAR on all 3 coins x 2 horizons (-5.7% to -18.1% QLIKE, p < 0.002); FHS liquidation probabilities calibrated to 0.06-0.65% ECE (random walk 1.1-3.9%). App: FHS on live HAR-S with SHAP drivers. Weak spot: long-side risk understated in crashes (Phase 6). |
 | 6 Stress early warning (M10 part 1) | Done 26 Oct. Classifier AUC 0.80-0.83 vs 0.66-0.71 for the best simple rule; average precision about 2x. Live stress gauge (identical live features, checked hour by hour). 10 Oct forensic timeline. |
 | 6b Direction-aware liquidation risk | Done 26 Oct: tried and not adopted (see decision log); FHS stays in the app. |
+| 8 Live dashboard and accounts (M5, M6) | Built 27 Oct on branch `phase8-dashboard-accounts` (`docs/M5_M6_WALKTHROUGH.md`); live after merge. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -317,6 +318,15 @@ sessions once approved.
 | 2026-10-26 | 10 Oct forensic timeline uses reported times for the whale short and the post | The wallet address is not in the public reports and the ENS lookup was blocked by a bot check; its fill history needs the address (HypurrScan/Arkham). |
 | 2026-10-26 | Phase 6b (direction-aware liquidation risk) added before Phases 7-8 | The crash-window weakness is the biggest gap in the core product; Saeed approved fixing it first. |
 | 2026-10-26 | Phase 6b: direction-aware liquidation model tried, NOT adopted; FHS stays | Worse overall at 24 h (ECE 0.68-1.43% vs 0.49-0.65%, Brier worse), equal at 1 h, and mixed in crash windows (better for 10x longs, worse at 50x). With funding, open interest, crowding, stress and returns, the direction of the next day's move is not predictable in advance; the stress gauge warns that a big move may come, not which way. Results: data/reports/phase6b_*.csv. |
+| 2026-10-27 | Accounts: Postgres on Railway via SQLAlchemy Core + Alembic migrations, applied by the API the first time it uses the database; SQLite for tests and local dev | One schema definition for both; no manual migration step on deploy. CI runs the account tests on a real Postgres too. |
+| 2026-10-27 | Sessions: random token in an httpOnly, Secure, SameSite=Lax cookie; the database stores HMAC(SESSION_SECRET, token); passwords hashed with argon2id | Server-side sessions can be ended on logout (a signed JWT cannot); a database copy alone cannot log anyone in. |
+| 2026-10-27 | The web forwarder passes the session cookie both ways, so it belongs to the website's domain | Keeps the Phase 2 rule that the browser only talks to the website; no cross-site cookies. |
+| 2026-10-27 | Live prices: one API-side connection to Binance relayed to browsers over our own WebSocket (1 snapshot/s), not browser-to-Binance | Binance blocks some regions (US); the EU server always reaches it, and many visitors share one upstream connection. The browser connects to the API's domain directly because Next.js route handlers cannot forward WebSockets. |
+| 2026-10-27 | Dashboard feed uses Binance's `/market` (mark price, candles) and `/public` (order book) WebSocket routes, like the recorder | The old `/ws` path no longer answered when tested from the PC on 26 Oct. |
+| 2026-10-27 | Spread and depth from Binance's top 20 levels (`depth20@500ms`), labelled "the inside of the book" | Free and live; for BTC the 20 levels reach only ~0.3 bps, so the panel says it is not the full depth. A full book needs the diff stream and a local order book (parking list). |
+| 2026-10-27 | Chart: TradingView lightweight-charts (Apache-2.0), 30 days of hourly candles, background = regime known at each candle's close | Real candlesticks and smooth live updates (Recharts has none); no hindsight in the colours (tested). |
+| 2026-10-27 | Profile "risk limit" = the highest chance of liquidation accepted per trade (the Risk Check's existing `risk_limit`) | The risk check already turns it into safe leverage and the largest position; the paper balance is the cross-margin wallet. |
+| 2026-10-27 | Alerts are stored per user now; notifying waits for the alert engine (Phase 11) | M6 asks for private alerts; firing them is M12. |
 
 ## Parking list (not now)
 
@@ -337,3 +347,5 @@ sessions once approved.
 - Fine-tune a sentiment model on our own crypto headlines (needs ~1,000 labels, not 100).
 - Weight headlines by how many outlets ran them (`copies`) and use GDELT's tone as an extra feature (M7).
 - Fill GDELT's 15 Jun - 1 Jul 2025 outage from the news sites' own archives or sitemaps.
+- Accounts: "forgot password" e-mail, account deletion, and changing the e-mail or password.
+- Full order-book depth on the dashboard (diff stream + local book) instead of the top 20 levels.
