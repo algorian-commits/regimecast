@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useSession } from "@/lib/account";
 import { ThemeToggle } from "./theme-toggle";
 
 const LINKS = [
@@ -15,6 +16,7 @@ const LINKS = [
 export function Nav() {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const session = useSession();
   const link = (l: (typeof LINKS)[number]) => {
     const active = l.href === "/" ? path === "/" : path.startsWith(l.href);
     return (
@@ -40,6 +42,15 @@ export function Nav() {
         </Link>
         <nav className="hidden flex-1 gap-1 sm:flex">{LINKS.map(link)}</nav>
         <div className="ml-auto flex items-center gap-1">
+          {session.state === "in" ? (
+            <Link href="/account" aria-current={path.startsWith("/account") ? "page" : undefined} className="rounded-md px-3 py-2 text-sm font-medium text-muted hover:text-text" title={session.me.email}>
+              Account
+            </Link>
+          ) : session.state === "out" ? (
+            <Link href="/login" className="rounded-md px-3 py-2 text-sm font-medium text-accent hover:underline">
+              Log in
+            </Link>
+          ) : null}
           <ThemeToggle />
           <button
             className="rounded-md px-3 py-2 text-sm sm:hidden"
