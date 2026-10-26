@@ -238,6 +238,7 @@ Demo: the 10 October timeline and the live stress gauge.
 | 2026-10-26 | Mood vs price statistics on May-Sep 2025 only; the 10 Oct 2025 crash as a descriptive case study | Keeps the final test period untouched for M7, where sentiment is tested "with vs without". |
 | 2026-10-26 | The 100 sentiment labels checked by a second, blind AI labelling pass instead of by Saeed | Saeed asked for it to be handled. Two independent passes (Claude), 95% agreement, Cohen's kappa 0.92, 5 disagreements settled by the written rule. Reported as AI-labelled, not human-labelled. |
 | 2026-10-26 | Live collector reads new GDELT batches as well as the four RSS feeds | RSS alone covers four sites while the backfill covers thousands, so headline counts would jump when the live data takes over. |
+| 2026-10-26 | Live news mood runs on GitHub Actions every 15 min and is published on the branch `news-data`; the API reads it from there | The deployed API has no copy of data/ (it lives on the PC). Actions is free for this public repo and already does the GDELT backfill; a data-only branch (not main) means no redeploys. Instead of a Railway `worker` service. |
 
 ## Parking list (not now)
 
@@ -250,7 +251,6 @@ Demo: the 10 October timeline and the live stress gauge.
 - Risk Check explanation repeats brackets ("(PLACEHOLDER (volatility model not trained yet))"); tidy the wording in the API.
 - Track Record page (wireframe ready; built in Phase 10).
 - Move all three Railway services to Infrastructure as Code (`.railway/railway.ts`) before 2026-12-01, when Railway stops reading the recorder's `railway.json`.
-- News worker as a Railway `worker` service (runs from the PC with Task Scheduler for now).
 - Fine-tune a sentiment model on our own crypto headlines (needs ~1,000 labels, not 100).
 - Weight headlines by how many outlets ran them (`copies`) and use GDELT's tone as an extra feature (M7).
 - Fill GDELT's 15 Jun - 1 Jul 2025 outage from the news sites' own archives or sitemaps.
