@@ -11,7 +11,7 @@ export function ModelStatus() {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Card title="Market regime (BTC)">
-        <LoadView load={rg} onRetry={r2} lines={2} notReady={() => <NotReady title="Regime model coming soon">Calm, active or stressed: the regime model is built in Phase 4 (M4).</NotReady>}>
+        <LoadView load={rg} onRetry={r2} lines={2} notReady={() => <NotReady title="Regime refreshing">Calm, active or stressed: the API recomputes the regime from live Binance data every 10 minutes.</NotReady>}>
           {(d) => <pre className="overflow-x-auto text-xs">{JSON.stringify(d, null, 2)}</pre>}
         </LoadView>
       </Card>

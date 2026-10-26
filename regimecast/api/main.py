@@ -122,6 +122,14 @@ def _forecast(symbol: str, horizon: int) -> dict | None:
     return vol_live.cache.get(symbol, horizon)
 
 
+def _regime_line(rg: dict | None) -> str:
+    if not rg:
+        return ""
+    typical = rg.get("typical_next_24h_vol_pct", {}).get(rg["regime"])
+    tail = f"; after this regime the next 24 h have averaged {typical:.0f}% volatility a year" if typical else ""
+    return f"Market regime now: {rg['regime']} (probability {100 * rg['p_' + rg['regime']]:.0f}%{tail})."
+
+
 def _sigma(symbol: str, horizon: int, override: float | None) -> tuple[float, str]:
     """Volatility over the horizon (std of log return) and where it came from."""
     if override:
@@ -183,12 +191,14 @@ def risk_check(t: TradeIn) -> RiskOut:
 
     finite = math.isfinite(lp) and lp > 0
     move_pct = liq.adverse_move_pct(pos, lp)
+    rg = vol_live.cache.get_regime(t.symbol)
     expl = [
         f"Liquidation is triggered by the mark price at about {lp:,.2f} USDT." if finite
         else "This position cannot be liquidated at this margin.",
         f"That is a {move_pct:.2f}% adverse move from your entry." if finite else "",
         f"Expected volatility over {t.horizon_hours}h is about {100 * sigma_h:.2f}% ({source}).",
         f"Highest leverage keeping P(liquidation) under {100 * t.risk_limit:.1f}% is {safe_lev}x.",
+        _regime_line(rg),
     ]
     return RiskOut(
         symbol=t.symbol, side=t.side, notional_usdt=round(pos.notional, 2), margin_usdt=round(margin, 2),
@@ -198,7 +208,7 @@ def risk_check(t: TradeIn) -> RiskOut:
         sigma_horizon_pct=round(100 * sigma_h, 3), volatility_source=source,
         max_safe_leverage=safe_lev, max_position_usdt=round(safe_lev * pos.initial_margin, 2),
         fees_round_trip_usdt=round(liq.fees_round_trip(pos), 4), maintenance_margin_rate=tier.mmr,
-        stop=stop_info, regime=None, explanation=[e for e in expl if e], warnings=warnings,
+        stop=stop_info, regime=rg["regime"] if rg else None, explanation=[e for e in expl if e], warnings=warnings,
         generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -214,11 +224,11 @@ def forecast(symbol: Symbol = "BTCUSDT", horizon_hours: Literal[1, 24] = 24):
 
 @app.get("/regime", responses={503: {"model": NotReady}})
 def regime(symbol: Symbol = "BTCUSDT"):
-    f = config.DATA_DIR / "regimes" / "latest.json"
-    data = json.loads(f.read_text()).get(symbol) if f.exists() else None
-    if not data:
-        return not_ready("regime model not trained yet")
-    return data
+    """Market regime now (calm, active or stressed) from live Binance data (M4 HMM)."""
+    rg = vol_live.cache.get_regime(symbol)
+    if not rg:
+        return not_ready("no regime yet (the API refreshes every 10 minutes)")
+    return {"symbol": symbol, **rg}
 
 
 class MoodHour(BaseModel):

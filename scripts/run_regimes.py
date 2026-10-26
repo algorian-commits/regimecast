@@ -1,6 +1,7 @@
 """Phase 4 results: market regimes on real data, the crash lead-time table and the demo page.
 
-    python scripts/run_regimes.py                 # BTC (default), writes data/reports/...
+    python scripts/run_regimes.py --fit --symbols BTCUSDT   # walk-forward regimes (hours per coin)
+    python scripts/run_regimes.py --finish                  # demo page + live models from saved results
     python -m http.server 8010 -d data/reports    # then open http://localhost:8010/phase4.html
 
 Needs the hourly feature tables (data/parquet/features_1h/<SYMBOL>/all.parquet), built on
@@ -111,17 +112,56 @@ Plotly.newPlot("main", {json.dumps(main["data"])}, {json.dumps(main["layout"])},
 </script></body></html>"""
 
 
+def other_coins(results: dict) -> str:
+    parts = []
+    for sym, r in results.items():
+        summ = "".join(f"<h4>{html.escape(k)} features</h4>" + table(v) for k, v in r["summary"].items())
+        parts.append(f"<h3>{sym}</h3><p class='note'>Crash table (SOL has no data for the COVID crash: it listed in Sep 2020).</p>"
+                     f"{table(r['crash'])}{summ}")
+    return "<h2>ETH and SOL</h2>" + "".join(parts)
+
+
+def load_saved(symbol: str) -> dict:
+    """Results of an earlier run() from data/reports, so the page and live models can be
+    rebuilt without refitting (each coin takes hours of HMM fitting)."""
+    rep = config.DATA_DIR / "reports"
+    h = store.features(symbol, "1h")
+    reg = {k: pd.read_parquet(f) for k in ("base", "orderbook")
+           if (f := rep / f"regimes_{k}_{symbol}.parquet").exists()}
+    summ = {k: pd.read_csv(rep / f"regime_summary_{k}_{symbol}.csv", index_col=0) for k in reg}
+    crash = pd.read_csv(rep / f"crash_leadtime_{symbol}.csv")
+    return {"h": h, "close": regimes.hourly_close(h), "reg": reg, "crash": crash, "summary": summ}
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--symbol", default="BTCUSDT")
+    p.add_argument("--symbols", nargs="+", default=["BTCUSDT", "ETHUSDT", "SOLUSDT"])
+    p.add_argument("--fit", action="store_true", help="fit the walk-forward regimes (slow) and save them")
+    p.add_argument("--finish", action="store_true",
+                   help="from saved results: demo page + live models (regimecast/models/regimes_live.json)")
     a = p.parse_args()
-    r = run(a.symbol)
-    print(r["crash"].to_string(index=False))
-    for k, v in r["summary"].items():
-        print(f"\n{k}:\n{v.round(3).to_string()}")
-    out = config.DATA_DIR / "reports" / "phase4.html"
-    out.write_text(page(a.symbol, r), encoding="utf-8")
-    print("\nwrote", out)
+    if a.fit:
+        for sym in a.symbols:
+            r = run(sym)
+            print(f"\n===== {sym}\n" + r["crash"].to_string(index=False))
+            for k, v in r["summary"].items():
+                print(f"{k}:\n{v.round(3).to_string()}")
+    if a.finish:
+        results, live = {s: load_saved(s) for s in a.symbols}, regimes.load_live()
+        for sym, r in results.items():
+            m = regimes.fit_live_model(regimes.regime_inputs(r["h"]), regimes.FEATURE_SETS["base"])
+            m["next_24h_vol_by_regime"] = r["summary"]["base"]["next_24h_vol_annualised"].round(4).to_dict()
+            live[sym] = m
+            print("live model", sym, m["n_train"], "hours, fitted through", m["fitted_through"])
+        regimes.LIVE_FILE.write_text(json.dumps(live, indent=2) + "\n", encoding="utf-8")
+        first = a.symbols[0]
+        html_page = page(first, results[first])
+        rest = {k: v for k, v in results.items() if k != first}
+        if rest:
+            html_page = html_page.replace("<h2>Crash close-ups</h2>", other_coins(rest) + "<h2>Crash close-ups</h2>")
+        out = config.DATA_DIR / "reports" / "phase4.html"
+        out.write_text(html_page, encoding="utf-8")
+        print("wrote", out, "and", regimes.LIVE_FILE)
 
 
 if __name__ == "__main__":

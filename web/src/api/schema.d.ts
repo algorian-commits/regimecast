@@ -85,7 +85,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Regime */
+        /**
+         * Regime
+         * @description Market regime now (calm, active or stressed) from live Binance data (M4 HMM).
+         */
         get: operations["regime_regime_get"];
         put?: never;
         post?: never;

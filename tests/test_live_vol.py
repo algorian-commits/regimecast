@@ -79,3 +79,33 @@ def test_api_uses_live_forecast_and_drops_placeholder_warning(monkeypatch):
     r = c.post("/risk-check", json={"symbol": "BTCUSDT", "side": "long", "entry": 80000, "leverage": 10,
                                     "margin": 100, "horizon_hours": 24}).json()
     assert r["volatility_source"].startswith("PLACEHOLDER") and any("placeholder" in w.lower() for w in r["warnings"])
+
+
+def test_live_regime_reads_calm_and_stressed():
+    from regimecast.models import regimes
+
+    model = regimes.load_live()["BTCUSDT"]
+    assert model["fitted_through"] <= "2025-09-30" and set(model["next_24h_vol_by_regime"]) == set(regimes.NAMES)
+    quiet = bars(days=31, seed=1)
+    quiet["close"] = 80_000 * np.exp(np.cumsum(np.random.default_rng(1).normal(0, 0.0002, len(quiet))))
+    wild = bars(days=31, seed=2)
+    wild["close"] = 80_000 * np.exp(np.cumsum(np.random.default_rng(2).normal(0, 0.004, len(wild))))
+    assert live.regime_from_bars(quiet, model, NOW)["regime"] == "calm"
+    r = live.regime_from_bars(wild, model, NOW)
+    assert r["regime"] == "stressed" and r["inputs_until"].startswith("2026-10-26T14:00")
+
+
+def test_api_serves_live_regime(monkeypatch):
+    from regimecast.api import main
+
+    cache = live.ForecastCache(symbols=["BTCUSDT"], fetch=lambda s: bars(end=pd.Timestamp.now(tz="UTC")))
+    cache.refresh_all()
+    monkeypatch.setattr(main.vol_live, "cache", cache)
+    c = TestClient(main.app)
+    g = c.get("/regime", params={"symbol": "BTCUSDT"}).json()
+    assert g["regime"] in ("calm", "active", "stressed") and abs(g["p_calm"] + g["p_active"] + g["p_stressed"] - 1) < 1e-9
+    r = c.post("/risk-check", json={"symbol": "BTCUSDT", "side": "long", "entry": 80000, "leverage": 10,
+                                    "margin": 100, "horizon_hours": 24}).json()
+    assert r["regime"] == g["regime"] and any(e.startswith("Market regime now") for e in r["explanation"])
+    monkeypatch.setattr(main.vol_live, "cache", live.ForecastCache(symbols=["BTCUSDT"], fetch=None, models={}))
+    assert c.get("/regime", params={"symbol": "BTCUSDT"}).status_code == 503

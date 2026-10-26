@@ -14,6 +14,9 @@ Feature sets (hourly, from features/build.py):
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -132,3 +135,38 @@ def regime_summary(reg: pd.DataFrame, h: pd.DataFrame) -> pd.DataFrame:
                         "next_24h_vol_annualised": np.sqrt(g["next_24h_var"].mean() * 365)})
     out.index = [NAMES[i] for i in out.index]
     return out
+
+
+# ------------------------------------------------------------------ live use (the app)
+LIVE_FILE = Path(__file__).with_name("regimes_live.json")
+
+
+def fit_live_model(x: pd.DataFrame, cols: list[str], seed: int = 0) -> dict:
+    """The model the app uses: fitted on the development period only (rows labelled up to
+    config.HOLDOUT_START, i.e. data to 30 Sep 2025), same recipe as the walk-forward folds."""
+    tr = x.loc[x.index <= harness.holdout_start(), cols].dropna()
+    mu, sd = tr.mean(), tr.std()
+    m = GaussianHMM(3, n_init=5, seed=seed).fit(((tr - mu) / sd).to_numpy()).order_by(cols.index("log_rv"))
+    return {"cols": cols, "mu": mu.tolist(), "sd": sd.tolist(), "startprob": m.startprob_.tolist(),
+            "transmat": m.transmat_.tolist(), "means": m.means_.tolist(), "covs": m.covs_.tolist(),
+            "fitted_through": str((harness.holdout_start() - pd.Timedelta(days=1)).date()), "n_train": len(tr)}
+
+
+def model_from_dict(d: dict) -> GaussianHMM:
+    m = GaussianHMM(3)
+    m.startprob_, m.transmat_ = np.array(d["startprob"]), np.array(d["transmat"])
+    m.means_, m.covs_ = np.array(d["means"]), np.array(d["covs"])
+    return m
+
+
+def live_probabilities(x: pd.DataFrame, d: dict) -> pd.DataFrame:
+    """Forward-filtered regime probabilities over x with a saved model (no refitting)."""
+    X = (x[d["cols"]] - np.array(d["mu"])) / np.array(d["sd"])
+    p = model_from_dict(d).filter(X.to_numpy())
+    out = pd.DataFrame(p, index=x.index, columns=[f"p_{n}" for n in NAMES])
+    out["regime"] = p.argmax(axis=1)
+    return out
+
+
+def load_live(path: Path = LIVE_FILE) -> dict:
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}

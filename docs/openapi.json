@@ -186,6 +186,7 @@
     "/regime": {
       "get": {
         "summary": "Regime",
+        "description": "Market regime now (calm, active or stressed) from live Binance data (M4 HMM).",
         "operationId": "regime_regime_get",
         "parameters": [
           {
