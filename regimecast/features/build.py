@@ -178,6 +178,14 @@ def build_all(symbol: str) -> dict:
     tmp = h_dir / "all.tmp"
     h.to_parquet(tmp, index=False)
     tmp.replace(h_dir / "all.parquet")
+    from regimecast.features.targets import hourly_targets
+
+    t = hourly_targets(inp["last"], inp["mark"])
+    t_dir = config.parquet_dir() / "targets_1h" / symbol
+    t_dir.mkdir(parents=True, exist_ok=True)
+    tmp = t_dir / "all.tmp"
+    t.to_parquet(tmp, index=False)
+    tmp.replace(t_dir / "all.parquet")
     ob_hours = int(h["ob_spread_bps_mean"].notna().sum())
     return {"symbol": symbol, "minutes": len(m), "hours": len(h), "first": str(h["ts"].min()),
             "last": str(h["ts"].max()), "hours_with_order_book": ob_hours}

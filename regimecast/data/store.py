@@ -150,6 +150,12 @@ def features(symbol: str, freq: str = "1h", start: Time = None, end: Time = None
     return archive({"1h": "features_1h", "1m": "features_1m"}[freq], symbol, start, end, columns)
 
 
+def targets(symbol: str, start: Time = None, end: Time = None, columns: list[str] | None = None) -> pd.DataFrame:
+    """What happened AFTER each hourly origin (features/targets.py): realised variance and the
+    largest adverse mark-price moves over 1 h and 24 h. Never use these as features."""
+    return archive("targets_1h", symbol, start, end, columns)
+
+
 # ------------------------------------------------------------------ news (M3)
 def headlines(start: Time = None, end: Time = None, columns: list[str] | None = None) -> pd.DataFrame:
     """De-duplicated news headlines (data/parquet/news/headlines/*.parquet), filtered on

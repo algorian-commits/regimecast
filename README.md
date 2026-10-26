@@ -112,6 +112,24 @@ python scripts/run_regimes.py --symbol BTCUSDT      :: regime chart + crash tabl
 
 See `docs/M4_WALKTHROUGH.md`.
 
+## Volatility forecaster and liquidation risk (Module M7)
+
+| Part | File | What it does |
+|---|---|---|
+| Targets | `regimecast/features/targets.py` | What happens after each hourly origin: realised variance and the largest adverse mark-price move over 1 h and 24 h (a separate table, never features). |
+| Volatility | `regimecast/models/volatility.py` | LightGBM on the M4 features + DVOL (`regimecast/data/dvol.py`), and its average with HAR-S. |
+| Liquidation risk | `regimecast/models/liquidation_risk.py`, `calibration.py` | Random walk, FHS and quantile LightGBM, isotonic calibration, Brier/ECE/reliability, block-bootstrap intervals. |
+| Live | `regimecast/vol/live.py`, `regimecast/risk/fhs_live.py` | The app: HAR-S on live Binance candles, FHS liquidation probability, exact SHAP drivers. |
+
+```bat
+python scripts/run_phase5.py          :: all results -> data/reports/phase5_*.csv (about 30 min)
+python scripts/phase5_report.py       :: data/reports/phase5.html
+python scripts/fit_live_har.py --symbols BTCUSDT ETHUSDT SOLUSDT
+python scripts/fit_live_fhs.py        :: refit the models the app uses (dev period only)
+```
+
+See `docs/M7_WALKTHROUGH.md`.
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.
