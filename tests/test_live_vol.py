@@ -109,3 +109,38 @@ def test_api_serves_live_regime(monkeypatch):
     assert r["regime"] == g["regime"] and any(e.startswith("Market regime now") for e in r["explanation"])
     monkeypatch.setattr(main.vol_live, "cache", live.ForecastCache(symbols=["BTCUSDT"], fetch=None, models={}))
     assert c.get("/regime", params={"symbol": "BTCUSDT"}).status_code == 503
+
+
+def test_risk_check_uses_fhs_with_live_har_s():
+    from regimecast.api import main
+    from regimecast.risk import fhs_live, liquidation as liq
+
+    cache = live.ForecastCache(symbols=["BTCUSDT"], fetch=lambda s: bars(end=pd.Timestamp.now(tz="UTC")))
+    cache.refresh_all()
+    c = TestClient(main.app)
+    import pytest as _p
+    mp = _p.MonkeyPatch()
+    mp.setattr(main.vol_live, "cache", cache)
+    try:
+        r = c.post("/risk-check", json={"symbol": "BTCUSDT", "side": "long", "entry": 80000, "leverage": 50,
+                                        "margin": 100, "horizon_hours": 24}).json()
+    finally:
+        mp.undo()
+    assert r["model"] == "fhs_har_s"
+    pos = liq.Position("BTCUSDT", "long", entry=80000, qty=100 * 50 / 80000, leverage=50)
+    d = liq.adverse_log_distance(pos, liq.liquidation_price(pos))
+    expected = fhs_live.survival(fhs_live.load()["BTCUSDT"]["24h"]["long"], d, r["sigma_horizon_pct"] / 100)
+    assert r["p_liquidation"] == pytest.approx(expected, abs=2e-4)
+    assert 0 < r["p_liquidation"] < 1
+
+
+def test_drivers_are_exact_shap_values_of_har_s():
+    from regimecast.vol import har
+    model = live.load_models()["BTCUSDT"]["24h"]
+    fc = live.forecast_from_bars(bars(), live.load_models()["BTCUSDT"], NOW)["24h"]
+    names = {d["name"] for d in fc["drivers"]}
+    assert {"volatility in the last day", "time of day", "day of week"} <= names
+    # the effects multiply back to the forecast relative to the model at average inputs
+    total = sum(np.log(1 + d["effect_pct"] / 100) * 2 for d in fc["drivers"])
+    base = np.exp(np.dot(model["beta"], model["means"])) * model["smear"]
+    assert np.log(fc["variance"] / base) == pytest.approx(total, abs=0.02)   # 1-decimal rounding of each effect

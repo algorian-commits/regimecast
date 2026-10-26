@@ -156,6 +156,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Driver */
+        Driver: {
+            /**
+             * Name
+             * @description e.g. 'volatility in the last day', 'day of week'
+             */
+            name: string;
+            /**
+             * Effect Pct
+             * @description How much it moves the volatility forecast vs a typical hour, in %
+             */
+            effect_pct: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -284,6 +297,12 @@ export interface components {
             stop?: components["schemas"]["StopInfo"] | null;
             /** Regime */
             regime?: string | null;
+            /**
+             * Drivers
+             * @description What moves the volatility forecast (exact SHAP values of HAR-S)
+             * @default []
+             */
+            drivers: components["schemas"]["Driver"][];
             /** Explanation */
             explanation: string[];
             /** Warnings */

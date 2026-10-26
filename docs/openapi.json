@@ -415,6 +415,26 @@
   },
   "components": {
     "schemas": {
+      "Driver": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "e.g. 'volatility in the last day', 'day of week'"
+          },
+          "effect_pct": {
+            "type": "number",
+            "title": "Effect Pct",
+            "description": "How much it moves the volatility forecast vs a typical hour, in %"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "effect_pct"
+        ],
+        "title": "Driver"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -673,6 +693,15 @@
               }
             ],
             "title": "Regime"
+          },
+          "drivers": {
+            "items": {
+              "$ref": "#/components/schemas/Driver"
+            },
+            "type": "array",
+            "title": "Drivers",
+            "description": "What moves the volatility forecast (exact SHAP values of HAR-S)",
+            "default": []
           },
           "explanation": {
             "items": {

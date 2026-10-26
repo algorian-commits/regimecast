@@ -51,18 +51,47 @@ def model_from_dict(d: dict) -> har.HARModel:
 
 
 def fit_models(symbol: str, variant: str = "har_s") -> dict:
-    """Fit the live model for both horizons on the development period only."""
+    """Fit the live model for both horizons on the development period only.
+
+    Reads the hourly feature and target tables (features/build.py, features/targets.py),
+    which hold the same realised measures as vol/realized.py. Also stores the average of
+    every model input over the training rows: the baseline for the explanation (drivers)."""
     from regimecast.data import store
 
     end = pd.Timestamp(config.HOLDOUT_START, tz="UTC")
-    h = realized.build_targets(realized.minute_close(store.minute_bars(symbol, "last", end=end)))
+    h = store.features(symbol, "1h", end=end + pd.Timedelta(hours=1)).set_index("ts")
+    t = store.targets(symbol, end=end + pd.Timedelta(hours=1)).set_index("ts").reindex(h.index)
     out = {}
     for key, horizon, target in (("1h", 1, "y_1h"), ("24h", 24, "y_24h")):
-        X, y = har.har_features(h, horizon), h[target]
-        ok = y.index <= end - pd.Timedelta(hours=horizon)   # every target fully before the final test period
+        X, y = har.har_features(h, horizon), t[target]
+        ok = (y.index <= end - pd.Timedelta(hours=horizon)).astype(bool)   # targets fully before the final test period
         m = har.HARModel(variant).fit(X[ok], y[ok])
-        out[key] = model_to_dict(m, (end - pd.Timedelta(days=1)).strftime("%Y-%m-%d"), int(ok.sum()))
+        D = har._design(X[ok], variant, [])[m.cols].dropna()
+        out[key] = {**model_to_dict(m, (end - pd.Timedelta(days=1)).strftime("%Y-%m-%d"), int(ok.sum())),
+                    "means": [float(v) for v in D.mean()]}
     return out
+
+
+DRIVER_NAMES = {1: {"log_rv_short": "volatility in the last hour", "log_rv_mid": "volatility in the last day",
+                    "log_rv_long": "volatility in the last week"},
+                24: {"log_rv_short": "volatility in the last day", "log_rv_mid": "volatility in the last week",
+                     "log_rv_long": "volatility in the last month"}}
+
+
+def drivers(model: dict, X_last: pd.DataFrame, horizon: int) -> list[dict]:
+    """Exact SHAP values of the linear HAR-S model for one forecast: beta * (x - training mean),
+    grouped (seasonal dummies -> time of day, day of week) and shown as the % change in
+    volatility versus a typical hour."""
+    if "means" not in model:
+        return []
+    D = har._design(X_last, model["variant"], [])[model["cols"]].iloc[0]
+    c = pd.Series(np.array(model["beta"]) * (D.to_numpy() - np.array(model["means"])), index=model["cols"])
+    groups = {**DRIVER_NAMES[horizon],
+              **{col: "time of day" for col in c.index if col.startswith("h") and col[1:].isdigit()},
+              **{col: "day of week" for col in c.index if col.startswith("d") and col[1:].isdigit()}}
+    g = c.groupby(c.index.map(lambda k: groups.get(k))).sum()   # const has no group: dropped
+    out = [{"name": k, "effect_pct": round(float(100 * (np.exp(v / 2) - 1)), 1)} for k, v in g.items()]
+    return sorted(out, key=lambda d: -abs(d["effect_pct"]))
 
 
 def load_models(path: Path = MODELS_FILE) -> dict:
@@ -86,12 +115,13 @@ def forecast_from_bars(bars: pd.DataFrame, models: dict, now: pd.Timestamp) -> d
             continue
         X = har.har_features(h, horizon).iloc[[-1]]
         var = float(model_from_dict(models[key]).predict(X).iloc[0])
+        why = drivers(models[key], X, horizon)
         if not np.isfinite(var) or var <= 0:
             continue
         out[key] = {"variance": var, "sigma_pct": 100 * np.sqrt(var),
                     "annualised_vol_pct": 100 * np.sqrt(var * config.HOURS_PER_YEAR / horizon),
                     "model": f"HAR-S (fitted to {models[key]['fitted_through']})",
-                    "inputs_until": X.index[0].isoformat()}
+                    "inputs_until": X.index[0].isoformat(), "drivers": why}
     return out
 
 

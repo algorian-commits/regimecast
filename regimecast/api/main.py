@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from regimecast import config
 from regimecast.api import market
+from regimecast.risk import fhs_live
 from regimecast.risk import liquidation as liq
 from regimecast.vol import live as vol_live
 
@@ -75,6 +76,11 @@ class StopInfo(BaseModel):
     loss_at_stop_usdt: float
 
 
+class Driver(BaseModel):
+    name: str = Field(description="e.g. 'volatility in the last day', 'day of week'")
+    effect_pct: float = Field(description="How much it moves the volatility forecast vs a typical hour, in %")
+
+
 class RiskOut(BaseModel):
     symbol: str
     side: str
@@ -93,6 +99,7 @@ class RiskOut(BaseModel):
     maintenance_margin_rate: float
     stop: StopInfo | None = None
     regime: str | None = None
+    drivers: list[Driver] = Field([], description="What moves the volatility forecast (exact SHAP values of HAR-S)")
     explanation: list[str]
     warnings: list[str]
     generated_at: str
@@ -120,6 +127,28 @@ def _forecast(symbol: str, horizon: int) -> dict | None:
     if fc and fc.get("variance"):
         return {"inputs_until": fc.get("made_at", "?"), **fc}
     return vol_live.cache.get(symbol, horizon)
+
+
+FHS = fhs_live.load()
+
+
+def _hit_model(symbol: str, side: str, horizon: int, source: str):
+    """P(the mark price moves at least d against the position within the horizon).
+
+    FHS (Phase 5's best calibrated model) when the volatility comes from live HAR-S, the
+    pairing it was fitted on; otherwise the random-walk baseline."""
+    entry = FHS.get(symbol, {}).get(f"{horizon}h")
+    if entry and source.startswith("HAR-S"):
+        return (lambda d, sigma: fhs_live.survival(entry[side], d, sigma)), "fhs_har_s"
+    return liq.first_passage_prob, "first_passage_baseline"
+
+
+def _drivers_line(drivers: list[dict]) -> str:
+    top = [d for d in drivers if abs(d["effect_pct"]) >= 3][:3]
+    if not top:
+        return ""
+    parts = [f"{d['name']} ({'+' if d['effect_pct'] > 0 else ''}{d['effect_pct']:.0f}%)" for d in top]
+    return "What moves the volatility forecast vs a typical hour: " + ", ".join(parts) + "."
 
 
 def _regime_line(rg: dict | None) -> str:
@@ -170,10 +199,11 @@ def risk_check(t: TradeIn) -> RiskOut:
 
     lp = liq.liquidation_price(pos)
     dist = liq.adverse_log_distance(pos, lp)
-    p = liq.first_passage_prob(dist, sigma_h)
+    hit_prob, model_name = _hit_model(t.symbol, t.side, t.horizon_hours, source)
+    p = hit_prob(dist, sigma_h)
 
     def prob_fn(p_: liq.Position) -> float:
-        return liq.first_passage_prob(liq.adverse_log_distance(p_, liq.liquidation_price(p_)), sigma_h)
+        return hit_prob(liq.adverse_log_distance(p_, liq.liquidation_price(p_)), sigma_h)
 
     safe_lev = liq.max_safe_leverage(prob_fn, pos, t.risk_limit)
     margin = pos.margin_used()
@@ -184,7 +214,7 @@ def risk_check(t: TradeIn) -> RiskOut:
         inside = stop_dist >= dist
         loss = abs(t.stop - t.entry) * qty + liq.fees_round_trip(pos)
         stop_info = StopInfo(stop=t.stop, stop_inside_liquidation=inside,
-                             p_stop_hit=liq.first_passage_prob(stop_dist, sigma_h),
+                             p_stop_hit=hit_prob(stop_dist, sigma_h),
                              loss_at_stop_usdt=round(min(loss, margin) if inside else loss, 2))
         if inside:
             warnings.append("Your stop is beyond the liquidation price: you would be liquidated first.")
@@ -192,6 +222,7 @@ def risk_check(t: TradeIn) -> RiskOut:
     finite = math.isfinite(lp) and lp > 0
     move_pct = liq.adverse_move_pct(pos, lp)
     rg = vol_live.cache.get_regime(t.symbol)
+    fc_drivers = (_forecast(t.symbol, t.horizon_hours) or {}).get("drivers", []) if source.startswith("HAR-S") else []
     expl = [
         f"Liquidation is triggered by the mark price at about {lp:,.2f} USDT." if finite
         else "This position cannot be liquidated at this margin.",
@@ -199,16 +230,17 @@ def risk_check(t: TradeIn) -> RiskOut:
         f"Expected volatility over {t.horizon_hours}h is about {100 * sigma_h:.2f}% ({source}).",
         f"Highest leverage keeping P(liquidation) under {100 * t.risk_limit:.1f}% is {safe_lev}x.",
         _regime_line(rg),
+        _drivers_line(fc_drivers),
     ]
     return RiskOut(
         symbol=t.symbol, side=t.side, notional_usdt=round(pos.notional, 2), margin_usdt=round(margin, 2),
         liquidation_price=round(lp, 2) if finite else None,
         liquidation_distance_pct=round(move_pct, 3) if finite else None,
-        horizon_hours=t.horizon_hours, p_liquidation=round(p, 5), model="first_passage_baseline",
+        horizon_hours=t.horizon_hours, p_liquidation=round(p, 5), model=model_name,
         sigma_horizon_pct=round(100 * sigma_h, 3), volatility_source=source,
         max_safe_leverage=safe_lev, max_position_usdt=round(safe_lev * pos.initial_margin, 2),
         fees_round_trip_usdt=round(liq.fees_round_trip(pos), 4), maintenance_margin_rate=tier.mmr,
-        stop=stop_info, regime=rg["regime"] if rg else None, explanation=[e for e in expl if e], warnings=warnings,
+        stop=stop_info, regime=rg["regime"] if rg else None, drivers=fc_drivers, explanation=[e for e in expl if e], warnings=warnings,
         generated_at=datetime.now(timezone.utc).isoformat(),
     )
 
