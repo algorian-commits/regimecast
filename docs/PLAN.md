@@ -193,12 +193,71 @@ Done when
 
 Demo: the 10 October timeline and the live stress gauge.
 
+## Phases 6b, 7, 8 (6b approved 26 Oct; 7 and 8 waiting for approval)
+
+### Phase 6b: Direction-aware liquidation risk (M7 + M10)
+
+Goal: fix Phase 5's weak spot. In crashes the liquidation model treats up and down moves alike and understates the
+risk for longs (BTC 10x long in the FTX week: 6% predicted, 31% liquidated).
+
+Tasks
+1. A direct model of "will this position be liquidated within the horizon", per side, fitted on stacked rows of
+   (hour, leverage): inputs are the distance to liquidation in units of forecast volatility (with a monotone
+   constraint: farther away can never be riskier), the stress probability (Phase 6), regime, funding, open-interest
+   change, long/short ratios, taker ratio, last hour and last day returns, DVOL vs realised volatility.
+2. Walk-forward on the same folds and scoring period as Phase 5 (2022-01 to 2025-09), isotonic calibration on
+   earlier out-of-sample predictions only.
+3. Compare with FHS (the app's model now): overall Brier and calibration, per side, per leverage, and in the FTX
+   and Yen-carry crash windows.
+4. Adopt it in the app only if overall calibration is not worse and the crash-window long-side error drops;
+   otherwise keep FHS and report the attempt.
+
+Done when
+- The comparison is saved in `data/reports/` and the decision is in the decision log.
+
+Demo: the crash-window table before and after; a risk check during a stressed hour.
+
+### Phase 7: LLM trade parser and the full risk-check screen (M8, M9)
+
+Goal: type a trade the way you would say it and get the full, explained risk check.
+
+Tasks
+1. Trade parser with Claude through the Anthropic API: a fixed JSON schema checked with Pydantic (asset, side, size,
+   leverage, entry, stop, margin mode), shorthand ("58k", "10x"), retries on invalid output, a follow-up question
+   when a field is missing, and guardrails: it only reads the trade and never gives advice.
+2. Test set of about 200 trade descriptions: drafted, then checked by a second blind pass (as for the M3 labels);
+   field-by-field accuracy against the 95% target; two prompt versions compared.
+3. `POST /parse-trade` in the API; the Risk Check page becomes three steps: type, confirm the parsed fields, results.
+4. Results screen: liquidation chance, safe leverage, fees, regime, stress, and charts of what drives the risk
+   (SHAP); saved history with filters (needs Phase 8 accounts; until then kept in the browser).
+
+Done when
+- Parser accuracy table saved; the three-step flow works on the live URL.
+
+Needs from you: an Anthropic API key (paid per use; cents per hundred parses with a small model).
+
+### Phase 8: Live dashboard and accounts (M5, M6)
+
+Goal: the dashboard the proposal describes, and user accounts.
+
+Tasks
+1. PostgreSQL on Railway; sign up and log in with email and password (hashed, never stored as text); sessions.
+2. Profile: paper account balance and risk limit (used by the risk check for position size); settings: default
+   margin mode and favourite coins. Each user's saved checks and alerts are private.
+3. Live dashboard: prices over WebSocket with automatic reconnect, candlestick chart with the background coloured by
+   regime, spread and depth panel, volatility and stress gauges, news mood panel; smooth updates, mobile layout.
+4. Tests for auth and data separation; CI stays green.
+
+Done when
+- You can sign up on the live URL, set your balance and limit, and the dashboard updates live.
+
+Phases 7 and 8 touch different parts (parser + risk screen vs accounts + dashboard) and can run as two parallel
+sessions once approved.
+
 ## Later phases (outline only, detailed when we get there)
 
 | Phase | Modules | What |
 |---|---|---|
-| 7 | M8, M9 | LLM trade parser (200-case test set, 95% target); full risk-check UI with explanation charts and history. |
-| 8 | M5, M6 | Live dashboard (prices over WebSocket, regime-coloured charts); accounts and profiles in Postgres. Can run in parallel from Phase 4 on. |
 | 9 | M10, part 2 | Paper-trading risk agent vs buy-and-hold, after fees and funding. |
 | 10 | M11 | Public track record, Playwright end-to-end tests, final deployment hardening, user and admin guides. Final evaluation on the held-out period, once. |
 | 11 | M12 | October 2025 crash replay; alert engine including Whale Watch alerts (whale move, fresh wallet, suspicious timing). |
@@ -255,6 +314,7 @@ Demo: the 10 October timeline and the live stress gauge.
 | 2026-10-26 | App's stress model trained without order-book inputs | They added nothing at the hourly level (identical AUC May-Sep 2025), and there is no live order book in the API. |
 | 2026-10-26 | Live features built by the training feature code from live API data | Same definitions by construction; scripts/check_live_features.py found them identical to the archive. The taker ratio endpoint is stamped at the period start (others at the end), handled. |
 | 2026-10-26 | 10 Oct forensic timeline uses reported times for the whale short and the post | The wallet address is not in the public reports and the ENS lookup was blocked by a bot check; its fill history needs the address (HypurrScan/Arkham). |
+| 2026-10-26 | Phase 6b (direction-aware liquidation risk) added before Phases 7-8 | The crash-window weakness is the biggest gap in the core product; Saeed approved fixing it first. |
 
 ## Parking list (not now)
 
@@ -267,7 +327,6 @@ Demo: the 10 October timeline and the live stress gauge.
 - Risk Check explanation repeats brackets ("(PLACEHOLDER (volatility model not trained yet))"); tidy the wording in the API.
 - Track Record page (wireframe ready; built in Phase 10).
 - Live HAR-S + LightGBM combination in the app: needs live funding, open interest, basis, long/short ratios and DVOL inputs (1-5% lower QLIKE than HAR-S).
-- Direction-aware liquidation risk: FHS understates long-side risk in crashes; condition on the Phase 6 stress model, funding and crowding.
 - Minute-level stress model with order-book inputs (the book collapsed within 5 minutes of the 10 Oct post), once more order-book history exists.
 - 10 Oct whale wallet fill history: needs the address from HypurrScan or Arkham.
 - Download BTC from Sep 2019 (perpetual launch), so the COVID crash has more than two months of history before the first regime fit.
