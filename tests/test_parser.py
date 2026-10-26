@@ -230,3 +230,9 @@ def test_scoring_rules():
     lo, hi = wilson(95, 100)
     assert 0.88 < lo < 0.95 < hi < 0.99
     assert cohen_kappa(["a", "b", "a"], ["a", "b", "a"]) == 1
+
+
+def test_no_retry_after_the_deadline():
+    t = iter([0.0, 8.0])
+    with pytest.raises(claude.ParseFailed, match="out of time after 1"):
+        claude.parse("long btc", client=FakeClient(reply("x"), reply(GOOD)), deadline=7.0, clock=lambda: next(t))

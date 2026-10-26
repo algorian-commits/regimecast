@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import dataclass, field
 
 from pydantic import ValidationError
@@ -58,14 +59,20 @@ def _check(text: str | None) -> tuple[ParsedTrade | None, str | None]:
     return (None, "; ".join(errs)) if errs else (t, None)
 
 
-def parse(text: str, version: str = prompts.DEFAULT_VERSION, client=None, model: str = MODEL) -> Result:
-    """Read `text` into a ParsedTrade. Raises ParseFailed after MAX_ATTEMPTS invalid answers or an API error."""
+def parse(text: str, version: str = prompts.DEFAULT_VERSION, client=None, model: str = MODEL,
+          deadline: float | None = None, clock=time.monotonic) -> Result:
+    """Read `text` into a ParsedTrade. Raises ParseFailed after MAX_ATTEMPTS invalid answers, an API error, or
+    (if `deadline` seconds is given) when a retry would start after the deadline."""
     import anthropic
+
+    t0 = clock()
 
     client = client or make_client()
     messages: list = [{"role": "user", "content": prompts.user_message(text)}]
     res = Result(trade=ParsedTrade(intent="off_topic"), attempts=0)
     for _ in range(MAX_ATTEMPTS):
+        if res.attempts and deadline is not None and clock() - t0 > deadline:
+            raise ParseFailed(f"out of time after {res.attempts} attempts: {res.errors[-1]}")
         res.attempts += 1
         try:
             r = client.messages.create(

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { toLoad } from "./api";
+import { toLoad, type Symbol } from "./api";
 import { ago, prob, riskBand, usd } from "./format";
 import { summarize, type MoodHour } from "./news-mood";
-import { buildTrade, DEFAULT_FORM, entryFromMark, RISK_LIMIT } from "./trade-form";
+import { BrowserHistory, filterChecks, type NewCheck, type SavedCheck } from "./history";
+import { formFromParsed, type Parsed } from "./parse";
+import { buildTrade, DEFAULT_FORM, entryFromMark, formFromRequest, RISK_LIMIT } from "./trade-form";
 
 describe("toLoad", () => {
   it("maps API answers to page states", () => {
@@ -81,5 +83,73 @@ describe("news mood summary", () => {
   });
   it("says 'no news' instead of a fake neutral score", () => {
     expect(summarize([], now)).toMatchObject({ headlines: 0, mean_score: null, label: "no news" });
+  });
+});
+
+describe("formFromParsed", () => {
+  const base: Parsed = {
+    intent: "trade", asset: "ETH", side: "short", leverage: 10, entry: 2600, stop: 2700,
+    qty_coins: null, notional_usdt: null, margin_usdt: 250, margin_mode: null, wallet_usdt: null,
+  };
+  it("copies the stated fields and marks them as from the text", () => {
+    const { form, notes, filled } = formFromParsed(base, 2650);
+    expect(form).toMatchObject({ symbol: "ETHUSDT", side: "short", leverage: "10", entry: "2600", stop: "2700", margin: "250", margin_mode: "isolated" });
+    expect(notes).toEqual([]);
+    expect(filled.sort()).toEqual(["entry", "leverage", "margin", "side", "stop", "symbol"]);
+    expect(buildTrade(form).ok).toBe(true);
+  });
+  it("works out the margin from a coin amount or a dollar position, and uses the live price when no entry is given", () => {
+    const coins = formFromParsed({ ...base, margin_usdt: null, qty_coins: 0.5, entry: null }, 2650.123);
+    expect(coins.form.entry).toBe("2650.1");
+    expect(coins.form.margin).toBe("132.51"); // 0.5 x 2650.1 / 10, rounded to cents
+    expect(coins.notes.join(" ")).toMatch(/live price.*Margin worked out from 0.5 ETH/);
+    expect(formFromParsed({ ...base, margin_usdt: null, notional_usdt: 3000 }, null).form.margin).toBe("300");
+  });
+  it("leaves the margin empty when it cannot be worked out", () => {
+    const r = formFromParsed({ ...base, margin_usdt: null, qty_coins: 1, leverage: null }, 2600);
+    expect(r.form.margin).toBe("");
+    expect(r.form.leverage).toBe("");
+  });
+});
+
+describe("saved checks", () => {
+  const mem = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  };
+  const check = (symbol: Symbol): NewCheck => ({
+    symbol, text: null,
+    request: { symbol, side: "long", entry: 100, leverage: 10, margin: 10, margin_mode: "isolated", horizon_hours: 24, risk_limit: 0.01 },
+    result: { symbol, side: "long", p_liquidation: 0.01 } as NewCheck["result"],
+  });
+  it("adds newest first, removes, and survives broken storage", async () => {
+    const kv = mem();
+    const h = new BrowserHistory(() => kv);
+    const a = await h.add(check("BTCUSDT"));
+    await h.add(check("SOLUSDT"));
+    expect((await h.list()).map((c) => c.symbol)).toEqual(["SOLUSDT", "BTCUSDT"]);
+    await h.remove(a.id);
+    expect((await h.list()).length).toBe(1);
+    kv.setItem("regimecast.checks.v1", "{not json");
+    expect(await h.list()).toEqual([]);
+    const blocked = new BrowserHistory(() => ({ getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); } }));
+    expect(await blocked.list()).toEqual([]);
+    await expect(blocked.add(check("BTCUSDT"))).resolves.toMatchObject({ symbol: "BTCUSDT" });
+    expect(await new BrowserHistory(() => null).list()).toEqual([]);
+  });
+  it("filters by coin and by UTC day, both ends included", () => {
+    const at = (symbol: Symbol, created_at: string) => ({ ...check(symbol), id: created_at, created_at }) as SavedCheck;
+    const list = [at("BTCUSDT", "2026-10-27T23:59:00Z"), at("ETHUSDT", "2026-10-26T10:00:00Z"), at("BTCUSDT", "2026-10-20T00:00:00Z")];
+    expect(filterChecks(list, { symbol: "BTCUSDT", from: "", to: "" }).length).toBe(2);
+    expect(filterChecks(list, { symbol: "all", from: "2026-10-26", to: "2026-10-27" }).map((c) => c.symbol)).toEqual(["BTCUSDT", "ETHUSDT"]);
+    expect(filterChecks(list, { symbol: "BTCUSDT", from: "", to: "2026-10-26" }).length).toBe(1);
+  });
+});
+
+describe("formFromRequest", () => {
+  it("round-trips a saved body through the form", () => {
+    const body = buildTrade({ ...DEFAULT_FORM, entry: "81000", stop: "79000", margin_mode: "cross", wallet_balance: "5000" });
+    expect(body.ok).toBe(true);
+    if (body.ok) expect(buildTrade(formFromRequest(body.body))).toEqual(body);
   });
 });

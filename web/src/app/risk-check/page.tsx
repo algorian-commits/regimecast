@@ -9,8 +9,8 @@ export default function RiskCheckPage() {
   return (
     <>
       <PageTitle title="Risk Check">
-        Type a trade and see where it gets liquidated, how likely that is, and how much leverage keeps the risk small. Uses Binance&apos;s
-        liquidation rules on the live mark price.
+        Describe a trade in your own words, check the details, and see where it gets liquidated, how likely that is, how much leverage keeps
+        the risk small, and what is driving it. Uses Binance&apos;s liquidation rules on the live mark price.
       </PageTitle>
       <Suspense fallback={<Loading lines={8} />}>
         <RiskCheck />

@@ -49,7 +49,7 @@ limiter = Limiter(int(os.environ.get("PARSE_PER_MINUTE", 60)), int(os.environ.ge
 
 @lru_cache(maxsize=1)
 def _client():
-    return claude.make_client()
+    return claude.make_client(timeout=6.0)
 
 
 @router.post("/parse-trade", response_model=ParseOut)
@@ -62,7 +62,7 @@ def parse_trade(p: ParseIn) -> ParseOut:
     if not limiter.allow():
         return respond(rules.parse(text), "rules", [RULES_FALLBACK])
     try:
-        r = claude.parse(text, version=prompts.DEFAULT_VERSION, client=_client())
+        r = claude.parse(text, version=prompts.DEFAULT_VERSION, client=_client(), deadline=7.0)  # web proxy waits 15 s
     except claude.ParseFailed:
         return respond(rules.parse(text), "rules", [RULES_FALLBACK])
     return respond(r.trade, f"{claude.MODEL}, prompt {prompts.DEFAULT_VERSION}")

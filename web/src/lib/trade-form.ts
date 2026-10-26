@@ -65,3 +65,19 @@ export function entryFromMark(mark: number): string {
   const decimals = mark >= 1000 ? 1 : mark >= 10 ? 2 : 4;
   return mark.toFixed(decimals);
 }
+
+/** The form for a saved /risk-check body (to edit or re-run a saved check). */
+export function formFromRequest(b: Schemas["TradeIn"]): TradeForm {
+  const s = (x: number | null | undefined) => (x == null ? "" : String(x));
+  return {
+    symbol: b.symbol,
+    side: b.side,
+    entry: s(b.entry),
+    leverage: s(b.leverage),
+    margin: s(b.margin),
+    stop: s(b.stop),
+    horizon_hours: b.horizon_hours ?? 24,
+    margin_mode: b.margin_mode ?? "isolated",
+    wallet_balance: s(b.wallet_balance),
+  };
+}
