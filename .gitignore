@@ -4,6 +4,8 @@ data/*
 !data/reports/
 data/reports/*
 !data/reports/data_health_*.json
+# M8 parser test results (small; the test set itself is in docs/m8/)
+!data/reports/m8_*
 __pycache__/
 *.pyc
 .venv/

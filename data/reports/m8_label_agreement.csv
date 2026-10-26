@@ -1,0 +1,12 @@
+field,agree,n,rate
+intent,200,200,1.0
+asset,176,176,1.0
+side,176,176,1.0
+leverage,176,176,1.0
+entry,176,176,1.0
+stop,176,176,1.0
+qty_coins,176,176,1.0
+notional_usdt,176,176,1.0
+margin_usdt,176,176,1.0
+margin_mode,176,176,1.0
+wallet_usdt,176,176,1.0

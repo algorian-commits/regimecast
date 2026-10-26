@@ -208,3 +208,25 @@ def test_limiter_minute_and_day():
     assert lim.allow() and not lim.allow()      # day cap of 3 reached
     now[0] = 86400 + 1
     assert lim.allow()                          # new UTC day
+
+
+# ------------------------------------------------------------------ evaluation scoring
+def test_scoring_rules():
+    import pandas as pd
+    from regimecast.parsing.evaluate import cohen_kappa, same, score, wilson
+
+    assert same("entry", 81000, 81000.0001) and not same("entry", 81000, 81100)
+    assert same("stop", None, float("nan")) and not same("stop", None, 80000)
+    assert same("asset", "BTC", "btc") and not same("margin_mode", "cross", None)
+    blank = {f: None for f in ["asset", "side", "leverage", "entry", "stop", "qty_coins", "notional_usdt",
+                               "margin_usdt", "margin_mode", "wallet_usdt"]}
+    gold = pd.DataFrame([{"id": 1, **GOOD}, {"id": 2, **blank, "intent": "advice"}]).set_index("id")
+    pred = pd.DataFrame([{"id": 1, **GOOD, "stop": 55000}, {"id": 2, **blank, "intent": "advice", "asset": "BTC"}])
+    tab, right = score(gold, pred.set_index("id"))
+    t = tab.set_index("field")
+    assert t.at["intent", "accuracy"] == 1 and t.at["stop", "n"] == 1 and t.at["stop", "right"] == 0
+    assert t.at["asset", "n"] == 1                        # trade fields are not scored on the advice case
+    assert right["all_fields"].tolist() == [False, True]
+    lo, hi = wilson(95, 100)
+    assert 0.88 < lo < 0.95 < hi < 0.99
+    assert cohen_kappa(["a", "b", "a"], ["a", "b", "a"]) == 1
