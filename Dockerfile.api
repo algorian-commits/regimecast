@@ -1,6 +1,8 @@
 # RegimeCast API (FastAPI). Railway service "api", deployed from branch railway/api (docs/DEPLOY_RAILWAY.md).
 FROM python:3.12-slim
 WORKDIR /app
+# LightGBM (stress classifier) needs the OpenMP runtime, which the slim image lacks
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY regimecast ./regimecast
