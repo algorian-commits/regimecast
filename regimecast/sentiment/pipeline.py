@@ -62,7 +62,7 @@ def from_gdelt(raw: pd.DataFrame) -> pd.DataFrame:
     made with an older list gives the same result."""
     df = raw.copy()
     crypto = df["title"].map(gdelt.is_crypto)
-    macro = df["title"].str.contains(gdelt.POLICY_MACRO_RE)
+    macro = df["title"].map(lambda t: bool(gdelt.POLICY_MACRO_RE.search(t)))
     df["scope"] = ["crypto" if c else "macro_policy" if m else "" for c, m in zip(crypto, macro)]
     df = df[df["scope"] != ""]
     df["fetched_at"] = df["seen_at"]

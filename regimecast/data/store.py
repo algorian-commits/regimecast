@@ -145,9 +145,15 @@ def headlines(start: Time = None, end: Time = None, columns: list[str] | None = 
     folder = config.parquet_dir() / "news" / "headlines"
     if not any(folder.glob("*.parquet")):
         return pd.DataFrame(columns=columns or [])
-    if columns and "known_at" not in columns:
-        columns = ["known_at", *columns]
+    want = None
+    if columns:
+        want = ["known_at", *[c for c in columns if c != "known_at"]]
+        # always read the link too: _query drops identical rows, and two headlines can
+        # look identical in a few columns
+        columns = [*want, *(["link_key"] if "link_key" not in want else [])]
     df = _query(str(folder / "*.parquet"), "known_at", start, end, columns)
+    if want is not None:
+        df = df[want]
     for c in ("published_at", "fetched_at"):
         if c in df:
             df[c] = pd.to_datetime(df[c], utc=True)

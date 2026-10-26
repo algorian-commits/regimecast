@@ -228,6 +228,7 @@ def test_pipeline_end_to_end_store_and_api(tmp_path, monkeypatch):
     assert pipeline.add_headlines(pipeline.from_gdelt(raw)) == 0  # running twice adds nothing
     h = store.headlines()
     assert len(h) == 3 and h["copies"].tolist() == [2, 1, 1]
+    assert len(store.headlines(columns=["scope"])) == 3  # rows that look alike in a few columns are kept
     assert pipeline.score_new("finbert", _fake_probs) == 3
     assert pipeline.score_new("finbert", _fake_probs) == 0  # already scored
     pipeline.build_mood("finbert", until=T("2025-10-10 13:00"))

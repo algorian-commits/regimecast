@@ -176,8 +176,8 @@ def case_study() -> tuple[pd.DataFrame, list[dict]]:
     firsts = []
     for name, pat in (
             ("Trump threatens China with 'massive' tariffs (1st post)",
-             r"(?=.*trump)(?=.*(china|xi\b|beijing))(?=.*(threat|massive))(?=.*tariff)"),
-            ("100% tariff on China (2nd post)", r"(?=.*100\s?(%|percent))(?=.*china)(?=.*tariff)"),
+             r"(?=.*trump)(?=.*(?:china|xi\b|beijing))(?=.*(?:threat|massive))(?=.*tariff)"),
+            ("100% tariff on China (2nd post)", r"(?=.*100\s?(?:%|percent))(?=.*china)(?=.*tariff)"),
             ("crypto headline mentioning the tariffs", None)):
         hit = h[h["title"].str.contains(pat, case=False, regex=True)] if pat else \
             h[(h["scope"] == "crypto") & (h["policy"] == "tariffs")]
