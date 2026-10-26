@@ -88,7 +88,9 @@ def test_regimes_walk_forward_frozen_after_holdout():
     hold = pd.Timestamp(config.HOLDOUT_START, tz="UTC")
     assert reg.loc[reg.index < hold, "frozen"].eq(False).all()
     assert reg.loc[reg.index >= hold, "frozen"].eq(True).all()
-    assert (reg.loc[reg.index >= hold, "fit_end"] < hold).all()   # never fitted on the final test period
+    # never fitted on the final test period: hourly rows are labelled by the hour END, so the
+    # row stamped 2025-10-01 00:00 holds 30 Sep 23:00-24:00 data; nothing later is used
+    assert (reg.loc[reg.index >= hold, "fit_end"] <= hold).all()
     p = reg[[f"p_{n}" for n in regimes.NAMES]]
     assert np.allclose(p.sum(1), 1)
     # stressed regime lines up with the high-volatility hidden state
