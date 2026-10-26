@@ -12,3 +12,4 @@ pydantic>=2.6
 pytest>=8
 feedparser>=6.0
 lightgbm>=4.5
+anthropic>=2.3,<3

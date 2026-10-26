@@ -4,6 +4,27 @@
  */
 
 export interface paths {
+    "/parse-trade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse Trade
+         * @description Read a typed trade ("long 0.2 btc at 81k, 10x, stop 79k") into fields, ask for what is missing, or refuse
+         *     politely if it is not a trade. Never gives advice: every sentence in the answer is fixed text.
+         */
+        post: operations["parse_trade_parse_trade_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -282,6 +303,104 @@ export interface components {
             /** Detail */
             detail: string;
         };
+        /** ParseIn */
+        ParseIn: {
+            /**
+             * Text
+             * @description The trade as typed, e.g. 'long 0.2 btc at 58k 10x'
+             */
+            text: string;
+            /**
+             * History
+             * @description Earlier messages for the same trade (answers to a follow-up question), oldest first
+             * @default []
+             */
+            history: string[];
+        };
+        /** ParseOut */
+        ParseOut: {
+            /**
+             * Status
+             * @description ok: ready to confirm; needs_info: ask `message`; refused: not a trade; unsupported: other coin
+             * @enum {string}
+             */
+            status: "ok" | "needs_info" | "refused" | "unsupported";
+            trade: components["schemas"]["ParsedTrade"];
+            /**
+             * Missing
+             * @description Required fields still missing: asset, side, leverage, size, wallet_usdt
+             * @default []
+             */
+            missing: string[];
+            /**
+             * Message
+             * @description Follow-up question or polite refusal, written by code
+             */
+            message?: string | null;
+            /**
+             * Warnings
+             * @default []
+             */
+            warnings: string[];
+            /**
+             * Parser
+             * @description Which parser answered, e.g. 'claude-haiku-5-5, prompt v2' or 'rules'
+             */
+            parser: string;
+        };
+        /**
+         * ParsedTrade
+         * @description What the user typed, field by field. null = not stated (never guessed).
+         */
+        ParsedTrade: {
+            /**
+             * Intent
+             * @description trade: describes a position to check; advice: asks what to trade; off_topic: anything else
+             * @enum {string}
+             */
+            intent: "trade" | "advice" | "off_topic";
+            /**
+             * Asset
+             * @description BTC, ETH or SOL; OTHER for any other coin
+             */
+            asset?: ("BTC" | "ETH" | "SOL" | "OTHER") | null;
+            /** Side */
+            side?: ("long" | "short") | null;
+            /** Leverage */
+            leverage?: number | null;
+            /**
+             * Entry
+             * @description Entry price in USDT; null if not given or 'at market'
+             */
+            entry?: number | null;
+            /**
+             * Stop
+             * @description Stop-loss price in USDT
+             */
+            stop?: number | null;
+            /**
+             * Qty Coins
+             * @description Size in coins, e.g. 0.2 (BTC)
+             */
+            qty_coins?: number | null;
+            /**
+             * Notional Usdt
+             * @description Size as the position's dollar value
+             */
+            notional_usdt?: number | null;
+            /**
+             * Margin Usdt
+             * @description Size as the margin put in
+             */
+            margin_usdt?: number | null;
+            /** Margin Mode */
+            margin_mode?: ("isolated" | "cross") | null;
+            /**
+             * Wallet Usdt
+             * @description Cross margin: the whole wallet balance
+             */
+            wallet_usdt?: number | null;
+        };
         /** RiskOut */
         RiskOut: {
             /** Symbol */
@@ -436,6 +555,39 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    parse_trade_parse_trade_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_health_get: {
         parameters: {
             query?: never;
