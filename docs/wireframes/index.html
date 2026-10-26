@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RegimeCast Wireframes</title>
+<style>
+  /* Low-fidelity wireframes (M2, Phase 2). Grey boxes on purpose: layout and content, not visuals. */
+  :root { --bg:#f3f4f6; --frame:#ffffff; --line:#9ca3af; --box:#e5e7eb; --ink:#111827; --muted:#6b7280; --note:#fef3c7; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1115; --frame:#171a21; --line:#4b5563; --box:#262b35; --ink:#e5e7eb; --muted:#9ca3af; --note:#3b3220; } }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px 16px; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui, sans-serif; }
+  h1 { margin:0 0 4px; font-size:22px; }
+  p.lead { margin:0 0 24px; color:var(--muted); max-width:760px; }
+  .grid { display:grid; gap:28px; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); }
+  figure { margin:0; }
+  figcaption { font-weight:600; margin-bottom:8px; }
+  figcaption small { display:block; font-weight:400; color:var(--muted); }
+  .phone { width:100%; max-width:340px; background:var(--frame); border:2px solid var(--line); border-radius:22px; padding:12px; min-height:620px; }
+  .bar { display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--line); padding:4px 4px 10px; margin-bottom:12px; font-weight:600; }
+  .bar span { font-weight:400; color:var(--muted); font-size:12px; }
+  .box { background:var(--box); border:1px solid var(--line); border-radius:8px; padding:8px; margin-bottom:8px; font-size:12px; color:var(--muted); }
+  .box b { color:var(--ink); }
+  .row { display:flex; gap:8px; } .row > .box { flex:1; }
+  .tabs { display:flex; gap:4px; margin-bottom:8px; } .tabs i { flex:1; text-align:center; border:1px solid var(--line); border-radius:6px; padding:4px; font-style:normal; font-size:12px; }
+  .tabs i.on { background:var(--box); font-weight:600; }
+  .field { border:1px solid var(--line); border-radius:6px; padding:6px 8px; margin:3px 0 8px; font-size:12px; color:var(--muted); }
+  .btn { background:var(--ink); color:var(--frame); text-align:center; border-radius:8px; padding:8px; font-weight:600; font-size:12px; margin:6px 0 10px; }
+  .chart { height:70px; border:1px dashed var(--line); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--muted); margin:4px 0 8px; }
+  .ph { border:1px dashed var(--line); border-radius:8px; padding:8px; font-size:12px; color:var(--muted); margin-bottom:8px; }
+  .note { background:var(--note); border-radius:6px; padding:6px 8px; font-size:11px; margin-top:8px; }
+  table { width:100%; border-collapse:collapse; font-size:11px; } td { border-top:1px solid var(--line); padding:3px 2px; }
+</style>
+</head>
+<body>
+<h1>RegimeCast wireframes</h1>
+<p class="lead">Module M2, Phase 2. Phone-first layouts for the four main screens. On desktop the same cards sit side by side. Risk Check, Risk Radar (Overview) and Data Health are built in Phase 2; Track Record is built in Phase 9 and is shown here so the navigation is planned now.</p>
+
+<div class="grid">
+  <figure>
+    <figcaption>1. Risk Check <small>Type a trade, get the risk. Entry pre-filled with the live price.</small></figcaption>
+    <div class="phone">
+      <div class="bar">RegimeCast <span>Theme · Menu</span></div>
+      <div class="tabs"><i class="on">BTC</i><i>ETH</i><i>SOL</i></div>
+      <div class="tabs"><i class="on">Long</i><i>Short</i></div>
+      Entry price <div class="field">81,447.0 &nbsp; [Live]</div>
+      <div class="row"><div style="flex:1">Leverage<div class="field">10</div></div><div style="flex:1">Margin<div class="field">100</div></div></div>
+      Stop-loss (optional)<div class="field">none</div>
+      <div class="tabs"><i>1h</i><i class="on">24h</i><i class="on">Isolated</i><i>Cross</i></div>
+      <div class="btn">Check risk</div>
+      <div class="box"><b>Result</b> · risk badge (low / elevated / high)
+        <div class="row" style="margin-top:6px"><div class="box"><b>Liq. price</b><br>73,570 · 9.6% away</div><div class="box"><b>P(liq) 24h</b><br>0.04% ▬▬▏</div></div>
+        <div class="row"><div class="box"><b>Max safe lev.</b><br>13.3x</div><div class="box"><b>Fees</b><br>$1.00</div></div>
+      </div>
+      <div class="box"><b>Warnings</b> · e.g. stop beyond liquidation</div>
+      <div class="box"><b>Why</b> · 3-4 plain-English lines</div>
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>2. Risk Radar (Overview) <small>Live market at a glance, news mood, model status.</small></figcaption>
+    <div class="phone">
+      <div class="bar">RegimeCast <span>Theme · Menu</span></div>
+      <div class="box"><b>BTC perpetual</b> · live<br>Mark price · funding/8h · open interest<br>→ Check a trade in BTC</div>
+      <div class="box"><b>ETH perpetual</b> · same card</div>
+      <div class="box"><b>SOL perpetual</b> · same card</div>
+      <div class="box"><b>News mood (7 days)</b> · BTC | ETH | SOL
+        <div class="row" style="margin-top:6px"><div class="box">Mood 24h</div><div class="box">Headlines</div><div class="box">% negative</div></div>
+        <div class="chart">mean score per hour (−1…+1)</div>
+        <div class="chart" style="height:44px">headlines per hour</div>
+      </div>
+      <div class="row"><div class="ph">Regime: coming in Phase 4</div><div class="ph">Vol forecast: coming in Phase 6</div></div>
+      <div class="note">Not-ready parts show a dashed placeholder, never an error.</div>
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>3. Data Health <small>What data we have, and what was fixed or explained.</small></figcaption>
+    <div class="phone">
+      <div class="bar">RegimeCast <span>Theme · Menu</span></div>
+      <div class="tabs"><i class="on">BTC</i><i>ETH</i><i>SOL</i></div>
+      <div class="box"><b>Datasets</b> · checked 2 days ago
+        <table><tr><td>Price candles</td><td>3.6M</td><td>2020–now</td><td>clean</td></tr>
+        <tr><td>Mark price</td><td>3.6M</td><td>2020–now</td><td>explained</td></tr>
+        <tr><td>Funding</td><td>7.4K</td><td>2020–now</td><td>clean</td></tr>
+        <tr><td>Open interest</td><td>644K</td><td>2020–now</td><td>explained</td></tr></table>
+      </div>
+      <div class="box"><b>Known archive issues</b><br>what happened · date · how we handle it</div>
+      <div class="ph">ETH / SOL: "checked in Phase 4" placeholder</div>
+      <div class="note">Table scrolls sideways on narrow phones.</div>
+    </div>
+  </figure>
+
+  <figure>
+    <figcaption>4. Track Record <small>Every forecast logged before the outcome (Phase 9).</small></figcaption>
+    <div class="phone">
+      <div class="bar">RegimeCast <span>Theme · Menu</span></div>
+      <div class="tabs"><i class="on">BTC</i><i>ETH</i><i>SOL</i><i>1h</i><i class="on">24h</i></div>
+      <div class="row"><div class="box"><b>Forecasts</b><br>1,240</div><div class="box"><b>Calibration</b><br>chart</div></div>
+      <div class="chart">predicted vs realised volatility over time</div>
+      <div class="chart">reliability: predicted P(liq) vs how often it happened</div>
+      <div class="box"><b>Latest forecasts</b><br>time made · horizon · predicted · outcome · ✓/✗</div>
+      <div class="note">Public page with a real URL; forecasts are logged live by the worker so nothing is back-filled.</div>
+    </div>
+  </figure>
+</div>
+</body>
+</html>

@@ -1,0 +1,173 @@
+{
+  "symbol": "BTCUSDT",
+  "generated_at": "2026-10-20T11:27:51.877978+00:00",
+  "known_issues": {
+    "metrics_create_time_label_change": {
+      "date": "2026-06-25",
+      "what": "metrics create_time switched from end-of-period to start-of-period labels.",
+      "fix": "load_metrics() shifts rows before this date back 5 minutes so every row is labelled by the START of its 5-minute period, then makes it usable only at period end."
+    },
+    "markprice_gaps_duplicates": {
+      "date": "2023-2025",
+      "what": "missing and duplicate minutes in USD-M markPriceKlines for BTC/ETH.",
+      "fix": "binance_archive --repair fills whole missing days from daily files; dedupe on ts (monthly file wins); remaining short gaps are reported and forward-filled at most 5 minutes."
+    },
+    "bookdepth_frozen_ask_bands": {
+      "date": "2026-09-03",
+      "what": "bookDepth inner ask bands frozen since this date.",
+      "fix": "do not use archive bookDepth after 2026-09-03; use our own live recorder instead."
+    },
+    "bookdepth_misaligned_2025": {
+      "date": "2025-04/2025-05",
+      "what": "bookDepth values misaligned with mark price.",
+      "fix": "exclude bookDepth for Apr-May 2025 from training."
+    }
+  },
+  "datasets": {
+    "klines": {
+      "rows": 3576960,
+      "first": "2020-01-01 00:00:00+00:00",
+      "last": "2026-10-19 23:59:00+00:00",
+      "duplicates": 0,
+      "gaps": 0,
+      "missing_steps": 0,
+      "largest_gaps": [],
+      "high_below_low": 0,
+      "close_outside_range": 0,
+      "non_positive_price": 0
+    },
+    "markPriceKlines": {
+      "rows": 3576905,
+      "first": "2020-01-01 00:00:00+00:00",
+      "last": "2026-10-19 23:59:00+00:00",
+      "duplicates": 0,
+      "gaps": 3,
+      "missing_steps": 55,
+      "largest_gaps": [
+        {
+          "after": "2020-01-19 13:08:00+00:00",
+          "length": "0 days 00:30:00"
+        },
+        {
+          "after": "2020-12-17 07:31:00+00:00",
+          "length": "0 days 00:25:00"
+        },
+        {
+          "after": "2024-08-12 10:01:00+00:00",
+          "length": "0 days 00:03:00"
+        }
+      ],
+      "high_below_low": 0,
+      "close_outside_range": 0,
+      "non_positive_price": 0
+    },
+    "indexPriceKlines": {
+      "rows": 3576900,
+      "first": "2020-01-01 00:00:00+00:00",
+      "last": "2026-10-19 23:59:00+00:00",
+      "duplicates": 0,
+      "gaps": 4,
+      "missing_steps": 60,
+      "largest_gaps": [
+        {
+          "after": "2020-01-19 13:08:00+00:00",
+          "length": "0 days 00:30:00"
+        },
+        {
+          "after": "2020-12-17 07:31:00+00:00",
+          "length": "0 days 00:25:00"
+        },
+        {
+          "after": "2022-07-12 13:16:00+00:00",
+          "length": "0 days 00:06:00"
+        },
+        {
+          "after": "2024-08-12 10:01:00+00:00",
+          "length": "0 days 00:03:00"
+        }
+      ],
+      "high_below_low": 0,
+      "close_outside_range": 0,
+      "non_positive_price": 0
+    },
+    "premiumIndexKlines": {
+      "rows": 3576759,
+      "first": "2020-01-01 00:00:00+00:00",
+      "last": "2026-10-19 23:59:00+00:00",
+      "duplicates": 0,
+      "gaps": 10,
+      "missing_steps": 201,
+      "largest_gaps": [
+        {
+          "after": "2020-12-01 22:39:00+00:00",
+          "length": "0 days 01:23:00"
+        },
+        {
+          "after": "2022-07-12 13:51:00+00:00",
+          "length": "0 days 00:41:00"
+        },
+        {
+          "after": "2020-01-19 13:08:00+00:00",
+          "length": "0 days 00:30:00"
+        },
+        {
+          "after": "2020-12-17 07:31:00+00:00",
+          "length": "0 days 00:25:00"
+        },
+        {
+          "after": "2023-11-10 03:58:00+00:00",
+          "length": "0 days 00:11:00"
+        }
+      ]
+    },
+    "fundingRate": {
+      "rows": 7395,
+      "first": "2020-01-01 00:00:00+00:00",
+      "last": "2026-09-30 16:00:00.002000+00:00",
+      "duplicates": 0,
+      "max_abs_rate": 0.003
+    },
+    "metrics": {
+      "rows": 644486,
+      "first": "2020-09-01 00:00:00+00:00",
+      "last": "2026-10-19 23:55:00+00:00",
+      "duplicates": 0,
+      "gaps": 156,
+      "missing_steps": 634,
+      "largest_gaps": [
+        {
+          "after": "2024-02-16 13:30:00+00:00",
+          "length": "0 days 10:30:00"
+        },
+        {
+          "after": "2021-02-19 20:00:00+00:00",
+          "length": "0 days 05:20:00"
+        },
+        {
+          "after": "2021-06-22 18:25:00+00:00",
+          "length": "0 days 04:25:00"
+        },
+        {
+          "after": "2021-06-22 00:20:00+00:00",
+          "length": "0 days 03:10:00"
+        },
+        {
+          "after": "2021-04-27 11:05:00+00:00",
+          "length": "0 days 02:35:00"
+        }
+      ]
+    }
+  },
+  "mark_vs_last": {
+    "checked": 3576905,
+    "over_limit": 101,
+    "max_abs_dev": 0.055950732580098084,
+    "worst_minutes": [
+      "2020-03-13 02:17:00+00:00",
+      "2020-03-13 02:40:00+00:00",
+      "2021-05-19 13:10:00+00:00",
+      "2020-03-13 02:18:00+00:00",
+      "2020-03-13 02:16:00+00:00"
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/* Dark mode follows a .dark class on <html> (set before first paint in layout.tsx). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f4;
+  --border: #dde1e8;
+  --text: #14171c;
+  --muted: #5b6472;
+  --accent: #2563eb;
+  --accent-fg: #ffffff;
+  --good: #15803d;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --chart-1: #2563eb;
+  --chart-2: #94a3b8;
+}
+
+.dark {
+  --bg: #0b0e13;
+  --surface: #131821;
+  --surface-2: #1b2230;
+  --border: #273041;
+  --text: #e6e9ef;
+  --muted: #94a0b4;
+  --accent: #4f8cff;
+  --accent-fg: #0b0e13;
+  --good: #4ade80;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --chart-1: #4f8cff;
+  --chart-2: #475569;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}

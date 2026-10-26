@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import math
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -20,15 +21,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from regimecast import config
+from regimecast.api import market
 from regimecast.risk import liquidation as liq
+from regimecast.vol import live as vol_live
 
-app = FastAPI(title="RegimeCast API", version="0.1.0",
+
+@asynccontextmanager
+async def lifespan(app):
+    vol_live.cache.start()   # HAR-S forecasts refresh in the background (vol/live.py)
+    yield
+
+
+app = FastAPI(title="RegimeCast API", version="0.1.0", lifespan=lifespan,
               description="Explainable crypto risk forecasting. Paper trading only. Not financial advice.")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 Symbol = Literal["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 
-# Used only until the volatility model publishes forecasts. Clearly flagged in responses.
+# Used only if no forecast is available (e.g. the first minutes after a restart). Flagged in responses.
 PLACEHOLDER_ANNUAL_VOL = {"BTCUSDT": 0.55, "ETHUSDT": 0.70, "SOLUSDT": 0.90}
 
 
@@ -37,7 +47,7 @@ class TradeIn(BaseModel):
     symbol: Symbol
     side: Literal["long", "short"]
     entry: float = Field(gt=0, description="Entry price in USDT")
-    leverage: float = Field(gt=0, le=125)
+    leverage: float = Field(gt=0, le=150, description="Binance allows up to 150x on BTC and ETH, 100x on SOL, less for big positions")
     qty: float | None = Field(None, gt=0, description="Size in coins. Give qty OR margin.")
     margin: float | None = Field(None, gt=0, description="Margin in USDT (isolated). Give qty OR margin.")
     margin_mode: Literal["isolated", "cross"] = "isolated"
@@ -104,21 +114,36 @@ def _latest_forecasts() -> dict:
     return json.loads(f.read_text()) if f.exists() else {}
 
 
+def _forecast(symbol: str, horizon: int) -> dict | None:
+    """A published model forecast (data/forecasts/latest.json, Phase 5) wins; else live HAR-S."""
+    fc = _latest_forecasts().get(symbol, {}).get(f"{horizon}h")
+    if fc and fc.get("variance"):
+        return {"inputs_until": fc.get("made_at", "?"), **fc}
+    return vol_live.cache.get(symbol, horizon)
+
+
 def _sigma(symbol: str, horizon: int, override: float | None) -> tuple[float, str]:
     """Volatility over the horizon (std of log return) and where it came from."""
     if override:
         return override * math.sqrt(horizon / config.HOURS_PER_YEAR), "user override"
-    fc = _latest_forecasts().get(symbol, {}).get(f"{horizon}h")
-    if fc and fc.get("variance"):
-        return math.sqrt(fc["variance"]), f"model forecast ({fc.get('model', '?')}, {fc.get('made_at', '?')})"
+    fc = _forecast(symbol, horizon)
+    if fc:
+        return math.sqrt(fc["variance"]), f"{fc['model']}, data to {fc['inputs_until'][:16].replace('T', ' ')} UTC"
     a = PLACEHOLDER_ANNUAL_VOL[symbol]
-    return a * math.sqrt(horizon / config.HOURS_PER_YEAR), "PLACEHOLDER (volatility model not trained yet)"
+    return a * math.sqrt(horizon / config.HOURS_PER_YEAR), "PLACEHOLDER: no forecast available right now"
 
 
 # ------------------------------------------------------------------ routes
 @app.get("/health")
 def health():
     return {"status": "ok", "time": datetime.now(timezone.utc).isoformat(), "version": app.version}
+
+
+@app.get("/market/{symbol}", response_model=market.MarketOut, responses={503: {"model": NotReady}})
+def market_now(symbol: Symbol):
+    """Current mark price, funding and open interest from Binance (cached a few seconds)."""
+    m = market.cache.get(symbol)
+    return m if m else not_ready("live market data unavailable (Binance not reachable)")
 
 
 @app.post("/risk-check", response_model=RiskOut)
@@ -133,7 +158,7 @@ def risk_check(t: TradeIn) -> RiskOut:
 
     sigma_h, source = _sigma(t.symbol, t.horizon_hours, t.sigma_annual)
     if source.startswith("PLACEHOLDER"):
-        warnings.append("Volatility is a placeholder until the forecasting model is trained.")
+        warnings.append("No volatility forecast is available right now, so a fixed placeholder is used.")
 
     lp = liq.liquidation_price(pos)
     dist = liq.adverse_log_distance(pos, lp)
@@ -180,10 +205,11 @@ def risk_check(t: TradeIn) -> RiskOut:
 
 @app.get("/forecast", responses={503: {"model": NotReady}})
 def forecast(symbol: Symbol = "BTCUSDT", horizon_hours: Literal[1, 24] = 24):
-    fc = _latest_forecasts().get(symbol, {}).get(f"{horizon_hours}h")
+    """Volatility forecast over the next 1 or 24 hours (HAR-S on live Binance data until Phase 5)."""
+    fc = _forecast(symbol, horizon_hours)
     if not fc:
-        return not_ready("volatility model not trained yet")
-    return fc
+        return not_ready("no volatility forecast yet (the API refreshes every 10 minutes)")
+    return {"symbol": symbol, "horizon_hours": horizon_hours, **fc}
 
 
 @app.get("/regime", responses={503: {"model": NotReady}})
@@ -192,6 +218,31 @@ def regime(symbol: Symbol = "BTCUSDT"):
     data = json.loads(f.read_text()).get(symbol) if f.exists() else None
     if not data:
         return not_ready("regime model not trained yet")
+    return data
+
+
+class MoodHour(BaseModel):
+    hour_end: str = Field(description="End of the hour (UTC). A headline at 10:20 counts for 11:00.")
+    count: int = Field(description="Crypto headlines about this coin or the whole market")
+    mean_score: float = Field(description="Average sentiment, -1 (negative) to +1 (positive); 0 when count is 0")
+    share_negative: float = Field(description="Share of headlines labelled negative (0..1); 0 when count is 0")
+    policy_shock_count: int = Field(description="Tariff, sanctions and regulation headlines")
+
+
+class NewsMoodOut(BaseModel):
+    symbol: str
+    updated_at: str
+    hours: list[MoodHour]
+
+
+@app.get("/news-mood", response_model=NewsMoodOut, responses={503: {"model": NotReady}})
+def news_mood(symbol: Symbol = "BTCUSDT", hours: int = Query(168, ge=1, le=24 * 90)):
+    """Hourly news mood (M3), oldest hour first, ending at the last complete hour."""
+    from regimecast.sentiment.pipeline import latest
+
+    data = latest(symbol, hours)
+    if not data:
+        return not_ready("news mood not built yet: python -m regimecast.sentiment.pipeline collect")
     return data
 
 

@@ -1,0 +1,4 @@
+# Only for scoring headlines (M3). Not needed for tests or the API.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.4
+transformers>=4.44

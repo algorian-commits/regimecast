@@ -22,6 +22,61 @@
         }
       }
     },
+    "/market/{symbol}": {
+      "get": {
+        "summary": "Market Now",
+        "description": "Current mark price, funding and open interest from Binance (cached a few seconds).",
+        "operationId": "market_now_market__symbol__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "title": "Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReady"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/risk-check": {
       "post": {
         "summary": "Risk Check",
@@ -63,6 +118,7 @@
     "/forecast": {
       "get": {
         "summary": "Forecast",
+        "description": "Volatility forecast over the next 1 or 24 hours (HAR-S on live Binance data until Phase 5).",
         "operationId": "forecast_forecast_get",
         "parameters": [
           {
@@ -154,6 +210,74 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReady"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/news-mood": {
+      "get": {
+        "summary": "News Mood",
+        "description": "Hourly news mood (M3), oldest hour first, ending at the last complete hour.",
+        "operationId": "news_mood_news_mood_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "default": "BTCUSDT",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 2160,
+              "minimum": 1,
+              "default": 168,
+              "title": "Hours"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsMoodOut"
+                }
               }
             }
           },
@@ -302,6 +426,137 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "MarketOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "mark_price": {
+            "type": "number",
+            "title": "Mark Price"
+          },
+          "index_price": {
+            "type": "number",
+            "title": "Index Price"
+          },
+          "funding_rate": {
+            "type": "number",
+            "title": "Funding Rate",
+            "description": "Last funding rate per 8h interval (0.0001 = 0.01%)"
+          },
+          "next_funding_time": {
+            "type": "string",
+            "title": "Next Funding Time"
+          },
+          "open_interest": {
+            "type": "number",
+            "title": "Open Interest",
+            "description": "Open interest in coins"
+          },
+          "open_interest_usdt": {
+            "type": "number",
+            "title": "Open Interest Usdt"
+          },
+          "exchange_time": {
+            "type": "string",
+            "title": "Exchange Time",
+            "description": "Binance timestamp of the mark price"
+          },
+          "fetched_at": {
+            "type": "string",
+            "title": "Fetched At"
+          },
+          "stale": {
+            "type": "boolean",
+            "title": "Stale",
+            "description": "True if Binance could not be reached and this is an older value",
+            "default": false
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "binance_usdm"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "mark_price",
+          "index_price",
+          "funding_rate",
+          "next_funding_time",
+          "open_interest",
+          "open_interest_usdt",
+          "exchange_time",
+          "fetched_at"
+        ],
+        "title": "MarketOut"
+      },
+      "MoodHour": {
+        "properties": {
+          "hour_end": {
+            "type": "string",
+            "title": "Hour End",
+            "description": "End of the hour (UTC). A headline at 10:20 counts for 11:00."
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "Crypto headlines about this coin or the whole market"
+          },
+          "mean_score": {
+            "type": "number",
+            "title": "Mean Score",
+            "description": "Average sentiment, -1 (negative) to +1 (positive); 0 when count is 0"
+          },
+          "share_negative": {
+            "type": "number",
+            "title": "Share Negative",
+            "description": "Share of headlines labelled negative (0..1); 0 when count is 0"
+          },
+          "policy_shock_count": {
+            "type": "integer",
+            "title": "Policy Shock Count",
+            "description": "Tariff, sanctions and regulation headlines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hour_end",
+          "count",
+          "mean_score",
+          "share_negative",
+          "policy_shock_count"
+        ],
+        "title": "MoodHour"
+      },
+      "NewsMoodOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "hours": {
+            "items": {
+              "$ref": "#/components/schemas/MoodHour"
+            },
+            "type": "array",
+            "title": "Hours"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "updated_at",
+          "hours"
+        ],
+        "title": "NewsMoodOut"
       },
       "NotReady": {
         "properties": {
@@ -516,9 +771,10 @@
           },
           "leverage": {
             "type": "number",
-            "maximum": 125.0,
+            "maximum": 150.0,
             "exclusiveMinimum": 0.0,
-            "title": "Leverage"
+            "title": "Leverage",
+            "description": "Binance allows up to 150x on BTC and ETH, 100x on SOL, less for big positions"
           },
           "qty": {
             "anyOf": [

@@ -1,0 +1,12 @@
+# Keep build contexts small. Only committed report JSONs from data/ go into images.
+.git
+.venv
+venv
+**/__pycache__
+**/node_modules
+web/.next
+web/*.tsbuildinfo
+data/*
+!data/reports
+data/reports/*
+!data/reports/*.json
