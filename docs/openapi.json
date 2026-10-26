@@ -118,6 +118,7 @@
     "/forecast": {
       "get": {
         "summary": "Forecast",
+        "description": "Volatility forecast over the next 1 or 24 hours (HAR-S on live Binance data until Phase 5).",
         "operationId": "forecast_forecast_get",
         "parameters": [
           {

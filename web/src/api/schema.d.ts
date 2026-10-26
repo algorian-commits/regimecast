@@ -65,7 +65,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Forecast */
+        /**
+         * Forecast
+         * @description Volatility forecast over the next 1 or 24 hours (HAR-S on live Binance data until Phase 5).
+         */
         get: operations["forecast_forecast_get"];
         put?: never;
         post?: never;

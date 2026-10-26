@@ -162,7 +162,7 @@ Demo: six years of BTC price coloured by regime, with each crash marked.
 Goal: the risk check's numbers come from a tested model, not a placeholder.
 
 Tasks
-1. Quick win first: the HAR-S forecast (already tested on real BTC data) is written to `data/forecasts/latest.json` on a schedule and used by `/risk-check`, replacing the placeholder volatility.
+1. Quick win first: the HAR-S forecast (already tested on real BTC data) replaces the placeholder volatility in `/risk-check`. **Done 26 Oct:** fitted per coin on the dev period (`regimecast/vol/har_live.json`), refreshed by the API every 10 minutes from live Binance candles (`regimecast/vol/live.py`); `/forecast` serves it.
 2. Volatility forecaster: gradient-boosted trees (LightGBM or XGBoost) with quantile outputs on the Phase 4 features, a forecast combination with HAR-S, and Deribit's DVOL (options-implied volatility) for BTC and ETH.
 3. Compare with HAR-RV and HAR-S, 1 h and 24 h, walk-forward on the dev period: QLIKE, Diebold-Mariano, Model Confidence Set. Reported whatever the result.
 4. Worst-move model: quantiles of the maximum adverse move of the mark price, turned into the probability of reaching a liquidation or stop price.

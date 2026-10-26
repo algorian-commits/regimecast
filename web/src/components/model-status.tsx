@@ -16,7 +16,7 @@ export function ModelStatus() {
         </LoadView>
       </Card>
       <Card title="Volatility forecast, next 24h (BTC)">
-        <LoadView load={fc} onRetry={r1} lines={2} notReady={() => <NotReady title="Forecast model coming soon">The volatility forecaster is trained in Phase 6 (M7). Until then the Risk Check uses a clearly labelled placeholder volatility.</NotReady>}>
+        <LoadView load={fc} onRetry={r1} lines={2} notReady={() => <NotReady title="Forecast refreshing">The API recomputes the HAR-S volatility forecast from live Binance data every 10 minutes. Until the first one is ready, the Risk Check uses a clearly labelled placeholder.</NotReady>}>
           {(d) => <pre className="overflow-x-auto text-xs">{JSON.stringify(d, null, 2)}</pre>}
         </LoadView>
       </Card>
