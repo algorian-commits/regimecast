@@ -1,4 +1,4 @@
-# Data health: BTCUSDT
+# Data health: BTCUSDT, ETHUSDT, SOLUSDT
 
 Checked 20 Oct 2026 with `python -m regimecast.data.validate --symbols BTCUSDT`. The full report is
 `data/reports/data_health_BTCUSDT.json`, which the API also serves at `/data-health/BTCUSDT`.
@@ -31,3 +31,30 @@ Every finding is fixed in code or explained below.
 | 9 | Archive `bookDepth` is broken in places (frozen bands since 2026-09-03, misaligned Apr–May 2025) | | **Not used.** Order-book features come from Bybit's full order-book files instead. |
 | 10 | Bybit's 200 levels reach only ~2–3 bps from the price for BTC | 5th percentile 2.2 bps on 10 Oct 2025 | **Fixed.** Depth is measured within 1 and 2 bps (covered 99.5 % of seconds) and over the best 10 / 50 / 200 levels, instead of wider bands that would be cut off. |
 | 11 | Duplicate rows | 0 in every dataset after loading | `store.py` drops exact duplicates; for the same minute in two files, the monthly (final) file wins. |
+
+
+## ETH and SOL (added 26 Oct 2026, Phase 4)
+
+Downloaded, repaired and validated on Modal (`regimecast/jobs/modal_app.py::archive_symbol`, EU region), the
+same pipeline as BTC. Reports: `data/reports/data_health_ETHUSDT.json`, `data_health_SOLUSDT.json` (served at
+`/data-health/<SYMBOL>`). The BTC report was refreshed by the same run (data to 2026-10-24).
+
+| Data | ETHUSDT | SOLUSDT |
+|---|---|---|
+| 1-min candles (traded price) | 2020-01-01 to 2026-10-24, 3,584,160 rows, no gaps | 2020-09-14 (listing) to 2026-10-24, 3,213,660 rows, no gaps |
+| 1-min mark price | 8 gaps, 66 minutes missing (max 30 min) | 3 gaps, 32 minutes missing (max 25 min) |
+| 1-min index / premium | 61 / 198 minutes missing | 27 / 168 minutes missing |
+| Funding payments | 7,395 (from 2020-01-01) | 6,700 (from 2020-09-13), max rate 2% (early listing days) |
+| 5-min open interest | from 2021-12-01 (Binance's archive starts there), 140 steps missing | from 2021-12-01, 157 steps missing |
+| Order book (Bybit, replayed) | 2025-05-01 to 2026-10-25, 1-second and 1-minute | same |
+
+Findings, beyond those already listed for BTC (which apply to all three coins: daily-file repair, halts,
+open-interest relabelling, short gaps kept as gaps):
+
+| # | Finding | Size | What we did |
+|---|---|---|---|
+| 12 | Repairs from daily files | ETH and SOL: 5-14 days per dataset (e.g. SOL premium 2021-07-27, 2022-07-12/13) | **Fixed** by `--repair`, as for BTC. One SOL index day is missing at Binance too. |
+| 13 | Mark price far from the traded price | ETH 66 minutes (max 17.2%), SOL 321 minutes (max 8.9%); worst minutes 19 May 2021 13:09-13:40 and 12 Mar 2020 | **Real market events, kept.** The traded price spiked while the index-based mark price did not; this is why liquidation risk always uses mark price. |
+| 14 | Open interest starts 2021-12-01 for ETH and SOL (BTC 2020-09-01) | 15 months fewer than BTC | **Explained.** Binance's archive starts there. Models using open interest train from Dec 2021 for these coins. |
+| 15 | SOL starts 2020-09-14 | about 8 months after BTC and ETH | **Explained.** SOLUSDT futures listed then. The COVID crash (Mar 2020) has no SOL data. |
+| 16 | `bookDepth` archive downloaded (2023-01 onward, all three coins) | stored on the Modal volume only | **Not used**, for the reasons in finding 9; Bybit's full order book is the order-book source. |

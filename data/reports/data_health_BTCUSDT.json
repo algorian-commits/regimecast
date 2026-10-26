@@ -1,6 +1,6 @@
 {
   "symbol": "BTCUSDT",
-  "generated_at": "2026-10-20T11:27:51.877978+00:00",
+  "generated_at": "2026-10-26T01:58:13.713322+00:00",
   "known_issues": {
     "metrics_create_time_label_change": {
       "date": "2026-06-25",
@@ -25,9 +25,9 @@
   },
   "datasets": {
     "klines": {
-      "rows": 3576960,
+      "rows": 3584160,
       "first": "2020-01-01 00:00:00+00:00",
-      "last": "2026-10-19 23:59:00+00:00",
+      "last": "2026-10-24 23:59:00+00:00",
       "duplicates": 0,
       "gaps": 0,
       "missing_steps": 0,
@@ -37,9 +37,9 @@
       "non_positive_price": 0
     },
     "markPriceKlines": {
-      "rows": 3576905,
+      "rows": 3584105,
       "first": "2020-01-01 00:00:00+00:00",
-      "last": "2026-10-19 23:59:00+00:00",
+      "last": "2026-10-24 23:59:00+00:00",
       "duplicates": 0,
       "gaps": 3,
       "missing_steps": 55,
@@ -62,9 +62,9 @@
       "non_positive_price": 0
     },
     "indexPriceKlines": {
-      "rows": 3576900,
+      "rows": 3584100,
       "first": "2020-01-01 00:00:00+00:00",
-      "last": "2026-10-19 23:59:00+00:00",
+      "last": "2026-10-24 23:59:00+00:00",
       "duplicates": 0,
       "gaps": 4,
       "missing_steps": 60,
@@ -91,9 +91,9 @@
       "non_positive_price": 0
     },
     "premiumIndexKlines": {
-      "rows": 3576759,
+      "rows": 3583959,
       "first": "2020-01-01 00:00:00+00:00",
-      "last": "2026-10-19 23:59:00+00:00",
+      "last": "2026-10-24 23:59:00+00:00",
       "duplicates": 0,
       "gaps": 10,
       "missing_steps": 201,
@@ -128,9 +128,9 @@
       "max_abs_rate": 0.003
     },
     "metrics": {
-      "rows": 644486,
+      "rows": 645926,
       "first": "2020-09-01 00:00:00+00:00",
-      "last": "2026-10-19 23:55:00+00:00",
+      "last": "2026-10-24 23:55:00+00:00",
       "duplicates": 0,
       "gaps": 156,
       "missing_steps": 634,
@@ -159,7 +159,7 @@
     }
   },
   "mark_vs_last": {
-    "checked": 3576905,
+    "checked": 3584105,
     "over_limit": 101,
     "max_abs_dev": 0.055950732580098084,
     "worst_minutes": [
