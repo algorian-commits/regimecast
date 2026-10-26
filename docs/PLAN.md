@@ -66,6 +66,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 4 Features, regimes, full data (M4) | Done, merged 26 Oct. Features for 3 coins (2020-now, order book from May 2025) on Modal with a daily update; regimes: next-day volatility 43% / 63% / 109% for calm / active / stressed. |
 | 5 Volatility forecaster + liquidation risk (M7) | Done 26 Oct. HAR-S + LightGBM beats HAR on all 3 coins x 2 horizons (-5.7% to -18.1% QLIKE, p < 0.002); FHS liquidation probabilities calibrated to 0.06-0.65% ECE (random walk 1.1-3.9%). App: FHS on live HAR-S with SHAP drivers. Weak spot: long-side risk understated in crashes (Phase 6). |
 | 6 Stress early warning (M10 part 1) | Done 26 Oct. Classifier AUC 0.80-0.83 vs 0.66-0.71 for the best simple rule; average precision about 2x. Live stress gauge (identical live features, checked hour by hour). 10 Oct forensic timeline. |
+| 6b Direction-aware liquidation risk | Done 26 Oct: tried and not adopted (see decision log); FHS stays in the app. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -193,7 +194,7 @@ Done when
 
 Demo: the 10 October timeline and the live stress gauge.
 
-## Phases 6b, 7, 8 (6b approved 26 Oct; 7 and 8 waiting for approval)
+## Phases 6b, 7, 8 (6b approved and done 26 Oct; 7 and 8 waiting for approval)
 
 ### Phase 6b: Direction-aware liquidation risk (M7 + M10)
 
@@ -315,6 +316,7 @@ sessions once approved.
 | 2026-10-26 | Live features built by the training feature code from live API data | Same definitions by construction; scripts/check_live_features.py found them identical to the archive. The taker ratio endpoint is stamped at the period start (others at the end), handled. |
 | 2026-10-26 | 10 Oct forensic timeline uses reported times for the whale short and the post | The wallet address is not in the public reports and the ENS lookup was blocked by a bot check; its fill history needs the address (HypurrScan/Arkham). |
 | 2026-10-26 | Phase 6b (direction-aware liquidation risk) added before Phases 7-8 | The crash-window weakness is the biggest gap in the core product; Saeed approved fixing it first. |
+| 2026-10-26 | Phase 6b: direction-aware liquidation model tried, NOT adopted; FHS stays | Worse overall at 24 h (ECE 0.68-1.43% vs 0.49-0.65%, Brier worse), equal at 1 h, and mixed in crash windows (better for 10x longs, worse at 50x). With funding, open interest, crowding, stress and returns, the direction of the next day's move is not predictable in advance; the stress gauge warns that a big move may come, not which way. Results: data/reports/phase6b_*.csv. |
 
 ## Parking list (not now)
 
@@ -327,6 +329,7 @@ sessions once approved.
 - Risk Check explanation repeats brackets ("(PLACEHOLDER (volatility model not trained yet))"); tidy the wording in the API.
 - Track Record page (wireframe ready; built in Phase 10).
 - Live HAR-S + LightGBM combination in the app: needs live funding, open interest, basis, long/short ratios and DVOL inputs (1-5% lower QLIKE than HAR-S).
+- Crash scenario line in the risk check when stress is elevated or high (e.g. how much higher long-side liquidation rates were in past crash windows at this leverage).
 - Minute-level stress model with order-book inputs (the book collapsed within 5 minutes of the 10 Oct post), once more order-book history exists.
 - 10 Oct whale wallet fill history: needs the address from HypurrScan or Arkham.
 - Download BTC from Sep 2019 (perpetual launch), so the COVID crash has more than two months of history before the first regime fit.

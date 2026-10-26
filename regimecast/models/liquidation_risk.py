@@ -161,3 +161,73 @@ def calibrate_walk_forward(p: pd.DataFrame, horizon: int, models=("gauss", "fhs"
             iso = Isotonic().fit(past[m], past["hit"])
             p.loc[blk, f"{m}_cal"] = iso.predict(p.loc[blk, m])
     return p
+
+
+# ------------------------------------------------------------------ direction-aware model (Phase 6b)
+DIRECT_FEATURES = ["ret", "ret_24h", "funding_rate", "oi_chg_24h", "ls_top", "ls_accounts", "taker_ls",
+                   "taker_buy_share", "premium_mean", "mark_index_gap", "log_rv_vs_week", "p_stressed",
+                   "p_stress", "iv_minus_sigma", "hour", "dow"]
+DPARAMS = dict(objective="binary", learning_rate=0.05, num_leaves=31, min_data_in_leaf=500, feature_fraction=0.8,
+               bagging_fraction=0.8, bagging_freq=1, lambda_l2=1.0, verbose=-1, seed=17)
+
+
+def _stack(F: pd.DataFrame, k_by_lev: dict, hit: pd.DataFrame | None, side: str) -> pd.DataFrame:
+    rows = []
+    for L, k in k_by_lev.items():
+        r = F.copy()
+        r["k"] = k
+        r["leverage"] = L
+        if hit is not None:
+            r["y"] = hit[L]
+        rows.append(r)
+    return pd.concat(rows)
+
+
+class DirectModel:
+    """P(liquidated within the horizon) per side from k = log(d / sigma) and directional state.
+    LightGBM with a monotone constraint: a larger k (liquidation farther away) never raises
+    the probability."""
+
+    def __init__(self, features: list[str] = DIRECT_FEATURES, rounds: int = 400):
+        self.features, self.rounds = features, rounds
+
+    def fit(self, stacked: pd.DataFrame) -> "DirectModel":
+        import lightgbm as lgb
+
+        cols = ["k", *self.features]
+        ok = stacked["y"].notna() & stacked["k"].notna()
+        mono = [-1] + [0] * len(self.features)
+        self.model = lgb.train({**DPARAMS, "monotone_constraints": mono}, lgb.Dataset(stacked.loc[ok, cols],
+                               stacked.loc[ok, "y"]), self.rounds)
+        return self
+
+    def predict(self, stacked: pd.DataFrame) -> np.ndarray:
+        return self.model.predict(stacked[["k", *self.features]])
+
+
+def evaluate_direct(symbol: str, horizon: int, F: pd.DataFrame, sigma: pd.Series, targets: pd.DataFrame,
+                    eval_start="2022-01-01", refit_every_hours: int = 24 * 90) -> pd.DataFrame:
+    """Walk-forward out-of-sample predictions of DirectModel for every hour, side and leverage.
+    F: directional state per hour (DIRECT_FEATURES), sigma: out-of-sample variance forecasts."""
+    h = "1h" if horizon == 1 else "24h"
+    t = targets.set_index("ts") if "ts" in targets else targets
+    s = np.sqrt(sigma.dropna())
+    F = F.reindex(s.index)
+    dist = distances(symbol)
+    out = []
+    for f in harness.folds(s.index, eval_start, horizon, refit_every_hours=refit_every_hours, min_train_hours=24 * 180):
+        tr = s.index <= f.fit_end
+        te = (s.index >= f.block_start) & (s.index < f.block_end)
+        for side in ("long", "short"):
+            mae = t[f"mae_{side}_{h}"].reindex(s.index)
+            d = dist[dist["side"] == side].set_index("leverage")["d"]
+            k = {L: np.log(dL / s) for L, dL in d.items()}
+            hit = pd.DataFrame({L: (mae >= dL).astype(float).where(mae.notna()) for L, dL in d.items()})
+            train = _stack(F[tr], {L: v[tr] for L, v in k.items()}, hit[tr], side)
+            m = DirectModel().fit(train)
+            test = _stack(F[te], {L: v[te] for L, v in k.items()}, hit[te], side)
+            out.append(pd.DataFrame({"ts": test.index, "side": side, "leverage": test["leverage"].to_numpy(),
+                                     "direct": m.predict(test), "hit_d": test["y"].to_numpy()}))
+    p = pd.concat(out, ignore_index=True).dropna(subset=["hit_d"])
+    p = p.rename(columns={"hit_d": "hit"})
+    return calibrate_walk_forward(p, horizon, models=("direct",))

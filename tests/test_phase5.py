@@ -104,3 +104,20 @@ def test_gbm_learns_persistent_volatility_and_dvol_join_has_no_lookahead():
     assert corr > 0.5
     shap = m.contributions(X[test].head(5))
     assert np.allclose(shap.sum(axis=1), np.log(pred.head(5) / m.smear))   # SHAP values add up to the prediction
+
+
+def test_direct_model_is_monotone_in_distance_and_learns_direction():
+    rng = np.random.default_rng(9)
+    n = 20_000
+    F = pd.DataFrame({c: rng.normal(0, 1, n) for c in LR.DIRECT_FEATURES})
+    k = rng.normal(0, 1, n)
+    # crowded longs (high ls_top) make long liquidations more likely at the same distance
+    logit = -2.5 * k + 1.2 * F["ls_top"].to_numpy()
+    y = (rng.uniform(0, 1, n) < 1 / (1 + np.exp(-logit))).astype(float)
+    m = LR.DirectModel(rounds=150).fit(F.assign(k=k, y=y))
+    grid = F.iloc[[0] * 50].assign(k=np.linspace(-3, 3, 50))
+    p = m.predict(grid)
+    assert np.all(np.diff(p) <= 1e-12)                       # farther away is never riskier
+    lo, hi = F.iloc[[0, 0]].assign(k=0.0), F.iloc[[0, 0]].assign(k=0.0)
+    lo["ls_top"], hi["ls_top"] = -2.0, 2.0
+    assert m.predict(hi)[0] > m.predict(lo)[0] + 0.2        # crowding raises the risk

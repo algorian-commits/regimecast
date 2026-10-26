@@ -59,6 +59,14 @@ overstate it for shorts. Example, BTC 10x long, next 24 h, FTX week: FHS said 6%
 treat up and down moves alike; crashes are not alike. The **Phase 6 stress model** adds the directional signals
 (funding, crowding, order book, Whale Watch) this needs.
 
+### Phase 6b: we tried to fix it, and it didn't work
+
+A direction-aware model (long and short side separately, with funding, open-interest change, long/short ratios,
+taker flow, recent returns, the stress probability and implied vs forecast volatility; farther liquidation can never
+be riskier) was tested on the same hours and folds. It was **worse** overall at 24 h (calibration error 0.68-1.43%
+against FHS's 0.49-0.65%), equal at 1 h, and mixed in the crash windows. So FHS stays. Our reading: these signals say
+*that* a big move may be coming (the stress gauge does this), not *which way*. Results: `data/reports/phase6b_*.csv`.
+
 ## In the app now
 
 * Volatility: HAR-S on live Binance data (its out-of-sample calibration with FHS is as good as the combination's).
