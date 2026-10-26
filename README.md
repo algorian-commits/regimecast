@@ -93,6 +93,25 @@ Live without the PC: `.github/workflows/news_live.yml` runs the same `collect` e
 publishes the state to the branch `news-data`; the deployed API serves `news-data/api/<SYMBOL>.json` when it has no
 local data (cached 5 minutes).
 
+## Features, regimes and the data on Modal (Module M4)
+
+| Part | File | What it does |
+|---|---|---|
+| Batch jobs | `regimecast/jobs/modal_app.py` | Runs on Modal (EU region): Binance history for BTC/ETH/SOL (download, repair, validate), Bybit order-book replay (1-second and 1-minute features, May 2025 onward), feature tables, and a daily update at 06:30 UTC. Data lives on the `regimecast-data` Modal Volume, laid out like `data/`. |
+| Features | `regimecast/features/build.py` | 1-minute and hourly tables. A row at time t uses only data known at t (candles at their close, open interest at `available_at`, hours labelled by their end). |
+| Leakage tests | `tests/test_features.py` | Scramble or delete every input after a time T: no feature at or before T may change. |
+| Walk-forward harness | `regimecast/models/harness.py` | One harness for all models: purge and embargo gaps, baselines registered (HAR family, no-change, historical volatility), and the final test period (from 2025-10-01) closed unless `final=True`. |
+| Regimes | `regimecast/models/hmm.py`, `regimes.py` | 3-state Gaussian HMM (calm, active, stressed), refitted on the past only, forward-only probabilities, frozen from 2025-10-01. |
+
+```bat
+set MODAL_PROFILE=saeed355ahmed
+modal run -m regimecast.jobs.modal_app::features_all
+modal volume get regimecast-data parquet/features_1h/BTCUSDT/all.parquet data/parquet/features_1h/BTCUSDT/all.parquet
+python scripts/run_regimes.py --symbol BTCUSDT      :: regime chart + crash table -> data/reports/phase4.html
+```
+
+See `docs/M4_WALKTHROUGH.md`.
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.

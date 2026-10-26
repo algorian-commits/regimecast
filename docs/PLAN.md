@@ -63,7 +63,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 1 Data foundation (M1) | Done. BTC 2020-now validated, HAR table, crash order-book features, real margin tiers. |
 | 2 App skeleton + API online (M2) | Done, merged 26 Oct. Live at https://web-production-210f7.up.railway.app. |
 | 3 News sentiment (M3) | Done, merged 26 Oct. Hourly mood May 2025 to now; labels from two blind AI passes (kappa 0.92). |
-| 4 Features, regimes, full data (M4) | In progress on branch `phase4-regimes`. Order-book backfill and Binance archive for 3 coins done on Modal. |
+| 4 Features, regimes, full data (M4) | Done, merged 26 Oct. Features for 3 coins (2020-now, order book from May 2025) on Modal with a daily update; regimes: next-day volatility 43% / 63% / 109% for calm / active / stressed. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -239,6 +239,12 @@ Demo: the 10 October timeline and the live stress gauge.
 | 2026-10-26 | The 100 sentiment labels checked by a second, blind AI labelling pass instead of by Saeed | Saeed asked for it to be handled. Two independent passes (Claude), 95% agreement, Cohen's kappa 0.92, 5 disagreements settled by the written rule. Reported as AI-labelled, not human-labelled. |
 | 2026-10-26 | Live collector reads new GDELT batches as well as the four RSS feeds | RSS alone covers four sites while the backfill covers thousands, so headline counts would jump when the live data takes over. |
 | 2026-10-26 | Live news mood runs on GitHub Actions every 15 min and is published on the branch `news-data`; the API reads it from there | The deployed API has no copy of data/ (it lives on the PC). Actions is free for this public repo and already does the GDELT backfill; a data-only branch (not main) means no redeploys. Instead of a Railway `worker` service. |
+| 2026-10-26 | Own small Gaussian HMM (`models/hmm.py`) instead of hmmlearn | hmmlearn has no wheel for Python 3.14 on Windows (needs a C++ compiler), and we need a forward-only filter anyway: its usual probabilities use future data. ~150 lines, tested on known parameters. |
+| 2026-10-26 | Order-book history kept on Modal at 1-second resolution; 1-minute summaries for models and the PC | 1-second features are ~16 MB per coin-day (~26 GB in total), more than the PC's free disk. The 1-minute summary is ~60x smaller and is what the models use. |
+| 2026-10-26 | All three coins' Binance history downloaded and validated on Modal, not the PC | Same pipeline, fast EU link, no PC disk; the PC keeps BTC and compact feature tables. |
+| 2026-10-26 | The harness closes the final test period itself | `models/harness.py` refuses test blocks inside it and stops targets before it unless `final=True`, so no model can touch it by accident. |
+| 2026-10-26 | Regimes refitted every 90 days, not 30 | Regimes shift slowly; quarterly refits cut the run about threefold. Probabilities are still forward-only. |
+| 2026-10-26 | App keeps the volatility-based regimes; order-book signals go to the Phase 6 stress model | Fitted on May-Sep 2025 only, the order-book regime version barely separates next-day volatility (28/31/34%). |
 
 ## Parking list (not now)
 
@@ -250,6 +256,7 @@ Demo: the 10 October timeline and the live stress gauge.
 - Pin the API image's Python packages like the recorder's (`requirements-api.txt`), so a redeploy never picks up a surprise upgrade.
 - Risk Check explanation repeats brackets ("(PLACEHOLDER (volatility model not trained yet))"); tidy the wording in the API.
 - Track Record page (wireframe ready; built in Phase 10).
+- Download BTC from Sep 2019 (perpetual launch), so the COVID crash has more than two months of history before the first regime fit.
 - Move all three Railway services to Infrastructure as Code (`.railway/railway.ts`) before 2026-12-01, when Railway stops reading the recorder's `railway.json`.
 - Fine-tune a sentiment model on our own crypto headlines (needs ~1,000 labels, not 100).
 - Weight headlines by how many outlets ran them (`copies`) and use GDELT's tone as an extra feature (M7).

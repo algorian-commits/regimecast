@@ -38,6 +38,12 @@ from regimecast import config
 
 log = logging.getLogger("orderbook")
 
+try:  # orjson parses the ~860k messages per day about twice as fast; same result
+    import orjson
+    _loads = orjson.loads
+except ImportError:  # pragma: no cover
+    _loads = json.loads
+
 URL = "https://quote-saver.bycsi.com/orderbook/linear/{symbol}/{day}_{symbol}_ob{levels}.data.zip"
 LEVELS = 200
 BANDS_BPS = (1, 2)
@@ -127,7 +133,7 @@ def replay(lines, symbol: str) -> pd.DataFrame:
     n_updates = 0
     cur = None  # the second being accumulated (unix seconds)
     for line in lines:
-        m = json.loads(line)
+        m = _loads(line)
         sec = m["ts"] // 1000
         if cur is not None and sec > cur and book.ready():
             # close every finished second BEFORE applying this update (no look-ahead)
@@ -152,6 +158,31 @@ def replay(lines, symbol: str) -> pd.DataFrame:
     df.insert(0, "ts", pd.to_datetime(df.pop("ts"), unit="s", utc=True))
     df["symbol"] = symbol
     return df
+
+
+def minute_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """Roll 1-second rows up to 1-minute rows, ~60x smaller, for models and the PC copy.
+
+    A minute is labelled by its END: the row at E uses the 1-second rows with ts in
+    (E - 60 s, E], and a 1-second row at T is the book just before T, so everything
+    in the row at E was known at E. Minutes with no 1-second rows are dropped.
+    """
+    if df.empty:
+        return df
+    x = df.drop(columns=["symbol"], errors="ignore").set_index("ts")
+    r = x.resample("1min", label="right", closed="right")
+    out = pd.DataFrame({"mid": r["mid"].last(), "n_seconds": r["mid"].count(),
+                        "spread_bps_mean": r["spread_bps"].mean(), "spread_bps_max": r["spread_bps"].max(),
+                        "ofi": r["ofi"].sum(), "n_updates": r["n_updates"].sum()})
+    for c in x.columns:
+        if c.startswith("depth_"):
+            out[f"{c}_mean"], out[f"{c}_min"] = r[c].mean(), r[c].min()
+        elif c.startswith(("imbalance_", "bid_range", "ask_range")):
+            out[f"{c}_mean"] = r[c].mean()
+    out = out[out["n_seconds"] > 0].reset_index()
+    if "symbol" in df:
+        out["symbol"] = df["symbol"].iloc[0]
+    return out
 
 
 # ------------------------------------------------------------------ download + process
@@ -183,10 +214,21 @@ def _download(client, symbol: str, day: date, dest: Path, attempts: int = 4) -> 
     return False
 
 
+def _write(df: pd.DataFrame, out: Path) -> None:
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out.with_suffix(".tmp")
+    df.to_parquet(tmp, index=False)
+    tmp.replace(out)
+
+
 def process_day(client, symbol: str, day: date, keep_raw: bool = False, force: bool = False) -> str:
     out = config.parquet_dir() / "orderbook" / symbol / f"{day.isoformat()}.parquet"
+    out_1m = config.parquet_dir() / "orderbook_1m" / symbol / f"{day.isoformat()}.parquet"
     if out.exists() and not force:
-        return "skip"
+        if out_1m.exists():
+            return "skip"
+        _write(minute_summary(pd.read_parquet(out)), out_1m)
+        return "ok (1-minute summary from existing 1-second file)"
     raw_dir = config.DATA_DIR / "raw" / "bybit_orderbook" if keep_raw else Path(tempfile.mkdtemp())
     raw_dir.mkdir(parents=True, exist_ok=True)
     raw = raw_dir / f"{day.isoformat()}_{symbol}.zip"
@@ -196,10 +238,8 @@ def process_day(client, symbol: str, day: date, keep_raw: bool = False, force: b
         t0 = time.time()
         with zipfile.ZipFile(raw) as z, z.open(z.namelist()[0]) as fh:
             df = replay(io.TextIOWrapper(fh, encoding="utf-8"), symbol)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        tmp = out.with_suffix(".tmp")
-        df.to_parquet(tmp, index=False)
-        tmp.replace(out)
+        _write(df, out)
+        _write(minute_summary(df), out_1m)
         return f"ok ({len(df)} rows, replay {time.time() - t0:.0f} s)"
     finally:
         if not keep_raw:

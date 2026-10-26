@@ -138,6 +138,18 @@ def orderbook(symbol: str, start: Time = None, end: Time = None, columns: list[s
     return archive("orderbook", symbol, start, end, columns)
 
 
+def orderbook_1m(symbol: str, start: Time = None, end: Time = None, columns: list[str] | None = None) -> pd.DataFrame:
+    """1-minute order-book summary (``ts`` = minute end, when it was known)."""
+    return archive("orderbook_1m", symbol, start, end, columns)
+
+
+def features(symbol: str, freq: str = "1h", start: Time = None, end: Time = None,
+             columns: list[str] | None = None) -> pd.DataFrame:
+    """Model features from features/build.py: ``freq`` "1h" (hour end) or "1m" (minute end).
+    Every row uses only data known at its ``ts``."""
+    return archive({"1h": "features_1h", "1m": "features_1m"}[freq], symbol, start, end, columns)
+
+
 # ------------------------------------------------------------------ news (M3)
 def headlines(start: Time = None, end: Time = None, columns: list[str] | None = None) -> pd.DataFrame:
     """De-duplicated news headlines (data/parquet/news/headlines/*.parquet), filtered on
