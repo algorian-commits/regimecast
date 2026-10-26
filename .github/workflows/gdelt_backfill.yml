@@ -1,0 +1,62 @@
+# Scans GDELT's 15-minute GKG files (about 250 GB for May 2025 to now) for crypto and
+# macro policy-shock headlines, one job per month, and puts the small result on the
+# branch `gdelt-backfill-data` (data/ is not in git). On a PC:
+#   git fetch origin gdelt-backfill-data
+#   python -m regimecast.sentiment.pipeline import-backfill --ref origin/gdelt-backfill-data
+# Run it from the Actions tab ("Run workflow"). See regimecast/sentiment/gdelt.py.
+name: gdelt-backfill
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [phase3-news-sentiment]
+    paths: [.github/workflows/gdelt_backfill.yml]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 18
+      matrix:
+        month: [2025-05, 2025-06, 2025-07, 2025-08, 2025-09, 2025-10, 2025-11, 2025-12,
+                2026-01, 2026-02, 2026-03, 2026-04, 2026-05, 2026-06, 2026-07, 2026-08, 2026-09, 2026-10]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas pyarrow httpx
+      - name: scan one month
+        run: |
+          start="${{ matrix.month }}-01"
+          end=$(python -c "import pandas as pd; e=pd.Timestamp('$start')+pd.offsets.MonthBegin(1); n=pd.Timestamp.now(tz='UTC').tz_localize(None); print('now' if e>n else e.date())")
+          python -m regimecast.sentiment.gdelt --start "$start" --end "$end" --out "gdelt_${{ matrix.month }}.parquet" --workers 32
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gdelt-${{ matrix.month }}
+          path: gdelt_${{ matrix.month }}.parquet
+          retention-days: 7
+
+  publish:
+    needs: scan
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: commit to branch gdelt-backfill-data
+        run: |
+          ls -la out
+          cd out
+          git init -q -b gdelt-backfill-data
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add *.parquet
+          git commit -qm "GDELT backfill $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gdelt-backfill-data

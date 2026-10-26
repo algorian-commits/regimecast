@@ -61,8 +61,9 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | Phase | Status |
 |---|---|
 | 1 Data foundation (M1) | Done. BTC 2020-now validated, HAR table, crash order-book features, real margin tiers. |
-| 2 App skeleton + API online (M2) | Done on branch `phase2-app`, live at https://web-production-210f7.up.railway.app. Merge into main pending. |
-| 3 News sentiment (M3) | In progress on its branch. Labels: two blind AI passes, kappa 0.92. |
+| 2 App skeleton + API online (M2) | Done, merged 26 Oct. Live at https://web-production-210f7.up.railway.app. |
+| 3 News sentiment (M3) | Done, merged 26 Oct. Hourly mood May 2025 to now; labels from two blind AI passes (kappa 0.92). |
+| 4 Features, regimes, full data (M4) | In progress on branch `phase4-regimes`. Order-book backfill and Binance archive for 3 coins done on Modal. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -230,6 +231,13 @@ Demo: the 10 October timeline and the live stress gauge.
 | 2026-10-26 | Core model (M7) moved ahead of dashboard and accounts (M5, M6); new order: M4, M7, M10 part 1, then M8/M9 | Results are the project's main claim; M5/M6 can run in parallel since they only touch the app. |
 | 2026-10-26 | HAR-S forecast feeds the risk check before the full M7 model | It is already tested on real data, so the placeholder volatility goes away now. |
 | 2026-10-26 | `api` and `web` deploy from generated branches `railway/api` and `railway/web` | Railway reads the repo-root `railway.json` (the recorder's) for every service from this repo and no longer lets new services pick another config path. Each branch is the source with `railway.json` swapped for `deploy/railway.<service>.json`, regenerated on every push; the recorder (on `main`) is untouched. |
+| 2026-10-26 | GDELT read from its raw 15-minute files on GitHub Actions, not its search API | The search API answers 429 to our network and returns at most 250 articles per query. The raw files are complete but ~250 GB; on Actions the scan takes 10 minutes, at home it would take days. |
+| 2026-10-26 | Headline time = when GDELT had it (its batch time), not the page's publish stamp | Publish stamps are often missing or in local time. Headlines first seen more than 24 h after publication are old news and left out. |
+| 2026-10-26 | Macro tariff and sanctions headlines collected too, not only crypto ones | The headline that moves the market (e.g. Trump's China tariff post) usually doesn't mention crypto. They count toward the policy-shock count only. |
+| 2026-10-26 | GDELT's own outage (15 Jun - 1 Jul 2025) left as a gap | Those hours are missing in the mood table rather than shown as "no news". |
+| 2026-10-26 | Mood vs price statistics on May-Sep 2025 only; the 10 Oct 2025 crash as a descriptive case study | Keeps the final test period untouched for M7, where sentiment is tested "with vs without". |
+| 2026-10-26 | The 100 sentiment labels checked by a second, blind AI labelling pass instead of by Saeed | Saeed asked for it to be handled. Two independent passes (Claude), 95% agreement, Cohen's kappa 0.92, 5 disagreements settled by the written rule. Reported as AI-labelled, not human-labelled. |
+| 2026-10-26 | Live collector reads new GDELT batches as well as the four RSS feeds | RSS alone covers four sites while the backfill covers thousands, so headline counts would jump when the live data takes over. |
 
 ## Parking list (not now)
 
@@ -242,3 +250,7 @@ Demo: the 10 October timeline and the live stress gauge.
 - Risk Check explanation repeats brackets ("(PLACEHOLDER (volatility model not trained yet))"); tidy the wording in the API.
 - Track Record page (wireframe ready; built in Phase 10).
 - Move all three Railway services to Infrastructure as Code (`.railway/railway.ts`) before 2026-12-01, when Railway stops reading the recorder's `railway.json`.
+- News worker as a Railway `worker` service (runs from the PC with Task Scheduler for now).
+- Fine-tune a sentiment model on our own crypto headlines (needs ~1,000 labels, not 100).
+- Weight headlines by how many outlets ran them (`copies`) and use GDELT's tone as an extra feature (M7).
+- Fill GDELT's 15 Jun - 1 Jul 2025 outage from the news sites' own archives or sitemaps.
