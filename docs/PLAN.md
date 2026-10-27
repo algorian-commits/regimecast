@@ -1,6 +1,8 @@
 # RegimeCast build plan
 
-Status: Phases 1-6 approved (1-3 on 23 Oct, 4-6 on 26 Oct) and done. Phases 7+ are an outline until approved.
+Status: Phases 1-8 done (7 and 8 merged 27 Oct). Phases 9 and 11 detailed below and run in parallel (Saeed, 27 Oct:
+build everything as fast as possible, dates and the mid defence don't matter). The final evaluation's pass bars are
+fixed below **before** the final test period is opened.
 
 ## How we work
 
@@ -257,17 +259,123 @@ Done when
 Phases 7 and 8 touch different parts (parser + risk screen vs accounts + dashboard) and can run as two parallel
 sessions once approved.
 
-## Later phases (outline only, detailed when we get there)
+## Phases 9-11 (direction from Saeed, 27 Oct)
 
-| Phase | Modules | What |
+Order: Phases 9 and 11 run as two parallel sessions now. When Phase 9's agent is frozen, the models are frozen and the
+final evaluation (Phase 10, part A) runs **once**, before any UI polish. The rest of Phase 10 comes after.
+
+**Both sessions keep the final test period closed.** No code in Phase 9 or 11 reads data from 2025-10-01 on, except
+the Phase 11 replay of the October 2025 crash, which is switched on only after the final evaluation has run.
+
+### Phase 9: Paper-trading risk agent (M10, part 2)
+
+Goal: show that RegimeCast's signals help someone who holds BTC, ETH and SOL, after fees and funding.
+
+The agent is a **risk manager, not a trading bot**: it holds a long position in each perpetual (0x to 1x of the
+account, never short, never more than 1x) and decides every hour how much to hold, using only what RegimeCast knew at
+that hour.
+
+Tasks
+1. Backtester (`regimecast/agent/`): hourly steps, equal-weight BTC/ETH/SOL, positions marked at the mark price,
+   Binance taker fee 0.05% on every change of position, funding paid or received every 8 hours at the archived rate,
+   a no-trade band so tiny changes are skipped. Tested: costs, funding sign, no look-ahead (a decision at hour H uses
+   only signals stamped at or before H).
+2. Agent rules, kept small: exposure = min(1, target volatility / forecast volatility), then cut by the stress
+   probability (Phase 6) and the regime (Phase 4). Inputs are the walk-forward, out-of-sample forecasts already
+   produced for 2022-01 to 2025-09 (`data/reports/phase5_*`, `phase6_pred_*`), so no signal was ever fitted on the
+   hours it trades.
+3. Choose the few settings (target volatility, stress cut-offs, regime cut, band width) on 2022-01 to 2024-09 with a
+   small grid, check them on 2024-10 to 2025-09, then **freeze** them in `regimecast/agent/frozen.json` with the date.
+   Every setting tried is logged with its result.
+4. Baselines on the same hours: buy-and-hold (1x long in each perpetual, paying funding), and plain volatility
+   targeting with trailing volatility (no RegimeCast signals), to show whether the signals add anything.
+5. Results on the dev period: return, Sharpe ratio, maximum drawdown, Calmar ratio, turnover, fees and funding paid,
+   time in the market, block-bootstrap interval for the Sharpe difference; per crash window (FTX, Yen-carry).
+6. A final-evaluation entry point that runs the frozen agent on the final test period with `final=True` (it is not
+   run in this phase; Phase 10 runs it once).
+7. Live paper log: the frozen agent runs every hour on live data (GitHub Actions, published to a data branch like the
+   news mood), writing its decision **before** the hour's outcome is known; `/agent` in the API and an "Agent" page in
+   the app show the equity curve vs buy-and-hold and the latest decision with its reasons.
+
+Done when
+- Dev-period tables and the equity chart are in `data/reports/phase9_*`, the settings are frozen and logged, the live
+  paper log is running, and the Agent page shows it.
+
+Demo: the dev-period equity curves (agent vs buy-and-hold vs volatility targeting) through the FTX crash.
+
+### Phase 11: Crash replay and alerts (M12)
+
+Goal: replay a crash minute by minute as the app would have seen it, and alerts that actually fire.
+
+Tasks
+1. Replay engine: steps through stored minutes and shows what the dashboard and risk check would have said at each
+   minute (price, regime, stress gauge, liquidation chance for a chosen position), with play, pause and speed. Uses
+   the frozen models only; it never fits anything.
+2. Built and tested on the FTX crash (Nov 2022) first. The October 2025 crash replay is generated only after the
+   final evaluation has run (it is inside the final test period).
+3. Alert engine in the API (background task, once a minute): rules per user on price crossing a level, stress level
+   reaching elevated or high, regime turning stressed, and the liquidation chance of a saved position going above the
+   user's limit. Fired alerts go to an in-app inbox (bell icon); each alert fires once and then waits until its
+   condition clears. Uses the Phase 8 `/me/alerts` table.
+4. Whale Watch alerts from the recorded Hyperliquid data: a top account's position changes by more than a set amount
+   (whale move), a new large account appears (fresh wallet), and a large position opened shortly before a stress flag
+   (suspicious timing, labelled as a pattern, never an accusation). The recorder itself is not changed; if its data is
+   not reachable from the API, the API reads Hyperliquid's public endpoints directly.
+5. Tests: alert rules (fires once, re-arms), whale rules on recorded samples, replay has no look-ahead.
+
+Done when
+- The FTX replay plays in the app, alerts fire into the inbox on the live URL, and Whale Watch alerts show with
+  their reasons.
+
+Demo: the FTX replay, and an alert set on the live site that fires.
+
+### Phase 10: Final evaluation, then track record and hardening (M11)
+
+Part A, as soon as Phase 9's agent is frozen:
+1. Freeze: tag the commit `final-eval` (code, settings and model files); the pass bars below are already committed.
+2. Run `scripts/final_eval.py` once with `final=True`. It writes `data/reports/final_*` and a log with the commit, the
+   start time and the data range. The walk-forward schedule continues as in development (refit every 90 days on past
+   data only, same settings), so the models keep learning from the past as time moves on, exactly as live.
+3. Report every bar as passed or failed, in plain words, in `docs/FINAL_EVALUATION.md`, whatever the result.
+
+Part B, after: public Track Record page (live forecasts logged before outcomes), Playwright end-to-end tests on the
+live URL, deployment hardening, user and admin guides, then UI polish.
+
+## Final evaluation: what counts as a pass (fixed 27 Oct 2026, before opening)
+
+Saeed asked Claude to set these bars. They are written here and committed before any model sees the final test
+period, and they do not change after it is opened.
+
+**Final test period:** 2025-10-01 00:00 UTC to 2026-09-30 23:00 UTC (12 months, about 8,700 hours per coin), BTC,
+ETH and SOL. Same targets, labels and scoring code as in development.
+
+| Part | Compared with | Pass if |
 |---|---|---|
-| 9 | M10, part 2 | Paper-trading risk agent vs buy-and-hold, after fees and funding. |
-| 10 | M11 | Public track record, Playwright end-to-end tests, final deployment hardening, user and admin guides. Final evaluation on the held-out period, once. |
-| 11 | M12 | October 2025 crash replay; alert engine including Whale Watch alerts (whale move, fresh wallet, suspicious timing). |
+| Volatility forecast (M7): HAR-S + LightGBM combination, 1 h and 24 h | HAR-RV (the standard benchmark) | Lower QLIKE than HAR-RV in at least 5 of the 6 coin x horizon cases, and significantly lower (Diebold-Mariano, p < 0.05) in at least 3 of 6. |
+| Liquidation probability (M7): FHS, the app's model | The random walk (the app's old model) | Lower calibration error (ECE) than the random walk in all 6 cases, lower Brier score in at least 5 of 6, and ECE at most 0.5% at 1 h and at most 1.5% at 24 h in at least 5 of 6. |
+| Stress warning (M10 part 1): next-hour classifier | The best of the three simple rules (stress continues, volatility above its 95th percentile, regime says stressed) on the same hours | AUC at least 0.75 on every coin and above the best rule on every coin, and average precision above the best rule on at least 2 of 3 coins. |
+| Regimes (M4) | Their own definition | Next-day volatility is ordered calm < active < stressed on all 3 coins. |
+| Paper agent (M10 part 2): frozen settings, equal-weight portfolio | Buy-and-hold, 1x long in each perpetual, after the same fees and funding | Higher Sharpe ratio **and** a maximum drawdown at least 25% smaller than buy-and-hold. Return, the volatility-targeting baseline and the bootstrap interval are reported alongside, not as bars. |
+| App (M2, M5, M6, M8, M9) | Its own spec | An end-to-end test on the live URL passes: sign up, set balance and limit, type a trade, confirm, get a result, see it saved on the account, see the dashboard price update within 10 s, log out; the risk check answers in under 2 s for 95% of 50 requests. |
+| Trade parser (M8) | The 95% target in the proposal | Every field at least 95% correct on the 200-message set. **Runs only once the Anthropic key is set**; until then it is reported as not run (the rule reader's 76% is the fallback, not the result). |
+
+Rules for the run
+- One run. If the evaluation code has a bug (a crash, a wrong file, a wrong date range), it is fixed and rerun, and
+  both runs and the fix are logged. A model or setting is never changed after the period is opened.
+- Anything tried after opening goes in a separate "after the final test" section and never replaces these results.
+- Crash windows (10-11 Oct 2025) are reported for every part, with no bar: the long-side weakness in crashes is
+  already known (Phase 5).
+- The verdict, as Saeed defined it: the project is "good" if the model parts (volatility, liquidation, stress), the
+  paper agent and the app all pass. Anything that fails is reported as failed, with what it means.
 
 ## Open questions
 
 1. **Criteria 1 and 4:** do you want to ask Mr. Awais to word them as "we test and report either way", or leave them as they are?
+2. **Anthropic API key (skipped for now, not forgotten).** The Phase 7 parser runs on the rule reader until it is set.
+   Needed: (a) on the PC, `powershell -ExecutionPolicy Bypass -File scripts\set_anthropic_key.ps1` (hidden input,
+   never pasted in chat or written to the repo); (b) `python scripts/m8_parser_eval.py` for the accuracy table
+   (about $0.15); (c) the same key as the `ANTHROPIC_API_KEY` variable on the Railway `api` service, so the live
+   site uses Claude. The final evaluation's parser bar waits for it.
 
 ## Decision log
 
@@ -335,17 +443,20 @@ sessions once approved.
 | 2026-10-27 | Profile "risk limit" = the highest chance of liquidation accepted per trade (the Risk Check's existing `risk_limit`) | The risk check already turns it into safe leverage and the largest position; the paper balance is the cross-margin wallet. |
 | 2026-10-27 | Alerts are stored per user now; notifying waits for the alert engine (Phase 11) | M6 asks for private alerts; firing them is M12. |
 | 2026-10-27 | Phases 7 and 8 merged; the Risk Check uses the account when logged in (risk limit, margin mode, wallet; checks saved to `/me/checks`), the browser otherwise | One page for both; checks saved while logged out stay in that browser and are not copied to the account. |
+| 2026-10-27 | Phases 9 and 11 detailed and run in parallel; final evaluation as soon as the Phase 9 agent is frozen, before UI polish | Saeed wants to know whether the project is good, not to hit milestones. |
+| 2026-10-27 | Pass bars for the final evaluation set by Claude and committed before opening the final test period | Saeed asked Claude to set them; fixing them first keeps the result honest. |
+| 2026-10-27 | Final test period ends 2026-09-30 (12 months) | A fixed end decided before opening; full months of archive data. |
+| 2026-10-27 | Paper agent is long-only, 0x to 1x, judged against buy-and-hold on Sharpe and drawdown | RegimeCast is a risk co-pilot for someone who holds, not a trading signal; shorting would make it a different product. |
+| 2026-10-27 | October 2025 crash replay generated only after the final evaluation | It shows model outputs inside the final test period. |
 
 ## Parking list (not now)
 
 - Any new recorder streams. The recorder stays as is.
 
-- Whale Watch alerts and UI (Phase 11).
 - Direct feeds from X or Truth Social. RSS covers it for now; X's API costs about $200/month.
 - `/forecast?horizon_hours=24` is rejected (422): FastAPI does not turn the query text "24" into the `Literal[1, 24]` number. The app calls it without the parameter (24 h is the default). Fix when the forecaster lands (Phase 5).
 - Pin the API image's Python packages like the recorder's (`requirements-api.txt`), so a redeploy never picks up a surprise upgrade.
 - Risk Check explanation repeats brackets ("(PLACEHOLDER (volatility model not trained yet))"); tidy the wording in the API.
-- Track Record page (wireframe ready; built in Phase 10).
 - Live HAR-S + LightGBM combination in the app: needs live funding, open interest, basis, long/short ratios and DVOL inputs (1-5% lower QLIKE than HAR-S).
 - Crash scenario line in the risk check when stress is elevated or high (e.g. how much higher long-side liquidation rates were in past crash windows at this leverage).
 - Minute-level stress model with order-book inputs (the book collapsed within 5 minutes of the 10 Oct post), once more order-book history exists.

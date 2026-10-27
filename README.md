@@ -163,6 +163,9 @@ powershell -ExecutionPolicy Bypass -File scripts\set_anthropic_key.ps1   :: stor
 python scripts/m8_parser_eval.py                                         :: accuracy table, about $0.15 the first time
 ```
 
+For the live site, add the same key as the `ANTHROPIC_API_KEY` variable on the Railway `api` service. Until the key
+is set, the parser runs on the rule reader (the key is skipped for now; see the open items in `docs/PLAN.md`).
+
 ## Live dashboard and accounts (Modules M5, M6)
 
 | Part | File | What it does |
