@@ -1,7 +1,7 @@
 # RegimeCast build plan
 
-Status (28 Oct): Phases 1-9 and 11 done and merged. Next: Phase 12 (trade verdict), then the final evaluation
-(Phase 10, part A) once, then UI polish. The final evaluation's pass bars are fixed below **before** the final test
+Status (28 Oct): Phases 1-9 and 11 done and merged; Phase 12 (trade verdict) built on `phase12-verdict`, its dev-period
+run and freeze next (Saeed's PC). Then the final evaluation (Phase 10, part A) once, then UI polish. The final evaluation's pass bars are fixed below **before** the final test
 period is opened.
 
 ## How we work
@@ -73,7 +73,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 8 Live dashboard and accounts (M5, M6) | Built and merged 27 Oct (`docs/M5_M6_WALKTHROUGH.md`): sign up / log in on Postgres, Risk Radar dashboard with live WebSocket feed and regime-coloured candles. Logged-in Risk Checks use the account's risk limit, margin mode and balance, and save to the account. |
 | 9 Paper-trading risk agent (M10 part 2) | Built 27 Oct, merged 28 Oct (`docs/M10_AGENT_WALKTHROUGH.md`), settings frozen. Dev period 2022-01 to 2025-09: Sharpe 0.62 vs 0.46 for buy-and-hold, max drawdown -38% vs -79%, FTX week -12% vs -27%. Plain trailing-vol targeting does as well (0.65); the grid switched the stress and regime cuts off (fees). Live paper log hourly on `agent-data`; Agent page. Final run not done (Phase 10). |
 | 11 Crash replay and alerts (M12) | Built 27 Oct, merged 28 Oct (`docs/M12_WALKTHROUGH.md`): FTX replay minute by minute with the frozen models, alert engine once a minute into an in-app inbox (bell), Whale Watch alerts from Hyperliquid's public data. October 2025 replay waits for the final evaluation. |
-| 12 Trade verdict for beginners (M9, extended) | Planned 27 Oct, not started. Pass bars already fixed. |
+| 12 Trade verdict for beginners (M9, extended) | Built 28 Oct on `phase12-verdict` (`docs/M12_VERDICT_WALKTHROUGH.md`): grade, break-even, fix, what-if, crowd, similar moments, timing; in `/risk-check` and the Risk Check screen. Tested on synthetic data; `scripts/run_phase12.py` (dev tables, freeze) waits for Saeed's PC. |
 | 10 Final evaluation, then UI polish (M11) | Waiting for Phase 12. Track Record page, end-to-end tests, hardening and guides dropped. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
@@ -512,6 +512,16 @@ Rules for the run
 | 2026-10-27 | Alert kinds added to the Phase 8 table: stress high, saved position's liquidation risk (a saved check, limit = profile risk limit unless set), Whale Watch (migration 0002) | Covers the plan's four rules, with Whale Watch delivered to the same inbox. |
 | 2026-10-27 | Whale Watch in the API reads Hyperliquid's public endpoints with the recorder's own `HyperliquidWatcher` (recorder unchanged) | The recorder's files are on its own volume; its file endpoint needs a token the API does not have. |
 | 2026-10-27 | Whale thresholds $5M (move, fresh wallet, timing), timing window 6 h; moves only for tracked top accounts; "fresh" = not seen by Whale Watch before (kept in `whale_seen`) | On the recorded week: about 2.6 moves and 10 fresh wallets a day. Hyperliquid gives no account age, so "fresh" is documented as new to Whale Watch. |
+| 2026-10-28 | Phase 12 Trade Grade test grid fixed in code: leverage 2, 3, 5, 10, 20, 50x; stops 0.5, 1, 1.5, 2, 3 x the 24 h HAR-S forecast move; $1,000 isolated margin; risk limit 1%; trades opened at 00/06/12/18 UTC | The pass bar names the ranges; the exact grid must be fixed before opening too. HAR-S because it is the app's live volatility model. |
+| 2026-10-28 | Grades are A, B, C, D, F (no E); grade = worst setup part (knock-out, liquidation vs limit, stop, costs) plus up to 2 market steps (regime, stress, crowding, timing) | Few, readable rules; which market parts count and the knock-out bands are chosen on the dev period by a rule written before the run (`verdict/devrun.py`). |
+| 2026-10-28 | Crowd warning baseline: in hours without a warning, "against the crowd" is against its lean, the sign of (funding - median) / IQR + (top-trader ratio - median) / IQR | The bar compares warning hours with other hours, so every hour needs a crowd side. |
+| 2026-10-28 | Similar moments compare only with hours whose next 24 h had fully played out before now (H' + 24 h <= now) | "Strictly before now" with an outcome that is still running would leak the future. Tested. |
+| 2026-10-28 | Crash day like 10 Oct 2025 = fixed falls of Binance's mark price (BTC 13.0%, ETH 14.8%, SOL 30.7%, 20:00-20:50 high to the 21:20 low), looked up once by hand from Binance's public candles | A scenario size the plan asks for; descriptive, like the Phase 6 forensics. No repo code reads the final test period and nothing is fitted or scored on these numbers. |
+| 2026-10-28 | US macro calendar (FOMC, CPI, jobs report, 2020-2027, actual release times incl. the 2025-26 shutdown delays) shipped as `verdict/macro_events.csv` | A fixed file, as planned; checked against federalreserve.gov and bls.gov. Cancelled releases (Oct 2025 CPI and jobs) left out. |
+| 2026-10-28 | Optional take-profit added to the Risk Check form and `/risk-check` (the parser still does not read it) | The break-even win rate needs a target; without one the app assumes a target as far away as the stop and says so. |
+| 2026-10-28 | Before the freeze the app runs on defaults written in `verdict/settings.py` (`settings_frozen_at` null); crowd warning and similar moments switch on with `frozen.json` and `verdict/similar/<coin>.npz` | The code ships before Saeed's dev-period run; nothing in the app pretends to be fixed on data until it is. |
+| 2026-10-28 | Funding cost and crowding inputs in the live verdict come from the stress gauge's own hourly feature rows (`vol/live.py`), not a new Binance call | Same definitions as the dev tables (last settled funding, as-of joins) and no extra latency; `/stress` is unchanged. |
+| 2026-10-28 | Dev-period grade tables use the app's FHS file (fitted on the whole dev period), so they are partly in-sample | It is exactly what the app and the final bar use; the final test period is the clean test. |
 
 ## Parking list (not now)
 

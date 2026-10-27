@@ -860,6 +860,37 @@ export interface components {
             /** Reasons */
             reasons: string[];
         };
+        /** CrowdOut */
+        CrowdOut: {
+            /** Warning */
+            warning: boolean;
+            /**
+             * Side
+             * @description Where the crowd is piled in, when warning
+             */
+            side?: ("long" | "short") | null;
+            /** Message */
+            message: string;
+            /** Funding Rate */
+            funding_rate: number | null;
+            /**
+             * Ls Top
+             * @description Top traders' long/short position ratio
+             */
+            ls_top?: number | null;
+            /**
+             * Oi Chg 24H
+             * @description Open-interest growth over 24 h (log)
+             */
+            oi_chg_24h?: number | null;
+            /**
+             * P After Warning
+             * @description Dev period: share of warnings followed by a 5% move against the crowd within 24 h
+             */
+            p_after_warning?: number | null;
+            /** P Other */
+            p_other?: number | null;
+        };
         /** CurvePoint */
         CurvePoint: {
             /** Hour */
@@ -936,6 +967,17 @@ export interface components {
             buy_and_hold: number;
             /** Vol Target */
             vol_target: number;
+        };
+        /** FixOut */
+        FixOut: {
+            /** Needed */
+            needed: boolean;
+            /** Message */
+            message: string;
+            original: components["schemas"]["TradeVersion"];
+            fixed?: components["schemas"]["TradeVersion"] | null;
+            /** Changes */
+            changes: string[];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1404,6 +1446,47 @@ export interface components {
             warnings: string[];
             /** Generated At */
             generated_at: string;
+            /** @description Phase 12: Trade Grade A-F, reasons, crowd, similar moments, timing */
+            verdict?: components["schemas"]["VerdictOut"] | null;
+            /** @description Phase 12: the closest safer version of the same trade */
+            fix?: components["schemas"]["FixOut"] | null;
+            /**
+             * What If
+             * @description Phase 12: dollars on a normal, bad and crash day
+             * @default []
+             */
+            what_if: components["schemas"]["WhatIfOut"][];
+        };
+        /** SimilarOut */
+        SimilarOut: {
+            /**
+             * N
+             * @description Past hours compared
+             */
+            n: number;
+            /**
+             * Range Low Pct
+             * @description 80% range of the next 24 h move, low end (%)
+             */
+            range_low_pct: number;
+            /** Range High Pct */
+            range_high_pct: number;
+            /**
+             * Typical Move Pct
+             * @description Median size of the next 24 h move (%)
+             */
+            typical_move_pct: number;
+            /** P Up */
+            p_up: number;
+            /**
+             * Coin Flip
+             * @description True when the up-chance is between 40% and 60%
+             */
+            coin_flip: boolean;
+            /** Same Regime */
+            same_regime: boolean;
+            /** Message */
+            message: string;
         };
         /** StopInfo */
         StopInfo: {
@@ -1465,6 +1548,11 @@ export interface components {
             /** Stop */
             stop?: number | null;
             /**
+             * Take Profit
+             * @description Optional; used for the break-even win rate
+             */
+            take_profit?: number | null;
+            /**
              * Horizon Hours
              * @default 24
              * @enum {integer}
@@ -1482,6 +1570,33 @@ export interface components {
              */
             sigma_annual?: number | null;
         };
+        /** TradeVersion */
+        TradeVersion: {
+            /** Leverage */
+            leverage: number;
+            /** Notional Usdt */
+            notional_usdt: number;
+            /** Margin Usdt */
+            margin_usdt: number;
+            /** Stop */
+            stop: number | null;
+            /** Liquidation Price */
+            liquidation_price: number | null;
+            /** P Liquidation */
+            p_liquidation: number;
+            /** P Stop Hit */
+            p_stop_hit: number | null;
+            /**
+             * Max Loss Usdt
+             * @description Loss at the stop plus fees, or the margin if liquidated
+             */
+            max_loss_usdt: number;
+            /**
+             * Grade
+             * @enum {string}
+             */
+            grade: "A" | "B" | "C" | "D" | "F";
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1494,6 +1609,61 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VerdictFactor */
+        VerdictFactor: {
+            /**
+             * Key
+             * @description knockout, liquidation, stop, costs, regime, stress, crowd, timing or calm
+             */
+            key: string;
+            /**
+             * Score
+             * @description Setup: 0 fine to 4 as bad as it gets. Market: grade steps added
+             */
+            score: number;
+            /** Text */
+            text: string;
+        };
+        /** VerdictOut */
+        VerdictOut: {
+            /**
+             * Grade
+             * @enum {string}
+             */
+            grade: "A" | "B" | "C" | "D" | "F";
+            /** Headline */
+            headline: string;
+            /**
+             * Reasons
+             * @description Three plain-English reasons, the most important first
+             */
+            reasons: string[];
+            /** Factors */
+            factors: components["schemas"]["VerdictFactor"][];
+            /**
+             * P Knockout
+             * @description Chance the stop or the liquidation price is reached within the horizon
+             */
+            p_knockout: number;
+            /**
+             * Break Even Win Rate
+             * @description Share of such trades you must win to make money after fees and funding; above 1 = never
+             */
+            break_even_win_rate?: number | null;
+            /** Break Even Note */
+            break_even_note: string;
+            crowd?: components["schemas"]["CrowdOut"] | null;
+            similar?: components["schemas"]["SimilarOut"] | null;
+            /** Timing */
+            timing: string[];
+            /** Not Direction */
+            not_direction: string;
+            /**
+             * Settings Frozen At
+             * @description When the grading settings were fixed on the dev period; null = defaults
+             */
+            settings_frozen_at?: string | null;
         };
         /** WhaleEvent */
         WhaleEvent: {
@@ -1564,6 +1734,37 @@ export interface components {
             last_row_at: string | null;
             /** Recent Errors */
             recent_errors: string[];
+        };
+        /** WhatIfOut */
+        WhatIfOut: {
+            /**
+             * Scenario
+             * @enum {string}
+             */
+            scenario: "normal" | "bad" | "crash";
+            /** Label */
+            label: string;
+            /**
+             * Move Pct
+             * @description Size of the price move (%)
+             */
+            move_pct: number;
+            /**
+             * Up Usdt
+             * @description Result if the price rises that much (USDT); null for the crash day
+             */
+            up_usdt?: number | null;
+            /** Up Exit */
+            up_exit?: ("stop" | "liquidation") | null;
+            /**
+             * Down Usdt
+             * @description Result if the price falls that much (USDT)
+             */
+            down_usdt: number;
+            /** Down Exit */
+            down_exit?: ("stop" | "liquidation") | null;
+            /** Basis */
+            basis: string;
         };
     };
     responses: never;
