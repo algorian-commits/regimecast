@@ -187,6 +187,25 @@ uvicorn regimecast.api.main:app --reload          :: then in web/:  npm run dev
 
 See `docs/M5_M6_WALKTHROUGH.md`.
 
+## Crash replay and alerts (Module M12)
+
+| Part | File | What it does |
+|---|---|---|
+| Replay builder | `regimecast/replay/build.py`, `scripts/make_replay.py` | Runs the app's frozen models (HAR-S, HMM regimes, stress classifier; nothing fitted) over a stored crash, hour by hour, and keeps the mark price per minute. Writes `regimecast/replay/events/<event>.json.gz`, which ships with the code. |
+| Replay engine | `regimecast/replay/engine.py`, `regimecast/api/replay.py` | `GET /replay/events`, `GET /replay/{event}?symbol=&side=&leverage=&horizon_hours=`: every minute as the dashboard and Risk Check would have shown it, with the chosen position's liquidation chance (FHS). A minute closing at T only sees hours ending at or before T. |
+| Alert engine | `regimecast/alerts/rules.py`, `engine.py` | Background task in the API, once a minute: price crosses a level, stress elevated or high, regime turns stressed, a saved position's liquidation chance above the limit, Whale Watch events. Each alert fires once and re-arms after its condition clears. `ALERT_ENGINE=0` switches it off. |
+| Inbox | `regimecast/api/inbox.py` | `GET /me/inbox`, `POST /me/inbox/read`, `GET /alerts/engine`. Tables: `alert_events` (migration 0002). |
+| Whale Watch | `regimecast/whales/rules.py`, `live.py`, `regimecast/api/whales.py` | Whale move, fresh wallet, suspicious timing (a pattern, never an accusation), each with a written reason. Live from Hyperliquid's public API with the recorder's own code (recorder unchanged); `GET /whales/events`, `GET /whales/status`. `WHALE_WATCH=0` switches it off. |
+| Web | `web/src/components/replay.tsx`, `inbox-bell.tsx`, `whale-watch.tsx`, `account.tsx` | Replay page (play, pause, speed, scrubber), the bell in the nav, Whale Watch page, alert settings on the account page. |
+
+```bat
+python scripts/make_replay.py ftx_2022     :: needs data/parquet on this PC; ETH/SOL minutes come from Binance's public API
+python scripts/make_replay.py oct_2025     :: refused until docs/FINAL_EVALUATION.md exists (final test period)
+```
+
+Whale thresholds (env): `WHALE_MOVE_USD`, `WHALE_FRESH_USD`, `WHALE_TIMING_USD` (all $5M), `WHALE_TIMING_HOURS` (6).
+See `docs/M12_WALKTHROUGH.md`.
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.

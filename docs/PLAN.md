@@ -71,6 +71,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 6b Direction-aware liquidation risk | Done 26 Oct: tried and not adopted (see decision log); FHS stays in the app. |
 | 7 LLM trade parser + full risk-check screen (M8, M9) | Built and merged 27 Oct: `/parse-trade` (Claude Haiku 5.5), three-step Risk Check, drivers chart, saved history. 200-message test set (two blind AI passes, full agreement); rule-reader baseline 76% all fields right. Claude accuracy run waits for the API key. |
 | 8 Live dashboard and accounts (M5, M6) | Built and merged 27 Oct (`docs/M5_M6_WALKTHROUGH.md`): sign up / log in on Postgres, Risk Radar dashboard with live WebSocket feed and regime-coloured candles. Logged-in Risk Checks use the account's risk limit, margin mode and balance, and save to the account. |
+| 11 Crash replay and alerts (M12) | Built 27 Oct on branch `phase11-replay-alerts` (`docs/M12_WALKTHROUGH.md`): FTX replay minute by minute with the frozen models, alert engine once a minute into an in-app inbox (bell), Whale Watch alerts from Hyperliquid's public data. October 2025 replay waits for the final evaluation. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -448,6 +449,13 @@ Rules for the run
 | 2026-10-27 | Final test period ends 2026-09-30 (12 months) | A fixed end decided before opening; full months of archive data. |
 | 2026-10-27 | Paper agent is long-only, 0x to 1x, judged against buy-and-hold on Sharpe and drawdown | RegimeCast is a risk co-pilot for someone who holds, not a trading signal; shorting would make it a different product. |
 | 2026-10-27 | October 2025 crash replay generated only after the final evaluation | It shows model outputs inside the final test period. |
+| 2026-10-27 | Crash replay uses the app's frozen models (fitted to 2025-09-30, so the FTX crash is in-sample) and shows Phase 6's walk-forward stress probability next to the gauge | The plan says frozen models only; the page says plainly that it demonstrates the app and is not a test of it. |
+| 2026-10-27 | Replay files ship with the code (`regimecast/replay/events/*.json.gz`, ~220 kB per crash); ETH and SOL minute prices read from Binance's public mark-price candles | The deployed API has no data/, and the PC holds the minute archive for BTC only. |
+| 2026-10-27 | `make_replay.py oct_2025` refuses to run until `docs/FINAL_EVALUATION.md` exists | The October replay stays a one-command step for later and cannot be built by accident. |
+| 2026-10-27 | Alerts fire once and re-arm when the condition clears, with a small band (price 0.1%, position risk below 80% of the limit); a price alert set past its level waits for a real crossing | No repeat messages while a condition lasts and no flapping around a level. |
+| 2026-10-27 | Alert kinds added to the Phase 8 table: stress high, saved position's liquidation risk (a saved check, limit = profile risk limit unless set), Whale Watch (migration 0002) | Covers the plan's four rules, with Whale Watch delivered to the same inbox. |
+| 2026-10-27 | Whale Watch in the API reads Hyperliquid's public endpoints with the recorder's own `HyperliquidWatcher` (recorder unchanged) | The recorder's files are on its own volume; its file endpoint needs a token the API does not have. |
+| 2026-10-27 | Whale thresholds $5M (move, fresh wallet, timing), timing window 6 h; moves only for tracked top accounts; "fresh" = not seen by Whale Watch before (kept in `whale_seen`) | On the recorded week: about 2.6 moves and 10 fresh wallets a day. Hyperliquid gives no account age, so "fresh" is documented as new to Whale Watch. |
 
 ## Parking list (not now)
 
