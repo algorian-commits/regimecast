@@ -218,6 +218,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/agent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Agent
+         * @description The paper-trading risk agent: live hourly decisions with their reasons, the paper equity vs buy-and-hold,
+         *     and the development-period backtest its settings were frozen on. Paper trading only; not advice.
+         */
+        get: operations["agent_agent_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -390,6 +411,75 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentBacktest */
+        AgentBacktest: {
+            /** Frozen At */
+            frozen_at: string;
+            settings: components["schemas"]["AgentSettings"];
+            /** Settings Tried */
+            settings_tried: number;
+            /** Chosen On */
+            chosen_on: string;
+            /** Checked On */
+            checked_on: string;
+            /** Results */
+            results: components["schemas"]["BacktestRow"][];
+            /** Equity */
+            equity: components["schemas"]["EquityDay"][];
+        };
+        /** AgentLive */
+        AgentLive: {
+            /** Updated At */
+            updated_at: string;
+            /** Started At */
+            started_at: string | null;
+            /** Hours Logged */
+            hours_logged: number;
+            settings: components["schemas"]["AgentSettings"];
+            /** Frozen At */
+            frozen_at: string;
+            /** Equity */
+            equity: number;
+            /** Bh Equity */
+            bh_equity: number;
+            /** Curve */
+            curve: components["schemas"]["CurvePoint"][];
+            latest: components["schemas"]["Decision"] | null;
+        };
+        /** AgentOut */
+        AgentOut: {
+            /** @description The live paper log; null until its first hour is published */
+            live: components["schemas"]["AgentLive"] | null;
+            backtest: components["schemas"]["AgentBacktest"] | null;
+        };
+        /** AgentSettings */
+        AgentSettings: {
+            /**
+             * Target Vol
+             * @description Annualised volatility each position is sized to
+             */
+            target_vol: number;
+            /**
+             * Stress Elevated
+             * @description P(stress next hour) at which exposure is halved (2 = never)
+             */
+            stress_elevated: number;
+            /**
+             * Stress High
+             * @description P(stress next hour) at which exposure goes to zero (2 = never)
+             */
+            stress_high: number;
+            /**
+             * Regime Mult
+             * @description Share of the exposure kept when the regime is stressed
+             */
+            regime_mult: number;
+            /**
+             * Band
+             * @description No-trade band: smaller changes of exposure are skipped
+             */
+            band: number;
+        };
         /** AlertIn */
         AlertIn: {
             /**
@@ -439,6 +529,31 @@ export interface components {
              * @description 8 to 128 characters
              */
             password: string;
+        };
+        /** BacktestRow */
+        BacktestRow: {
+            /** Period */
+            period: string;
+            /** Strategy */
+            strategy: string;
+            /** Total Return */
+            total_return: number;
+            /** Annual Return */
+            annual_return: number;
+            /** Sharpe */
+            sharpe: number;
+            /** Max Drawdown */
+            max_drawdown: number;
+            /** Calmar */
+            calmar: number | null;
+            /** Turnover Per Year */
+            turnover_per_year: number;
+            /** Fees Paid */
+            fees_paid: number;
+            /** Funding Paid */
+            funding_paid: number;
+            /** Avg Exposure */
+            avg_exposure: number;
         };
         /** Candle */
         Candle: {
@@ -546,6 +661,81 @@ export interface components {
              */
             total: number;
         };
+        /** CoinDecision */
+        CoinDecision: {
+            /** Mark */
+            mark: number | null;
+            /**
+             * Vol Ann
+             * @description 24 h volatility forecast, annualised (0.5 = 50%)
+             */
+            vol_ann?: number | null;
+            /** P Stress */
+            p_stress?: number | null;
+            /**
+             * Regime
+             * @description 0 calm, 1 active, 2 stressed
+             */
+            regime?: number | null;
+            /** Exposure Before */
+            exposure_before: number;
+            /** Target */
+            target: number | null;
+            /**
+             * Exposure
+             * @description Position after the decision, share of the coin's third (0..1)
+             */
+            exposure: number;
+            /**
+             * Traded
+             * @description Notional bought (+) or sold (-), in account units
+             */
+            traded: number;
+            /** Reasons */
+            reasons: string[];
+        };
+        /** CurvePoint */
+        CurvePoint: {
+            /** Hour */
+            hour: string;
+            /**
+             * Agent
+             * @description Paper account value (start = 1)
+             */
+            agent: number;
+            /** Buy And Hold */
+            buy_and_hold: number;
+            /**
+             * Exposure
+             * @description Average exposure over the three coins (0..1)
+             */
+            exposure: number;
+        };
+        /** Decision */
+        Decision: {
+            /**
+             * Hour
+             * @description Hour end the decision is for (positions held until the next hour end)
+             */
+            hour: string;
+            /**
+             * Decided At
+             * @description When it was written, before the hour played out
+             */
+            decided_at: string;
+            /** Coins */
+            coins: {
+                [key: string]: components["schemas"]["CoinDecision"];
+            };
+            /** Fee */
+            fee: number;
+            /** Equity */
+            equity: number;
+            /** Bh Equity */
+            bh_equity: number;
+            /** Total Exposure */
+            total_exposure: number;
+        };
         /** Driver */
         Driver: {
             /**
@@ -558,6 +748,17 @@ export interface components {
              * @description How much it moves the volatility forecast vs a typical hour, in %
              */
             effect_pct: number;
+        };
+        /** EquityDay */
+        EquityDay: {
+            /** Day */
+            day: string;
+            /** Agent */
+            agent: number;
+            /** Buy And Hold */
+            buy_and_hold: number;
+            /** Vol Target */
+            vol_target: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1519,6 +1720,33 @@ export interface operations {
                 };
             };
             /** @description Not ready yet */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    agent_agent_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentOut"];
+                };
+            };
+            /** @description Nothing published yet */
             503: {
                 headers: {
                     [name: string]: unknown;

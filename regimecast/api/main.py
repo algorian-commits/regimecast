@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from regimecast import config
-from regimecast.api import accounts, live_ws, market, parser
+from regimecast.api import accounts, agent, live_ws, market, parser
 from regimecast.risk import fhs_live
 from regimecast.risk import liquidation as liq
 from regimecast.vol import live as vol_live
@@ -39,6 +39,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.include_router(parser.router)  # POST /parse-trade (M8 trade parser)
 accounts.install(app)   # Phase 8: sign up, log in, /me/* (accounts.py)
 live_ws.install(app)    # Phase 8: dashboard candles and the live WebSocket (live_ws.py)
+app.include_router(agent.router)  # Phase 9: GET /agent, the paper-trading risk agent (agent.py)
 
 Symbol = Literal["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 
