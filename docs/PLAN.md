@@ -1,8 +1,8 @@
 # RegimeCast build plan
 
-Status: Phases 1-8 done (7 and 8 merged 27 Oct). Phases 9 and 11 detailed below and run in parallel (Saeed, 27 Oct:
-build everything as fast as possible, dates and the mid defence don't matter). The final evaluation's pass bars are
-fixed below **before** the final test period is opened.
+Status (28 Oct): Phases 1-9 and 11 done and merged. Next: Phase 12 (trade verdict), then the final evaluation
+(Phase 10, part A) once, then UI polish. The final evaluation's pass bars are fixed below **before** the final test
+period is opened.
 
 ## How we work
 
@@ -58,7 +58,7 @@ fixed below **before** the final test period is opened.
 
 Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/` (Next.js), `docs/`, `tests/`.
 
-## Where we are (26 Oct 2026)
+## Where we are (28 Oct 2026)
 
 | Phase | Status |
 |---|---|
@@ -73,6 +73,8 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 8 Live dashboard and accounts (M5, M6) | Built and merged 27 Oct (`docs/M5_M6_WALKTHROUGH.md`): sign up / log in on Postgres, Risk Radar dashboard with live WebSocket feed and regime-coloured candles. Logged-in Risk Checks use the account's risk limit, margin mode and balance, and save to the account. |
 | 9 Paper-trading risk agent (M10 part 2) | Built 27 Oct, merged 28 Oct (`docs/M10_AGENT_WALKTHROUGH.md`), settings frozen. Dev period 2022-01 to 2025-09: Sharpe 0.62 vs 0.46 for buy-and-hold, max drawdown -38% vs -79%, FTX week -12% vs -27%. Plain trailing-vol targeting does as well (0.65); the grid switched the stress and regime cuts off (fees). Live paper log hourly on `agent-data`; Agent page. Final run not done (Phase 10). |
 | 11 Crash replay and alerts (M12) | Built 27 Oct, merged 28 Oct (`docs/M12_WALKTHROUGH.md`): FTX replay minute by minute with the frozen models, alert engine once a minute into an in-app inbox (bell), Whale Watch alerts from Hyperliquid's public data. October 2025 replay waits for the final evaluation. |
+| 12 Trade verdict for beginners (M9, extended) | Planned 27 Oct, not started. Pass bars already fixed. |
+| 10 Final evaluation, then UI polish (M11) | Waiting for Phase 12. Track Record page, end-to-end tests, hardening and guides dropped. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
