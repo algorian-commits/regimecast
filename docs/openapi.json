@@ -657,6 +657,28 @@
         }
       }
     },
+    "/agent": {
+      "get": {
+        "summary": "Agent",
+        "description": "The paper-trading risk agent: live hourly decisions with their reasons, the paper equity vs buy-and-hold,\nand the development-period backtest its settings were frozen on. Paper trading only; not advice.",
+        "operationId": "agent_agent_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Nothing published yet"
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -1120,6 +1142,191 @@
   },
   "components": {
     "schemas": {
+      "AgentBacktest": {
+        "properties": {
+          "frozen_at": {
+            "type": "string",
+            "title": "Frozen At"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/AgentSettings"
+          },
+          "settings_tried": {
+            "type": "integer",
+            "title": "Settings Tried"
+          },
+          "chosen_on": {
+            "type": "string",
+            "title": "Chosen On"
+          },
+          "checked_on": {
+            "type": "string",
+            "title": "Checked On"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/BacktestRow"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "equity": {
+            "items": {
+              "$ref": "#/components/schemas/EquityDay"
+            },
+            "type": "array",
+            "title": "Equity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "frozen_at",
+          "settings",
+          "settings_tried",
+          "chosen_on",
+          "checked_on",
+          "results",
+          "equity"
+        ],
+        "title": "AgentBacktest"
+      },
+      "AgentLive": {
+        "properties": {
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "hours_logged": {
+            "type": "integer",
+            "title": "Hours Logged"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/AgentSettings"
+          },
+          "frozen_at": {
+            "type": "string",
+            "title": "Frozen At"
+          },
+          "equity": {
+            "type": "number",
+            "title": "Equity"
+          },
+          "bh_equity": {
+            "type": "number",
+            "title": "Bh Equity"
+          },
+          "curve": {
+            "items": {
+              "$ref": "#/components/schemas/CurvePoint"
+            },
+            "type": "array",
+            "title": "Curve"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Decision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "updated_at",
+          "started_at",
+          "hours_logged",
+          "settings",
+          "frozen_at",
+          "equity",
+          "bh_equity",
+          "curve",
+          "latest"
+        ],
+        "title": "AgentLive"
+      },
+      "AgentOut": {
+        "properties": {
+          "live": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentLive"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The live paper log; null until its first hour is published"
+          },
+          "backtest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentBacktest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "live",
+          "backtest"
+        ],
+        "title": "AgentOut"
+      },
+      "AgentSettings": {
+        "properties": {
+          "target_vol": {
+            "type": "number",
+            "title": "Target Vol",
+            "description": "Annualised volatility each position is sized to"
+          },
+          "stress_elevated": {
+            "type": "number",
+            "title": "Stress Elevated",
+            "description": "P(stress next hour) at which exposure is halved (2 = never)"
+          },
+          "stress_high": {
+            "type": "number",
+            "title": "Stress High",
+            "description": "P(stress next hour) at which exposure goes to zero (2 = never)"
+          },
+          "regime_mult": {
+            "type": "number",
+            "title": "Regime Mult",
+            "description": "Share of the exposure kept when the regime is stressed"
+          },
+          "band": {
+            "type": "number",
+            "title": "Band",
+            "description": "No-trade band: smaller changes of exposure are skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_vol",
+          "stress_elevated",
+          "stress_high",
+          "regime_mult",
+          "band"
+        ],
+        "title": "AgentSettings"
+      },
       "AlertIn": {
         "properties": {
           "symbol": {
@@ -1258,6 +1465,76 @@
           "password"
         ],
         "title": "AuthIn"
+      },
+      "BacktestRow": {
+        "properties": {
+          "period": {
+            "type": "string",
+            "title": "Period"
+          },
+          "strategy": {
+            "type": "string",
+            "title": "Strategy"
+          },
+          "total_return": {
+            "type": "number",
+            "title": "Total Return"
+          },
+          "annual_return": {
+            "type": "number",
+            "title": "Annual Return"
+          },
+          "sharpe": {
+            "type": "number",
+            "title": "Sharpe"
+          },
+          "max_drawdown": {
+            "type": "number",
+            "title": "Max Drawdown"
+          },
+          "calmar": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calmar"
+          },
+          "turnover_per_year": {
+            "type": "number",
+            "title": "Turnover Per Year"
+          },
+          "fees_paid": {
+            "type": "number",
+            "title": "Fees Paid"
+          },
+          "funding_paid": {
+            "type": "number",
+            "title": "Funding Paid"
+          },
+          "avg_exposure": {
+            "type": "number",
+            "title": "Avg Exposure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period",
+          "strategy",
+          "total_return",
+          "annual_return",
+          "sharpe",
+          "max_drawdown",
+          "calmar",
+          "turnover_per_year",
+          "fees_paid",
+          "funding_paid",
+          "avg_exposure"
+        ],
+        "title": "BacktestRow"
       },
       "Candle": {
         "properties": {
@@ -1483,6 +1760,176 @@
         ],
         "title": "ChecksOut"
       },
+      "CoinDecision": {
+        "properties": {
+          "mark": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mark"
+          },
+          "vol_ann": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vol Ann",
+            "description": "24 h volatility forecast, annualised (0.5 = 50%)"
+          },
+          "p_stress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Stress"
+          },
+          "regime": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regime",
+            "description": "0 calm, 1 active, 2 stressed"
+          },
+          "exposure_before": {
+            "type": "number",
+            "title": "Exposure Before"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "exposure": {
+            "type": "number",
+            "title": "Exposure",
+            "description": "Position after the decision, share of the coin's third (0..1)"
+          },
+          "traded": {
+            "type": "number",
+            "title": "Traded",
+            "description": "Notional bought (+) or sold (-), in account units"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mark",
+          "exposure_before",
+          "target",
+          "exposure",
+          "traded",
+          "reasons"
+        ],
+        "title": "CoinDecision"
+      },
+      "CurvePoint": {
+        "properties": {
+          "hour": {
+            "type": "string",
+            "title": "Hour"
+          },
+          "agent": {
+            "type": "number",
+            "title": "Agent",
+            "description": "Paper account value (start = 1)"
+          },
+          "buy_and_hold": {
+            "type": "number",
+            "title": "Buy And Hold"
+          },
+          "exposure": {
+            "type": "number",
+            "title": "Exposure",
+            "description": "Average exposure over the three coins (0..1)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hour",
+          "agent",
+          "buy_and_hold",
+          "exposure"
+        ],
+        "title": "CurvePoint"
+      },
+      "Decision": {
+        "properties": {
+          "hour": {
+            "type": "string",
+            "title": "Hour",
+            "description": "Hour end the decision is for (positions held until the next hour end)"
+          },
+          "decided_at": {
+            "type": "string",
+            "title": "Decided At",
+            "description": "When it was written, before the hour played out"
+          },
+          "coins": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CoinDecision"
+            },
+            "type": "object",
+            "title": "Coins"
+          },
+          "fee": {
+            "type": "number",
+            "title": "Fee"
+          },
+          "equity": {
+            "type": "number",
+            "title": "Equity"
+          },
+          "bh_equity": {
+            "type": "number",
+            "title": "Bh Equity"
+          },
+          "total_exposure": {
+            "type": "number",
+            "title": "Total Exposure"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hour",
+          "decided_at",
+          "coins",
+          "fee",
+          "equity",
+          "bh_equity",
+          "total_exposure"
+        ],
+        "title": "Decision"
+      },
       "Driver": {
         "properties": {
           "name": {
@@ -1502,6 +1949,34 @@
           "effect_pct"
         ],
         "title": "Driver"
+      },
+      "EquityDay": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "title": "Day"
+          },
+          "agent": {
+            "type": "number",
+            "title": "Agent"
+          },
+          "buy_and_hold": {
+            "type": "number",
+            "title": "Buy And Hold"
+          },
+          "vol_target": {
+            "type": "number",
+            "title": "Vol Target"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day",
+          "agent",
+          "buy_and_hold",
+          "vol_target"
+        ],
+        "title": "EquityDay"
       },
       "HTTPValidationError": {
         "properties": {

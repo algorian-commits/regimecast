@@ -1,0 +1,54 @@
+# Live paper log of the frozen risk agent (Phase 9, regimecast/agent/live.py). A few minutes after every hour:
+# start from the state on the branch `agent-data`, mark the last positions, decide this hour's positions from
+# RegimeCast's live API (GitHub's US servers cannot reach Binance's futures API), append the decision to
+# log.jsonl and push it straight away, before the hour plays out. Unlike news-data, the history is kept (no
+# force push), so every line's commit time shows it was written in advance. GET /agent on Railway reads
+# agent-data/api/latest.json. The push uses GITHUB_TOKEN, so it starts no other workflow and no deploy.
+# :12 past the hour: the API refreshes its signals every 10 minutes, so by then they include the last hour.
+name: agent-live
+
+on:
+  schedule:
+    - cron: "12 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [phase9-agent]
+    paths: [.github/workflows/agent_live.yml, regimecast/agent/live.py]
+
+concurrency:
+  group: agent-live
+  cancel-in-progress: false
+
+jobs:
+  step:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: check out the state (agent-data), or start it
+        run: |
+          if git ls-remote --exit-code --heads origin agent-data > /dev/null; then
+            git clone -q --single-branch --branch agent-data \
+              "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" state
+          else
+            mkdir state && cd state && git init -q -b agent-data
+            git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+            printf '# agent-data\n\nLive paper log of the RegimeCast risk agent (regimecast/agent/live.py). Data only; never merge.\n' > README.md
+          fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q "numpy>=1.26" "pandas>=2.2" "httpx>=0.27"
+      - name: decide this hour
+        run: python -m regimecast.agent.live step --dir state
+      - name: publish to agent-data
+        run: |
+          cd state
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "nothing new"; exit 0; }
+          git commit -qm "Agent decision $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q origin agent-data

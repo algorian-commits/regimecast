@@ -187,6 +187,28 @@ uvicorn regimecast.api.main:app --reload          :: then in web/:  npm run dev
 
 See `docs/M5_M6_WALKTHROUGH.md`.
 
+## Paper-trading risk agent (Module M10, part 2)
+
+A risk manager for someone who holds BTC, ETH and SOL: every hour it sets each perpetual's position (0x to 1x of its
+third of the account, never short) from what RegimeCast knew at that hour, and is judged against buy-and-hold after
+fees and funding. Plain-English overview and results: `docs/M10_AGENT_WALKTHROUGH.md`.
+
+| Part | File | What it does |
+|---|---|---|
+| Backtester | `regimecast/agent/backtest.py` | Hourly, mark price, 0.05% taker fee on every change, archived funding at each settlement, no-trade band; refuses the final test period unless `final=True`. Sharpe, drawdown, Calmar, turnover, block-bootstrap Sharpe difference. |
+| Rule and baselines | `regimecast/agent/rules.py` | min(1, target vol / forecast vol), cut by stress probability and regime; buy-and-hold and trailing-volatility targeting. |
+| Signals | `regimecast/agent/signals.py` | The walk-forward, out-of-sample forecasts of Phases 4-6 (`data/reports/phase5_liq_*_24h`, `phase6_pred_*`, `regimes_base_*`) and Binance's archived funding. |
+| Settings | `regimecast/agent/frozen.json` | Chosen on 2022-01 to 2024-09 (every setting logged in `data/reports/phase9_grid.csv`), checked on 2024-10 to 2025-09, frozen 27 Oct 2026. |
+| Final evaluation | `regimecast/agent/final.py` | `run_final(final=True)`: Phase 10 runs it once. |
+| Live paper log | `regimecast/agent/live.py`, `.github/workflows/agent_live.yml` | Hourly on GitHub Actions from the live API; each decision is pushed to the branch `agent-data` before the hour plays out. |
+| API and app | `regimecast/api/agent.py`, `web/src/components/agent.tsx` | `GET /agent` and the Agent page: live paper account vs buy-and-hold, the latest decision with its reasons, the backtest. |
+
+```bat
+python -m regimecast.data.binance_archive --symbols ETHUSDT SOLUSDT --datasets fundingRate --start 2020-01 --end 2025-10-01
+python scripts/run_phase9.py                    :: grid, check, freeze, data/reports/phase9_* (about 6 min)
+python -m regimecast.agent.live step --dir state :: one live hourly step into ./state
+```
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.

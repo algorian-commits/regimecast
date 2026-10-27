@@ -71,6 +71,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 6b Direction-aware liquidation risk | Done 26 Oct: tried and not adopted (see decision log); FHS stays in the app. |
 | 7 LLM trade parser + full risk-check screen (M8, M9) | Built and merged 27 Oct: `/parse-trade` (Claude Haiku 5.5), three-step Risk Check, drivers chart, saved history. 200-message test set (two blind AI passes, full agreement); rule-reader baseline 76% all fields right. Claude accuracy run waits for the API key. |
 | 8 Live dashboard and accounts (M5, M6) | Built and merged 27 Oct (`docs/M5_M6_WALKTHROUGH.md`): sign up / log in on Postgres, Risk Radar dashboard with live WebSocket feed and regime-coloured candles. Logged-in Risk Checks use the account's risk limit, margin mode and balance, and save to the account. |
+| 9 Paper-trading risk agent (M10 part 2) | Built 27 Oct (`docs/M10_AGENT_WALKTHROUGH.md`), settings frozen. Dev period 2022-01 to 2025-09: Sharpe 0.62 vs 0.46 for buy-and-hold, max drawdown -38% vs -79%, FTX week -12% vs -27%. Plain trailing-vol targeting does as well (0.65); the grid switched the stress and regime cuts off (fees). Live paper log hourly on `agent-data`; Agent page. Final run not done (Phase 10). |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -448,6 +449,13 @@ Rules for the run
 | 2026-10-27 | Final test period ends 2026-09-30 (12 months) | A fixed end decided before opening; full months of archive data. |
 | 2026-10-27 | Paper agent is long-only, 0x to 1x, judged against buy-and-hold on Sharpe and drawdown | RegimeCast is a risk co-pilot for someone who holds, not a trading signal; shorting would make it a different product. |
 | 2026-10-27 | October 2025 crash replay generated only after the final evaluation | It shows model outputs inside the final test period. |
+| 2026-10-27 | Agent buy-and-hold = a third of the account in each perpetual at the first hour, quantities never traded again | What "just holding" means; fixed before the final test so the bar's baseline cannot move. Its weights drift with prices, and funding is paid from the account. |
+| 2026-10-27 | Agent settings chosen by a rule written before the grid ran: highest Sharpe among settings with a drawdown at least 25% smaller than buy-and-hold (the final bar); the vol-targeting baseline tuned the same way | The check period (2024-10 to 2025-09) is only for checking, never for choosing. |
+| 2026-10-27 | Frozen agent: target volatility 30%, no stress cut, no regime cut, 20-point no-trade band (225 settings tried) | The stress and regime cuts lowered the drawdown a little but traded in and out every few hours; fees cost more than they saved (Sharpe 0.36 at best with a stress cut vs 0.38). Reported as found: the agent's gain over buy-and-hold is volatility targeting, and plain trailing-vol targeting does as well. |
+| 2026-10-27 | Agent funding from Binance's archived settlements, downloaded for ETH and SOL to Sep 2025 (monthly files only) | The hourly feature table only shows the 00/08/16 UTC settlements; SOL settled every 2 hours from 10 to 18 Nov 2022 (FTX). |
+| 2026-10-27 | Agent's stress input = the calibrated probability, the uncalibrated out-of-sample one in Jan-Jun 2022 (before the calibrator has a past) | Keeps the grid period starting in Jan 2022 with the LUNA crash in it; both are walk-forward. |
+| 2026-10-27 | Live paper log on GitHub Actions reads RegimeCast's own API on Railway, not Binance | GitHub's servers are in the US, where Binance's futures API is blocked. So the live agent uses the app's HAR-S volatility (the backtest with HAR-S: Sharpe 0.60 vs 0.62, same drawdown). |
+| 2026-10-27 | `agent-data` keeps its full git history (no force push, unlike `news-data`) | Each decision's commit time is the proof that it was written before the hour played out. |
 
 ## Parking list (not now)
 
@@ -470,3 +478,5 @@ Rules for the run
 - Read take-profit and horizon from the typed trade too.
 - Accounts: "forgot password" e-mail, account deletion, and changing the e-mail or password.
 - Full order-book depth on the dashboard (diff stream + local book) instead of the top 20 levels.
+- Agent: a stress cut that does not churn (exit only after the probability stays high for some hours, or a wider band for stress exits); try only on the dev period, never after the final test.
+- Agent: lower target volatility / wider band than the grid's edge (30%, 20 points), as a dev-period sensitivity only; the frozen settings stay.

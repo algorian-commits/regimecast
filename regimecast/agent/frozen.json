@@ -1,0 +1,46 @@
+{
+  "frozen_at": "2026-10-27",
+  "settings": {
+    "target_vol": 0.3,
+    "stress_elevated": 2.0,
+    "stress_high": 2.0,
+    "regime_mult": 1.0,
+    "band": 0.2
+  },
+  "elevated_mult": 0.5,
+  "chosen_on": "2022-01-01 to 2024-09-30",
+  "checked_on": "2024-10-01 to 2025-09-30",
+  "rule": "max Sharpe among settings with max drawdown at least 25% smaller than buy-and-hold; ties: lower turnover",
+  "settings_tried": 225,
+  "inputs": {
+    "volatility": "24 h HAR-S + LightGBM combination (M7), walk-forward",
+    "stress": "next-hour stress probability (M10 part 1), calibrated, walk-forward",
+    "regime": "forward-filtered HMM regime (M4), walk-forward"
+  },
+  "vol_target_baseline": {
+    "target_vol": 0.3,
+    "band": 0.2
+  },
+  "check": {
+    "agent": {
+      "sharpe": 1.2258,
+      "max_drawdown": -0.2611,
+      "total_return": 0.3436
+    },
+    "buy_and_hold": {
+      "sharpe": 0.958,
+      "max_drawdown": -0.5255,
+      "total_return": 0.4982
+    },
+    "vol_target": {
+      "sharpe": 1.3004,
+      "max_drawdown": -0.265,
+      "total_return": 0.3927
+    },
+    "agent_hars_vol": {
+      "sharpe": 1.1391,
+      "max_drawdown": -0.2789,
+      "total_return": 0.3094
+    }
+  }
+}
