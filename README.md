@@ -163,6 +163,27 @@ powershell -ExecutionPolicy Bypass -File scripts\set_anthropic_key.ps1   :: stor
 python scripts/m8_parser_eval.py                                         :: accuracy table, about $0.15 the first time
 ```
 
+## Live dashboard and accounts (Modules M5, M6)
+
+| Part | File | What it does |
+|---|---|---|
+| Live feed | `regimecast/api/live_ws.py` | One API-side connection to Binance (mark price, hourly candle, top-20 order book) relayed to browsers at `WS /ws/live`, one snapshot a second; `GET /candles` gives hourly candles with the regime known at each close. |
+| Accounts | `regimecast/api/accounts.py` | `/auth/signup`, `/auth/login`, `/auth/logout`, `/me`, `PATCH /me/profile`, `/me/checks` (save, list with coin/date filters, delete), `/me/alerts`. argon2id passwords, httpOnly session cookie. |
+| Database | `regimecast/db/` | SQLAlchemy tables and Alembic migrations, applied by the API the first time it uses the database (`DATABASE_URL`; `python -m regimecast.db upgrade` by hand). |
+| Web | `web/src/components/live-dashboard.tsx`, `account.tsx`, `web/src/lib/live.ts`, `account.ts` | Risk Radar, log in / sign up, account page; the browser reconnects to the feed by itself. |
+
+API settings: `DATABASE_URL` (Postgres; without it the account endpoints answer 503 not_ready), `SESSION_SECRET`
+(32+ random characters; without it sessions end when the API restarts), `SESSION_COOKIE_SECURE=0` only for plain-http
+local development. Web: `PUBLIC_API_URL` when `API_URL` is not reachable from the browser (docker compose).
+
+```bat
+set DATABASE_URL=sqlite:///data/dev_accounts.sqlite
+set SESSION_COOKIE_SECURE=0
+uvicorn regimecast.api.main:app --reload          :: then in web/:  npm run dev
+```
+
+See `docs/M5_M6_WALKTHROUGH.md`.
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.

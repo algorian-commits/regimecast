@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from regimecast import config
-from regimecast.api import market, parser
+from regimecast.api import accounts, live_ws, market, parser
 from regimecast.risk import fhs_live
 from regimecast.risk import liquidation as liq
 from regimecast.vol import live as vol_live
@@ -37,6 +37,8 @@ app = FastAPI(title="RegimeCast API", version="0.1.0", lifespan=lifespan,
               description="Explainable crypto risk forecasting. Paper trading only. Not financial advice.")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(parser.router)  # POST /parse-trade (M8 trade parser)
+accounts.install(app)   # Phase 8: sign up, log in, /me/* (accounts.py)
+live_ws.install(app)    # Phase 8: dashboard candles and the live WebSocket (live_ws.py)
 
 Symbol = Literal["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 

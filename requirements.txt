@@ -13,3 +13,7 @@ pytest>=8
 feedparser>=6.0
 lightgbm>=4.5
 anthropic>=2.3,<3
+sqlalchemy>=2.0
+alembic>=1.13
+argon2-cffi>=23.1
+psycopg[binary]>=3.2

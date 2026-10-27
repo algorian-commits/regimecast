@@ -45,6 +45,618 @@
         }
       }
     },
+    "/auth/signup": {
+      "post": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Signup",
+        "description": "Create an account (paper trading only) and log in.",
+        "operationId": "signup_auth_signup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Login",
+        "operationId": "login_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Me",
+        "description": "The logged-in user, with profile and settings.",
+        "operationId": "me_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          }
+        }
+      }
+    },
+    "/me/profile": {
+      "patch": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Update Profile",
+        "description": "Paper balance and risk limit (profile), default margin mode and favourite coins (settings).",
+        "operationId": "update_profile_me_profile_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/checks": {
+      "post": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Save Check",
+        "description": "Save a risk check (the trade and the answer) to the user's history.",
+        "operationId": "save_check_me_checks_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "List Checks",
+        "description": "The user's saved risk checks, newest first, optionally for one coin and a time range.",
+        "operationId": "list_checks_me_checks_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "BTCUSDT",
+                    "ETHUSDT",
+                    "SOLUSDT"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only checks at or after this time (ISO 8601)",
+              "title": "Since"
+            },
+            "description": "Only checks at or after this time (ISO 8601)"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only checks before this time (ISO 8601)",
+              "title": "Until"
+            },
+            "description": "Only checks before this time (ISO 8601)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecksOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/checks/{check_id}": {
+      "delete": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Delete Check",
+        "operationId": "delete_check_me_checks__check_id__delete",
+        "parameters": [
+          {
+            "name": "check_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Check Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/alerts": {
+      "get": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "List Alerts",
+        "description": "The user's alerts, newest first. They are stored now and start firing with the alert engine (Phase 11).",
+        "operationId": "list_alerts_me_alerts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Alerts Me Alerts Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Create Alert",
+        "operationId": "create_alert_me_alerts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlertIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/alerts/{alert_id}": {
+      "delete": {
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Delete Alert",
+        "operationId": "delete_alert_me_alerts__alert_id__delete",
+        "parameters": [
+          {
+            "name": "alert_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alert Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/candles": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Candles",
+        "description": "Hourly candles for the dashboard chart, each coloured by the regime at its close.",
+        "operationId": "candles_candles_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "default": "BTCUSDT",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 720,
+              "minimum": 1,
+              "default": 168,
+              "title": "Hours"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandlesOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready yet"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -508,6 +1120,369 @@
   },
   "components": {
     "schemas": {
+      "AlertIn": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "enum": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT"
+            ],
+            "title": "Symbol"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "price_above",
+              "price_below",
+              "stress_elevated",
+              "regime_stressed"
+            ],
+            "title": "Kind"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold",
+            "description": "Price in USDT (price alerts only)"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "kind"
+        ],
+        "title": "AlertIn"
+      },
+      "AlertOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "price_above",
+              "price_below",
+              "stress_elevated",
+              "regime_stressed"
+            ],
+            "title": "Kind"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "kind",
+          "threshold",
+          "note",
+          "active",
+          "created_at"
+        ],
+        "title": "AlertOut"
+      },
+      "AuthIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password",
+            "description": "8 to 128 characters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "AuthIn"
+      },
+      "Candle": {
+        "properties": {
+          "t": {
+            "type": "string",
+            "title": "T",
+            "description": "Start of the hour (UTC)"
+          },
+          "open": {
+            "type": "number",
+            "title": "Open"
+          },
+          "high": {
+            "type": "number",
+            "title": "High"
+          },
+          "low": {
+            "type": "number",
+            "title": "Low"
+          },
+          "close": {
+            "type": "number",
+            "title": "Close"
+          },
+          "volume": {
+            "type": "number",
+            "title": "Volume",
+            "description": "Traded volume in coins"
+          },
+          "regime": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "calm",
+                  "active",
+                  "stressed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regime",
+            "description": "Regime known at the candle's close (forward-filtered HMM, no look-ahead)"
+          },
+          "p_stressed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Stressed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "t",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume"
+        ],
+        "title": "Candle"
+      },
+      "CandlesOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "candles": {
+            "items": {
+              "$ref": "#/components/schemas/Candle"
+            },
+            "type": "array",
+            "title": "Candles",
+            "description": "Complete hours, oldest first"
+          },
+          "made_at": {
+            "type": "string",
+            "title": "Made At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "candles",
+          "made_at"
+        ],
+        "title": "CandlesOut"
+      },
+      "CheckIn": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "enum": [
+              "BTCUSDT",
+              "ETHUSDT",
+              "SOLUSDT"
+            ],
+            "title": "Symbol"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "long",
+              "short"
+            ],
+            "title": "Side"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "The trade as the user typed it, if any"
+          },
+          "trade": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Trade",
+            "description": "The request sent to /risk-check"
+          },
+          "result": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Result",
+            "description": "The /risk-check answer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "side",
+          "trade",
+          "result"
+        ],
+        "title": "CheckIn"
+      },
+      "CheckOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "trade": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Trade"
+          },
+          "result": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Result"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "symbol",
+          "side",
+          "text",
+          "trade",
+          "result",
+          "created_at"
+        ],
+        "title": "CheckOut"
+      },
+      "ChecksOut": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/CheckOut"
+            },
+            "type": "array",
+            "title": "Checks",
+            "description": "Newest first"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "How many checks match the filters (before limit/offset)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checks",
+          "total"
+        ],
+        "title": "ChecksOut"
+      },
       "Driver": {
         "properties": {
           "name": {
@@ -608,6 +1583,28 @@
         ],
         "title": "MarketOut"
       },
+      "MeOut": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ProfileOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "created_at",
+          "profile"
+        ],
+        "title": "MeOut"
+      },
       "MoodHour": {
         "properties": {
           "hour_end": {
@@ -689,6 +1686,17 @@
           "detail"
         ],
         "title": "NotReady"
+      },
+      "Ok": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "Ok"
       },
       "ParseIn": {
         "properties": {
@@ -933,6 +1941,121 @@
         ],
         "title": "ParsedTrade",
         "description": "What the user typed, field by field. null = not stated (never guessed)."
+      },
+      "ProfileIn": {
+        "properties": {
+          "paper_balance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000000000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paper Balance"
+          },
+          "risk_limit": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 0.5,
+                "minimum": 0.0005
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Limit"
+          },
+          "default_margin_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "isolated",
+                  "cross"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Margin Mode"
+          },
+          "favourite_coins": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "BTCUSDT",
+                    "ETHUSDT",
+                    "SOLUSDT"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Favourite Coins"
+          }
+        },
+        "type": "object",
+        "title": "ProfileIn",
+        "description": "Change any of the fields; the ones left out keep their value."
+      },
+      "ProfileOut": {
+        "properties": {
+          "paper_balance": {
+            "type": "number",
+            "title": "Paper Balance",
+            "description": "Paper account balance in USDT"
+          },
+          "risk_limit": {
+            "type": "number",
+            "title": "Risk Limit",
+            "description": "Highest chance of liquidation you accept per trade (0.01 = 1%); the risk check's safe leverage and position size use it"
+          },
+          "default_margin_mode": {
+            "type": "string",
+            "enum": [
+              "isolated",
+              "cross"
+            ],
+            "title": "Default Margin Mode"
+          },
+          "favourite_coins": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ]
+            },
+            "type": "array",
+            "title": "Favourite Coins"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "paper_balance",
+          "risk_limit",
+          "default_margin_mode",
+          "favourite_coins",
+          "updated_at"
+        ],
+        "title": "ProfileOut"
       },
       "RiskOut": {
         "properties": {

@@ -125,11 +125,12 @@ def forecast_from_bars(bars: pd.DataFrame, models: dict, now: pd.Timestamp) -> d
     return out
 
 
-def regime_from_bars(bars: pd.DataFrame, model: dict, now: pd.Timestamp) -> dict | None:
-    """Current market regime from 1-minute candles with the saved HMM (models/regimes.py).
+def regime_history(bars: pd.DataFrame, model: dict, now: pd.Timestamp) -> pd.DataFrame:
+    """Hourly regime probabilities (index = hour END) with the saved HMM (models/regimes.py).
 
     Same inputs as in training (hourly return, log realised variance, its 24 h average),
-    forward-filtered over the window up to the last complete hour."""
+    forward-filtered over the window up to the last complete hour: the value at hour H
+    uses only candles before H."""
     from regimecast.models import regimes
 
     bars = bars[bars["ts"] + pd.Timedelta(minutes=1) <= now]
@@ -138,13 +139,45 @@ def regime_from_bars(bars: pd.DataFrame, model: dict, now: pd.Timestamp) -> dict
     x = pd.DataFrame({"ret": h["ret"], "log_rv": np.log(h["rv"].clip(lower=1e-12)),
                       "log_rv_24h": np.log(h["rv"].rolling(24, min_periods=18).mean().clip(lower=1e-12))})
     x = x.iloc[24:]  # the first day has no 24 h average yet
-    if x.empty:
+    return regimes.live_probabilities(x, model) if not x.empty else pd.DataFrame()
+
+
+def regime_from_bars(bars: pd.DataFrame, model: dict, now: pd.Timestamp) -> dict | None:
+    """Current market regime from 1-minute candles: the last row of regime_history."""
+    from regimecast.models import regimes
+
+    hist = regime_history(bars, model, now)
+    if hist.empty:
         return None
-    p = regimes.live_probabilities(x, model).iloc[-1]
+    p = hist.iloc[-1]
     name = regimes.NAMES[int(p["regime"])]
     return {"regime": name, **{f"p_{n}": float(p[f"p_{n}"]) for n in regimes.NAMES},
-            "inputs_until": x.index[-1].isoformat(), "model": f"HMM regimes (fitted to {model['fitted_through']})",
+            "inputs_until": hist.index[-1].isoformat(), "model": f"HMM regimes (fitted to {model['fitted_through']})",
             "typical_next_24h_vol_pct": {k: round(100 * v, 1) for k, v in model.get("next_24h_vol_by_regime", {}).items()}}
+
+
+def hourly_candles(bars: pd.DataFrame, now: pd.Timestamp, hist: pd.DataFrame | None = None) -> list[dict]:
+    """Complete hourly candles (traded price) from 1-minute candles, oldest first.
+
+    ``t`` is the hour's START (as on exchange charts). With a regime history, each candle
+    carries the regime known at its close (hist row at t + 1 h), never a later one."""
+    from regimecast.models import regimes
+
+    b = bars[bars["ts"] + pd.Timedelta(minutes=1) <= now].set_index("ts")
+    g = b.resample("1h", label="left", closed="left")
+    c = pd.DataFrame({"open": g["open"].first(), "high": g["high"].max(), "low": g["low"].min(),
+                      "close": g["close"].last(), "volume": g["volume"].sum(), "n": g["close"].count()})
+    c = c[(c["n"] == 60) & (c.index + pd.Timedelta(hours=1) <= now)]   # full hours only
+    out = []
+    for t, r in c.iterrows():
+        row = {"t": t.isoformat(), "open": float(r["open"]), "high": float(r["high"]), "low": float(r["low"]),
+               "close": float(r["close"]), "volume": float(r["volume"]), "regime": None, "p_stressed": None}
+        end = t + pd.Timedelta(hours=1)
+        if hist is not None and not hist.empty and end in hist.index:
+            row["regime"] = regimes.NAMES[int(hist.at[end, "regime"])]
+            row["p_stressed"] = round(float(hist.at[end, "p_stressed"]), 4)
+        out.append(row)
+    return out
 
 
 def stress_from_bars(bars: pd.DataFrame, symbol: str, stress_model, regime_model: dict, now: pd.Timestamp,
@@ -208,6 +241,7 @@ class ForecastCache:
         self.regime_models = None   # loaded on first refresh (models/regimes_live.json)
         self.data: dict[str, dict] = {}
         self.regimes: dict[str, dict] = {}
+        self.candles: dict[str, dict] = {}   # hourly candles + regime, for the dashboard chart
         self.stress: dict[str, dict] = {}
         self.stress_models = None   # loaded on first refresh (models/stress_live/)
         self.fetch_inputs = None    # None -> features.live.fetch_inputs; tests inject a fake
@@ -227,11 +261,16 @@ class ForecastCache:
             fc = forecast_from_bars(bars, self.models[symbol], now)
             with self._lock:
                 self.data[symbol] = {k: {**v, "made_at": made} for k, v in fc.items()}
+        hist = None
         if symbol in self.regime_models:
             rg = regime_from_bars(bars, self.regime_models[symbol], now)
+            hist = regime_history(bars, self.regime_models[symbol], now)
             if rg:
                 with self._lock:
                     self.regimes[symbol] = {**rg, "made_at": made}
+        candles = hourly_candles(bars, now, hist)
+        with self._lock:
+            self.candles[symbol] = {"candles": candles, "made_at": made}
         if self.stress_models is None:
             from regimecast.models import stress
             self.stress_models = {s: m for s in self.symbols if (m := stress.load_live(s)) is not None}
@@ -272,6 +311,14 @@ class ForecastCache:
             return None
         age = (datetime.now(timezone.utc) - datetime.fromisoformat(rg["made_at"])).total_seconds()
         return rg if age <= max_age_s else None
+
+    def get_candles(self, symbol: str, max_age_s: float = 3 * 3600) -> dict | None:
+        with self._lock:
+            c = self.candles.get(symbol)
+        if not c:
+            return None
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(c["made_at"])).total_seconds()
+        return c if age <= max_age_s else None
 
     def start(self) -> None:
         if self._thread is not None:

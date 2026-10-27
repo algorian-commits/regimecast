@@ -68,6 +68,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 6 Stress early warning (M10 part 1) | Done 26 Oct. Classifier AUC 0.80-0.83 vs 0.66-0.71 for the best simple rule; average precision about 2x. Live stress gauge (identical live features, checked hour by hour). 10 Oct forensic timeline. |
 | 6b Direction-aware liquidation risk | Done 26 Oct: tried and not adopted (see decision log); FHS stays in the app. |
 | 7 LLM trade parser + full risk-check screen (M8, M9) | Built 27 Oct on branch `phase7-parser`: `/parse-trade` (Claude Haiku 5.5), three-step Risk Check, drivers chart, saved history. 200-message test set (two blind AI passes, full agreement); rule-reader baseline 76% all fields right. Claude accuracy run waits for the API key. |
+| 8 Live dashboard and accounts (M5, M6) | Built 27 Oct on branch `phase8-dashboard-accounts` (`docs/M5_M6_WALKTHROUGH.md`); live after merge. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -324,6 +325,15 @@ sessions once approved.
 | 2026-10-27 | Paid parser calls capped (60 a minute, 2,000 a day by default; past the cap the rule reader answers) | A public page must not run up a bill. |
 | 2026-10-27 | Parser test set: 200 messages written by Claude, labelled again blind by a second Claude pass; reported as AI-labelled | As for the M3 labels. The passes agreed on every field (intent kappa 1.00): the rules are clear for these messages, but the set is likely cleaner than real user text. |
 | 2026-10-27 | Saved risk checks kept in the browser behind one interface until `/me/checks` exists (Phase 8) | Phase 7 and 8 run in parallel; the page does not change when the store does. |
+| 2026-10-27 | Accounts: Postgres on Railway via SQLAlchemy Core + Alembic migrations, applied by the API the first time it uses the database; SQLite for tests and local dev | One schema definition for both; no manual migration step on deploy. CI runs the account tests on a real Postgres too. |
+| 2026-10-27 | Sessions: random token in an httpOnly, Secure, SameSite=Lax cookie; the database stores HMAC(SESSION_SECRET, token); passwords hashed with argon2id | Server-side sessions can be ended on logout (a signed JWT cannot); a database copy alone cannot log anyone in. |
+| 2026-10-27 | The web forwarder passes the session cookie both ways, so it belongs to the website's domain | Keeps the Phase 2 rule that the browser only talks to the website; no cross-site cookies. |
+| 2026-10-27 | Live prices: one API-side connection to Binance relayed to browsers over our own WebSocket (1 snapshot/s), not browser-to-Binance | Binance blocks some regions (US); the EU server always reaches it, and many visitors share one upstream connection. The browser connects to the API's domain directly because Next.js route handlers cannot forward WebSockets. |
+| 2026-10-27 | Dashboard feed uses Binance's `/market` (mark price, candles) and `/public` (order book) WebSocket routes, like the recorder | The old `/ws` path no longer answered when tested from the PC on 26 Oct. |
+| 2026-10-27 | Spread and depth from Binance's top 20 levels (`depth20@500ms`), labelled "the inside of the book" | Free and live; for BTC the 20 levels reach only ~0.3 bps, so the panel says it is not the full depth. A full book needs the diff stream and a local order book (parking list). |
+| 2026-10-27 | Chart: TradingView lightweight-charts (Apache-2.0), 30 days of hourly candles, background = regime known at each candle's close | Real candlesticks and smooth live updates (Recharts has none); no hindsight in the colours (tested). |
+| 2026-10-27 | Profile "risk limit" = the highest chance of liquidation accepted per trade (the Risk Check's existing `risk_limit`) | The risk check already turns it into safe leverage and the largest position; the paper balance is the cross-margin wallet. |
+| 2026-10-27 | Alerts are stored per user now; notifying waits for the alert engine (Phase 11) | M6 asks for private alerts; firing them is M12. |
 
 ## Parking list (not now)
 
@@ -347,3 +357,5 @@ sessions once approved.
 - Second parser test set from real user messages (logged with consent), since the AI-written set is likely too clean.
 - Switch saved risk checks to `/me/checks` once Phase 8 is merged (an `ApiHistory` store in `web/src/lib/history.ts`).
 - Read take-profit and horizon from the typed trade too.
+- Accounts: "forgot password" e-mail, account deletion, and changing the e-mail or password.
+- Full order-book depth on the dashboard (diff stream + local book) instead of the top 20 levels.

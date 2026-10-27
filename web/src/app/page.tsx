@@ -1,21 +1,14 @@
-import Link from "next/link";
-import { MarketCards } from "@/components/market-cards";
-import { ModelStatus } from "@/components/model-status";
-import { NewsMoodPanel } from "@/components/news-mood-panel";
+import { LiveDashboard } from "@/components/live-dashboard";
 import { PageTitle } from "@/components/ui";
 
 export default function Overview() {
   return (
-    <div className="space-y-6">
+    <div>
       <PageTitle title="Risk Radar">
-        Live prices for BTC, ETH and SOL perpetual futures, the news mood, and the risk models as they come online.{" "}
-        <Link href="/risk-check" className="font-medium text-accent hover:underline">
-          Check a trade →
-        </Link>
+        Live BTC, ETH and SOL perpetual futures: prices every second, the market regime behind the chart, the order book&apos;s inside, and
+        our volatility, stress and news-mood readings.
       </PageTitle>
-      <MarketCards />
-      <NewsMoodPanel />
-      <ModelStatus />
+      <LiveDashboard />
     </div>
   );
 }

@@ -1,6 +1,14 @@
-# Run the API and the web app locally with one command:  docker compose up --build
+# Run the API, the web app and a database locally with one command:  docker compose up --build
 # Then open http://localhost:3000 (API docs at http://localhost:8000/docs).
 services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: regimecast
+      POSTGRES_PASSWORD: local-only   # this database never leaves your PC
+    volumes:
+      - pgdata:/var/lib/postgresql
+
   api:
     build:
       context: .
@@ -9,9 +17,14 @@ services:
       - "8000:8000"
     environment:
       PORT: "8000"
+      DATABASE_URL: postgresql://postgres:local-only@db:5432/regimecast
+      SESSION_COOKIE_SECURE: "0"   # plain http on localhost
+      # SESSION_SECRET is not set here: the API makes a random one at start (you log in again after a restart)
     volumes:
       # your local reports (data health etc.), read-only
       - ./data/reports:/app/data/reports:ro
+    depends_on:
+      - db
 
   web:
     build:
@@ -21,6 +34,10 @@ services:
       - "3000:3000"
     environment:
       API_URL: http://api:8000
+      PUBLIC_API_URL: http://localhost:8000   # the browser opens the live-price WebSocket here
       RECORDER_URL: https://recorder-production-796f.up.railway.app
     depends_on:
       - api
+
+volumes:
+  pgdata:
