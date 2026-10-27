@@ -329,7 +329,7 @@ Done when
 
 Demo: the FTX replay, and an alert set on the live site that fires.
 
-### Phase 10: Final evaluation, then track record and hardening (M11)
+### Phase 10: Final evaluation, then UI polish (M11)
 
 Part A, as soon as Phase 9's agent is frozen:
 1. Freeze: tag the commit `final-eval` (code, settings and model files); the pass bars below are already committed.
@@ -338,8 +338,8 @@ Part A, as soon as Phase 9's agent is frozen:
    data only, same settings), so the models keep learning from the past as time moves on, exactly as live.
 3. Report every bar as passed or failed, in plain words, in `docs/FINAL_EVALUATION.md`, whatever the result.
 
-Part B, after: public Track Record page (live forecasts logged before outcomes), Playwright end-to-end tests on the
-live URL, deployment hardening, user and admin guides, then UI polish.
+Part B, after: UI polish only. The Track Record page, automated end-to-end tests, deployment hardening and the user
+and admin guides are dropped (Saeed, 27 Oct).
 
 ## Final evaluation: what counts as a pass (fixed 27 Oct 2026, before opening)
 
@@ -356,7 +356,7 @@ ETH and SOL. Same targets, labels and scoring code as in development.
 | Stress warning (M10 part 1): next-hour classifier | The best of the three simple rules (stress continues, volatility above its 95th percentile, regime says stressed) on the same hours | AUC at least 0.75 on every coin and above the best rule on every coin, and average precision above the best rule on at least 2 of 3 coins. |
 | Regimes (M4) | Their own definition | Next-day volatility is ordered calm < active < stressed on all 3 coins. |
 | Paper agent (M10 part 2): frozen settings, equal-weight portfolio | Buy-and-hold, 1x long in each perpetual, after the same fees and funding | Higher Sharpe ratio **and** a maximum drawdown at least 25% smaller than buy-and-hold. Return, the volatility-targeting baseline and the bootstrap interval are reported alongside, not as bars. |
-| App (M2, M5, M6, M8, M9) | Its own spec | An end-to-end test on the live URL passes: sign up, set balance and limit, type a trade, confirm, get a result, see it saved on the account, see the dashboard price update within 10 s, log out; the risk check answers in under 2 s for 95% of 50 requests. |
+| App (M2, M5, M6, M8, M9) | Its own spec | A one-time check on the live URL passes (Saeed clicks through a short checklist, since Claude does not create accounts on the live site): sign up, set balance and limit, type a trade, confirm, get a result, see it saved on the account, see the dashboard price update within 10 s, log out; the risk check answers in under 2 s for 95% of 50 requests. |
 | Trade parser (M8) | The 95% target in the proposal | Every field at least 95% correct on the 200-message set. **Runs only once the Anthropic key is set**; until then it is reported as not run (the rule reader's 76% is the fallback, not the result). |
 
 Rules for the run
@@ -448,6 +448,7 @@ Rules for the run
 | 2026-10-27 | Final test period ends 2026-09-30 (12 months) | A fixed end decided before opening; full months of archive data. |
 | 2026-10-27 | Paper agent is long-only, 0x to 1x, judged against buy-and-hold on Sharpe and drawdown | RegimeCast is a risk co-pilot for someone who holds, not a trading signal; shorting would make it a different product. |
 | 2026-10-27 | October 2025 crash replay generated only after the final evaluation | It shows model outputs inside the final test period. |
+| 2026-10-27 | Phase 10 cut to the final evaluation plus UI polish: no Track Record page, automated end-to-end tests, hardening or guides | Saeed doesn't need them. The app bar is checked once by hand on the live URL instead of by a test script. |
 
 ## Parking list (not now)
 
