@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { toLoad, type Symbol } from "./api";
 import { ago, prob, riskBand, usd } from "./format";
 import { summarize, type MoodHour } from "./news-mood";
-import { BrowserHistory, filterChecks, type NewCheck, type SavedCheck } from "./history";
+import { BrowserHistory, filterChecks, fromAccount, type NewCheck, type SavedCheck } from "./history";
 import { formFromParsed, type Parsed } from "./parse";
-import { buildTrade, DEFAULT_FORM, entryFromMark, formFromRequest, RISK_LIMIT } from "./trade-form";
+import { buildTrade, DEFAULT_FORM, entryFromMark, formFromRequest, RISK_LIMIT, withDefaults } from "./trade-form";
 
 describe("toLoad", () => {
   it("maps API answers to page states", () => {
@@ -151,5 +151,26 @@ describe("formFromRequest", () => {
     const body = buildTrade({ ...DEFAULT_FORM, entry: "81000", stop: "79000", margin_mode: "cross", wallet_balance: "5000" });
     expect(body.ok).toBe(true);
     if (body.ok) expect(buildTrade(formFromRequest(body.body))).toEqual(body);
+  });
+});
+
+describe("account defaults (Phase 7 + 8)", () => {
+  const d = { risk_limit: 0.02, wallet_balance: 5000, margin_mode: "cross" as const };
+  it("fill margin mode and wallet unless the user's text gave them", () => {
+    expect(withDefaults(DEFAULT_FORM, null)).toBe(DEFAULT_FORM);
+    expect(withDefaults(DEFAULT_FORM, d)).toMatchObject({ margin_mode: "cross", wallet_balance: "5000" });
+    const typed = { ...DEFAULT_FORM, margin_mode: "isolated" as const };
+    expect(withDefaults(typed, d, ["margin_mode"])).toMatchObject({ margin_mode: "isolated", wallet_balance: "5000" });
+  });
+  it("send the account's risk limit with the check", () => {
+    const f = { ...DEFAULT_FORM, entry: "100", margin_mode: "cross" as const, wallet_balance: "5000" };
+    const a = buildTrade(f), b = buildTrade(f, 0.02);
+    expect(a.ok && a.body.risk_limit).toBe(RISK_LIMIT);
+    expect(b.ok && b.body.risk_limit).toBe(0.02);
+  });
+  it("read a /me/checks row as a saved check", () => {
+    const c = fromAccount({ id: 7, symbol: "ETHUSDT", side: "short", text: "short eth 5x", trade: { symbol: "ETHUSDT", side: "short" }, result: { p_liquidation: 0.03 }, created_at: "2026-10-27T10:00:00+00:00" });
+    expect(c).toMatchObject({ id: "7", symbol: "ETHUSDT", text: "short eth 5x", created_at: "2026-10-27T10:00:00+00:00" });
+    expect(filterChecks([c], { symbol: "ETHUSDT", from: "2026-10-27", to: "2026-10-27" }).length).toBe(1);
   });
 });

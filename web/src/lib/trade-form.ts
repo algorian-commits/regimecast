@@ -27,10 +27,23 @@ export const DEFAULT_FORM: TradeForm = {
 /** Highest acceptable chance of liquidation for the "max safe leverage" answer. */
 export const RISK_LIMIT = 0.01;
 
+/** What a logged-in user's account sets for the form (Phase 8 profile; see riskDefaults in account.ts). */
+export type FormDefaults = { risk_limit: number; wallet_balance: number; margin_mode: "isolated" | "cross" };
+
+/** Fill margin mode and wallet from the account, except the fields the user's own text gave. */
+export function withDefaults(f: TradeForm, d: FormDefaults | null, filled: (keyof TradeForm)[] = []): TradeForm {
+  if (!d) return f;
+  return {
+    ...f,
+    margin_mode: filled.includes("margin_mode") ? f.margin_mode : d.margin_mode,
+    wallet_balance: filled.includes("wallet_balance") ? f.wallet_balance : String(d.wallet_balance),
+  };
+}
+
 const num = (s: string) => (s.trim() === "" ? undefined : Number(s.replace(/,/g, "")));
 
 /** Check the form and build the /risk-check body, or return plain-English problems per field. */
-export function buildTrade(f: TradeForm): { ok: true; body: Schemas["TradeIn"] } | { ok: false; errors: Record<string, string> } {
+export function buildTrade(f: TradeForm, riskLimit: number = RISK_LIMIT): { ok: true; body: Schemas["TradeIn"] } | { ok: false; errors: Record<string, string> } {
   const errors: Record<string, string> = {};
   const entry = num(f.entry), lev = num(f.leverage), margin = num(f.margin), stop = num(f.stop), wallet = num(f.wallet_balance);
   if (!(entry && entry > 0)) errors.entry = "Enter the entry price.";
@@ -55,7 +68,7 @@ export function buildTrade(f: TradeForm): { ok: true; body: Schemas["TradeIn"] }
       horizon_hours: f.horizon_hours,
       margin_mode: f.margin_mode,
       wallet_balance: f.margin_mode === "cross" ? wallet! : null,
-      risk_limit: RISK_LIMIT,
+      risk_limit: riskLimit,
     },
   };
 }

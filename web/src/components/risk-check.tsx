@@ -4,9 +4,10 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { api, load, SYMBOLS, type Load, type Schemas, type Symbol } from "@/lib/api";
 import { coin, prob, riskBand, usd } from "@/lib/format";
-import { filterChecks, historyStore, type HistoryFilter, type SavedCheck } from "@/lib/history";
+import { riskDefaults, useSession } from "@/lib/account";
+import { accountHistory, browserHistory, filterChecks, type HistoryFilter, type SavedCheck } from "@/lib/history";
 import { EXAMPLES, formFromParsed, type ParseResult } from "@/lib/parse";
-import { buildTrade, DEFAULT_FORM, entryFromMark, formFromRequest, RISK_LIMIT, type TradeForm } from "@/lib/trade-form";
+import { buildTrade, DEFAULT_FORM, entryFromMark, formFromRequest, RISK_LIMIT, withDefaults, type TradeForm } from "@/lib/trade-form";
 import { DriversChart, ProbabilityBar } from "./charts";
 import { Badge, Button, Card, ErrorBox, Loading, Stat } from "./ui";
 
@@ -90,6 +91,11 @@ export function RiskCheck() {
   const [source, setSource] = useState<Source | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [history, setHistory] = useState<SavedCheck[]>([]);
+  const [shownLimit, setShownLimit] = useState(RISK_LIMIT); // the risk limit the shown result was checked with
+  const session = useSession();
+  const defaults = session.state === "in" ? riskDefaults(session.me.profile) : null;
+  const limit = defaults?.risk_limit ?? RISK_LIMIT;
+  const store = session.state === "in" ? accountHistory : browserHistory;
   const touchedEntry = useRef(false);
   const top = useRef<HTMLDivElement>(null);
 
@@ -98,10 +104,10 @@ export function RiskCheck() {
     setStep(s);
     requestAnimationFrame(() => top.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
-  const refreshHistory = useCallback(() => historyStore.list().then(setHistory), []);
+  const refreshHistory = useCallback(() => store.list().then(setHistory), [store]);
   useEffect(() => {
-    refreshHistory();
-  }, [refreshHistory]);
+    if (session.state !== "loading") refreshHistory(); // wait until we know which store to read
+  }, [refreshHistory, session.state]);
 
   // Live price for the chosen coin; pre-fills the entry unless the user (or their text) gave one.
   useEffect(() => {
@@ -124,22 +130,24 @@ export function RiskCheck() {
     const { form, notes, filled } = formFromParsed(r.trade, mark);
     touchedEntry.current = true; // the entry is the user's or the live price taken just now
     setMarket(m);
-    setF(form);
+    setF(withDefaults(form, defaults, filled));
     setErrors({});
-    setSource({ text, parser: r.parser, notes, warnings: r.warnings, filled });
+    // the API also warns about a missing entry; the form's own note says it with the price used, so show it once
+    const warnings = r.warnings.filter((w) => !(w.startsWith("No entry price given") && notes.some((n) => n.startsWith("No entry price given"))));
+    setSource({ text, parser: r.parser, notes, warnings, filled });
     go("confirm");
   };
 
   const manual = () => {
     touchedEntry.current = false;
     setSource(null);
-    setF((p) => ({ ...DEFAULT_FORM, symbol: p.symbol, entry: market.state === "ok" ? entryFromMark(market.data.mark_price) : "" }));
+    setF((p) => withDefaults({ ...DEFAULT_FORM, symbol: p.symbol, entry: market.state === "ok" ? entryFromMark(market.data.mark_price) : "" }, defaults));
     go("confirm");
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const b = buildTrade(f);
+    const b = buildTrade(f, limit);
     if (!b.ok) {
       setErrors(b.errors);
       return;
@@ -147,12 +155,13 @@ export function RiskCheck() {
     setErrors({});
     setBusy(true);
     setSavedAt(null);
+    setShownLimit(limit);
     go("result");
     const r = await load(() => api.POST("/risk-check", { body: b.body }));
     setResult(r);
     setBusy(false);
     if (r.state === "ok") {
-      await historyStore.add({ symbol: f.symbol, text: source?.text ?? null, request: b.body, result: r.data });
+      await store.add({ symbol: f.symbol, text: source?.text ?? null, request: b.body, result: r.data });
       refreshHistory();
     }
   };
@@ -163,6 +172,7 @@ export function RiskCheck() {
     setSource(c.text ? { text: c.text, parser: "saved", notes: [], warnings: [], filled: [] } : null);
     setResult({ state: "ok", data: c.result });
     setSavedAt(c.created_at);
+    setShownLimit(c.request.risk_limit ?? RISK_LIMIT);
     setBusy(false);
     go("result");
   };
@@ -198,6 +208,11 @@ export function RiskCheck() {
               </div>
             ) : (
               <p className="mb-4 text-sm text-muted">Fill in your trade.</p>
+            )}
+            {defaults && (
+              <p className="mb-4 text-xs text-muted">
+                From your account: risk limit {prob(defaults.risk_limit)} (sets the safe leverage), margin mode and wallet balance.
+              </p>
             )}
             <form onSubmit={submit} className="space-y-4" noValidate>
               <Field label="Coin" fromText={from("symbol")}>
@@ -311,7 +326,7 @@ export function RiskCheck() {
                 <Loading lines={6} />
               </Card>
             ) : result.state === "ok" ? (
-              <RiskResult r={result.data} text={source?.text ?? null} savedAt={savedAt} />
+              <RiskResult r={result.data} text={source?.text ?? null} savedAt={savedAt} limit={shownLimit} />
             ) : (
               <Card title="Results">
                 <ErrorBox message={result.state === "error" ? result.message : result.state === "not_ready" ? "The risk engine is not available right now." : ""} />
@@ -335,7 +350,7 @@ export function RiskCheck() {
         )}
       </div>
 
-      <History list={history} onOpen={openSaved} onRemove={(id) => historyStore.remove(id).then(refreshHistory)} />
+      <History list={history} where={session.state === "in" ? "on your account" : "in this browser"} onOpen={openSaved} onRemove={(id) => store.remove(id).then(refreshHistory)} />
     </div>
   );
 }
@@ -451,7 +466,7 @@ function TypeStep({ onParsed, onManual }: { onParsed: (r: ParseResult, text: str
 const REGIME_TONE = { calm: "good", active: "warn", stressed: "bad" } as const;
 const STRESS_TONE = { low: "good", elevated: "warn", high: "bad" } as const;
 
-function RiskResult({ r, text, savedAt }: { r: Risk; text: string | null; savedAt: string | null }) {
+function RiskResult({ r, text, savedAt, limit }: { r: Risk; text: string | null; savedAt: string | null; limit: number }) {
   const band = riskBand(r.p_liquidation);
   const tone = band === "low" ? "good" : band === "elevated" ? "warn" : "bad";
   return (
@@ -466,14 +481,14 @@ function RiskResult({ r, text, savedAt }: { r: Risk; text: string | null; savedA
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Stat label={`Chance of liquidation, ${r.horizon_hours}h`} value={prob(r.p_liquidation)} tone={tone} />
-            <ProbabilityBar p={r.p_liquidation} limit={RISK_LIMIT} />
+            <ProbabilityBar p={r.p_liquidation} limit={limit} />
           </div>
           <Stat
             label="Liquidation price"
             value={r.liquidation_price == null ? "none" : usd(r.liquidation_price)}
             sub={r.liquidation_distance_pct == null ? "cannot be liquidated" : `${r.liquidation_distance_pct.toFixed(2)}% away`}
           />
-          <Stat label="Max safe leverage" value={`${r.max_safe_leverage}x`} sub={`keeps the chance under 1%, up to $${usd(r.max_position_usdt, 0)}`} />
+          <Stat label="Max safe leverage" value={`${r.max_safe_leverage}x`} sub={`keeps the chance under ${prob(limit)}, up to $${usd(r.max_position_usdt, 0)}`} />
           <Stat label="Fees, open + close" value={`$${usd(r.fees_round_trip_usdt)}`} sub={`position $${usd(r.notional_usdt, 0)}, margin $${usd(r.margin_usdt)}`} />
         </div>
         {r.stop && (
@@ -544,12 +559,12 @@ function RiskResult({ r, text, savedAt }: { r: Risk; text: string | null; savedA
   );
 }
 
-function History({ list, onOpen, onRemove }: { list: SavedCheck[]; onOpen: (c: SavedCheck) => void; onRemove: (id: string) => void }) {
+function History({ list, where, onOpen, onRemove }: { list: SavedCheck[]; where: string; onOpen: (c: SavedCheck) => void; onRemove: (id: string) => void }) {
   const [flt, setFlt] = useState<HistoryFilter>({ symbol: "all", from: "", to: "" });
   const shown = filterChecks(list, flt);
   const date = "w-full min-w-0 rounded-lg border border-border bg-bg px-2 py-1.5 text-sm outline-none focus:border-accent";
   return (
-    <Card title="Saved checks" action={<span className="text-xs text-muted">in this browser</span>} className="min-w-0 self-start">
+    <Card title="Saved checks" action={<span className="text-xs text-muted">{where}</span>} className="min-w-0 self-start">
       <div className="mb-3 space-y-2">
         <Toggle
           value={flt.symbol}

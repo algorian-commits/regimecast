@@ -1,5 +1,6 @@
-// Saved risk checks. Kept in this browser for now; when accounts arrive (Phase 8, /me/checks) a server-backed
-// store with the same interface replaces BrowserHistory and the page does not change.
+// Saved risk checks: on the user's account when logged in (/me/checks, private to them), otherwise in this browser.
+// Both stores share one interface, so the page does not change.
+import { deleteCheck, listChecks, saveCheck } from "./account";
 import type { Schemas, Symbol } from "./api";
 
 export type SavedCheck = {
@@ -61,7 +62,37 @@ export class BrowserHistory implements HistoryStore {
   }
 }
 
-export const historyStore: HistoryStore = new BrowserHistory();
+/** Checks saved on the account. A failed call never breaks the page: the check still shows, it is just not kept. */
+export class AccountHistory implements HistoryStore {
+  async list() {
+    const r = await listChecks({ limit: MAX_SAVED });
+    return r.state === "ok" ? r.data.checks.map(fromAccount) : [];
+  }
+
+  async add(c: NewCheck) {
+    const r = await saveCheck({ symbol: c.symbol, side: c.request.side, text: c.text, trade: c.request, result: c.result });
+    return r.state === "ok" ? fromAccount(r.data) : { ...c, id: "unsaved", created_at: new Date().toISOString() };
+  }
+
+  async remove(id: string) {
+    await deleteCheck(Number(id));
+  }
+}
+
+/** A /me/checks row in the page's shape (the server stores the request and answer as they were sent). */
+export function fromAccount(c: Schemas["CheckOut"]): SavedCheck {
+  return {
+    id: String(c.id),
+    created_at: c.created_at,
+    symbol: c.symbol as Symbol,
+    text: c.text,
+    request: c.trade as Schemas["TradeIn"],
+    result: c.result as Schemas["RiskOut"],
+  };
+}
+
+export const browserHistory: HistoryStore = new BrowserHistory();
+export const accountHistory: HistoryStore = new AccountHistory();
 
 export type HistoryFilter = { symbol: Symbol | "all"; from: string; to: string }; // dates as YYYY-MM-DD (UTC), "" = open
 

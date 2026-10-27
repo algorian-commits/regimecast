@@ -67,8 +67,8 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 5 Volatility forecaster + liquidation risk (M7) | Done 26 Oct. HAR-S + LightGBM beats HAR on all 3 coins x 2 horizons (-5.7% to -18.1% QLIKE, p < 0.002); FHS liquidation probabilities calibrated to 0.06-0.65% ECE (random walk 1.1-3.9%). App: FHS on live HAR-S with SHAP drivers. Weak spot: long-side risk understated in crashes (Phase 6). |
 | 6 Stress early warning (M10 part 1) | Done 26 Oct. Classifier AUC 0.80-0.83 vs 0.66-0.71 for the best simple rule; average precision about 2x. Live stress gauge (identical live features, checked hour by hour). 10 Oct forensic timeline. |
 | 6b Direction-aware liquidation risk | Done 26 Oct: tried and not adopted (see decision log); FHS stays in the app. |
-| 7 LLM trade parser + full risk-check screen (M8, M9) | Built 27 Oct on branch `phase7-parser`: `/parse-trade` (Claude Haiku 5.5), three-step Risk Check, drivers chart, saved history. 200-message test set (two blind AI passes, full agreement); rule-reader baseline 76% all fields right. Claude accuracy run waits for the API key. |
-| 8 Live dashboard and accounts (M5, M6) | Built 27 Oct on branch `phase8-dashboard-accounts` (`docs/M5_M6_WALKTHROUGH.md`); live after merge. |
+| 7 LLM trade parser + full risk-check screen (M8, M9) | Built and merged 27 Oct: `/parse-trade` (Claude Haiku 5.5), three-step Risk Check, drivers chart, saved history. 200-message test set (two blind AI passes, full agreement); rule-reader baseline 76% all fields right. Claude accuracy run waits for the API key. |
+| 8 Live dashboard and accounts (M5, M6) | Built and merged 27 Oct (`docs/M5_M6_WALKTHROUGH.md`): sign up / log in on Postgres, Risk Radar dashboard with live WebSocket feed and regime-coloured candles. Logged-in Risk Checks use the account's risk limit, margin mode and balance, and save to the account. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -334,6 +334,7 @@ sessions once approved.
 | 2026-10-27 | Chart: TradingView lightweight-charts (Apache-2.0), 30 days of hourly candles, background = regime known at each candle's close | Real candlesticks and smooth live updates (Recharts has none); no hindsight in the colours (tested). |
 | 2026-10-27 | Profile "risk limit" = the highest chance of liquidation accepted per trade (the Risk Check's existing `risk_limit`) | The risk check already turns it into safe leverage and the largest position; the paper balance is the cross-margin wallet. |
 | 2026-10-27 | Alerts are stored per user now; notifying waits for the alert engine (Phase 11) | M6 asks for private alerts; firing them is M12. |
+| 2026-10-27 | Phases 7 and 8 merged; the Risk Check uses the account when logged in (risk limit, margin mode, wallet; checks saved to `/me/checks`), the browser otherwise | One page for both; checks saved while logged out stay in that browser and are not copied to the account. |
 
 ## Parking list (not now)
 
@@ -355,7 +356,6 @@ sessions once approved.
 - Weight headlines by how many outlets ran them (`copies`) and use GDELT's tone as an extra feature (M7).
 - Fill GDELT's 15 Jun - 1 Jul 2025 outage from the news sites' own archives or sitemaps.
 - Second parser test set from real user messages (logged with consent), since the AI-written set is likely too clean.
-- Switch saved risk checks to `/me/checks` once Phase 8 is merged (an `ApiHistory` store in `web/src/lib/history.ts`).
 - Read take-profit and horizon from the typed trade too.
 - Accounts: "forgot password" e-mail, account deletion, and changing the e-mail or password.
 - Full order-book depth on the dashboard (diff stream + local book) instead of the top 20 levels.
