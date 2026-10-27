@@ -51,13 +51,14 @@ def market(symbols: list[str], final: bool = False) -> tuple[pd.DataFrame, pd.Da
         h = store.features(s, "1h", columns=["ts", "mark", "funding_rate"]).set_index("ts").sort_index()
         h = _cut(h, final)
         marks[s] = h["mark"]
+        rate_at = h["funding_rate"].shift(-1)        # value known one row later = rate charged at T
+        f = rate_at.where(h.index.hour.isin(FUNDING_HOURS))
         raw = store.funding(s)
         if len(raw):
             r = raw.assign(hour=raw["ts"].dt.floor("1h")).groupby("hour")["funding_rate"].last()
-            funds[s] = r.reindex(h.index)
-        else:
-            rate_at = h["funding_rate"].shift(-1)    # value known one row later = rate charged at T
-            funds[s] = rate_at.where(h.index.hour.isin(FUNDING_HOURS))
+            covered = h.index <= r.index.max()       # after the raw file ends: the feature table
+            f = r.reindex(h.index).where(covered, f)
+        funds[s] = f
     mark = pd.DataFrame(marks)
     check_closed(mark.index, final)
     return mark, pd.DataFrame(funds)
