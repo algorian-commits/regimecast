@@ -41,7 +41,11 @@ export function Nav() {
     <header className="sticky top-0 z-10 border-b border-border bg-surface/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-2">
         <Link href="/" className="mr-4 flex items-center gap-2 font-semibold">
-          <span className="inline-block h-6 w-6 rounded-md bg-accent" aria-hidden />
+          {/* Calm line breaking into a new regime; same mark as app/icon.svg, in theme colours. */}
+          <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
+            <rect width="24" height="24" rx="6" className="fill-accent" />
+            <path d="M5 16h4.5l2.5-6 2.5 4 4.5-6" fill="none" className="stroke-accent-fg" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
           RegimeCast
         </Link>
         <nav className="hidden flex-1 gap-1 lg:flex">{LINKS.map(link)}</nav>
