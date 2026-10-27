@@ -123,3 +123,8 @@ export const deleteCheck = (id: number) => load(() => api.DELETE("/me/checks/{ch
 export const listAlerts = () => load(() => api.GET("/me/alerts"));
 export const createAlert = (body: Schemas["AlertIn"]) => load(() => api.POST("/me/alerts", { body }));
 export const deleteAlert = (id: number) => load(() => api.DELETE("/me/alerts/{alert_id}", { params: { path: { alert_id: id } } }));
+
+// ------------------------------------------------------------------ alert inbox (Phase 11)
+export type Inbox = Schemas["InboxOut"];
+export const readInbox = () => load(() => api.GET("/me/inbox", { params: { query: { limit: 30 } } }));
+export const markInboxRead = (ids?: number[]) => load(() => api.POST("/me/inbox/read", { body: { ids: ids ?? null } }));
