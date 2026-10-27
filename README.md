@@ -145,6 +145,24 @@ python scripts/run_phase6.py && python scripts/phase6_report.py && python script
 
 See `docs/M10_STRESS_WALKTHROUGH.md`.
 
+## Trade parser and the full risk check (Modules M8, M9)
+
+Type a trade in your own words; RegimeCast reads it into fields, asks for anything missing, and runs the explained
+risk check. Plain-English overview: `docs/M8_M9_WALKTHROUGH.md`.
+
+| Part | File | What it does |
+|---|---|---|
+| Parser | `regimecast/parsing/` | Claude Haiku 5.5 through the Anthropic API: fixed JSON schema (structured outputs), Pydantic and plausibility checks, retries on invalid output, follow-up questions and refusals written by code (the model has no free-text field). A rule reader is the baseline and the fallback without a key. |
+| API | `regimecast/api/parser.py` | `POST /parse-trade`; paid calls capped (`PARSE_PER_MINUTE`, `PARSE_PER_DAY`). |
+| Test set | `docs/m8/` | 200 messages, two blind AI labelling passes, written rules. |
+| Evaluation | `scripts/m8_parser_eval.py` | Field-by-field accuracy for the rule reader and prompts v1/v2 -> `data/reports/m8_*`. |
+| Risk Check page | `web/src/components/risk-check.tsx` | Three steps (type, confirm, results), drivers chart, saved checks with filters (`web/src/lib/history.ts`). |
+
+```bat
+powershell -ExecutionPolicy Bypass -File scripts\set_anthropic_key.ps1   :: stores ANTHROPIC_API_KEY (hidden input)
+python scripts/m8_parser_eval.py                                         :: accuracy table, about $0.15 the first time
+```
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.

@@ -6,6 +6,45 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/parse-trade": {
+      "post": {
+        "summary": "Parse Trade",
+        "description": "Read a typed trade (\"long 0.2 btc at 81k, 10x, stop 79k\") into fields, ask for what is missing, or refuse\npolitely if it is not a trade. Never gives advice: every sentence in the answer is fixed text.",
+        "operationId": "parse_trade_parse_trade_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -650,6 +689,250 @@
           "detail"
         ],
         "title": "NotReady"
+      },
+      "ParseIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "description": "The trade as typed, e.g. 'long 0.2 btc at 58k 10x'"
+          },
+          "history": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "title": "History",
+            "description": "Earlier messages for the same trade (answers to a follow-up question), oldest first",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ParseIn"
+      },
+      "ParseOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "needs_info",
+              "refused",
+              "unsupported"
+            ],
+            "title": "Status",
+            "description": "ok: ready to confirm; needs_info: ask `message`; refused: not a trade; unsupported: other coin"
+          },
+          "trade": {
+            "$ref": "#/components/schemas/ParsedTrade"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing",
+            "description": "Required fields still missing: asset, side, leverage, size, wallet_usdt",
+            "default": []
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message",
+            "description": "Follow-up question or polite refusal, written by code"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "default": []
+          },
+          "parser": {
+            "type": "string",
+            "title": "Parser",
+            "description": "Which parser answered, e.g. 'claude-haiku-5-5, prompt v2' or 'rules'"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "trade",
+          "parser"
+        ],
+        "title": "ParseOut"
+      },
+      "ParsedTrade": {
+        "properties": {
+          "intent": {
+            "type": "string",
+            "enum": [
+              "trade",
+              "advice",
+              "off_topic"
+            ],
+            "title": "Intent",
+            "description": "trade: describes a position to check; advice: asks what to trade; off_topic: anything else"
+          },
+          "asset": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "BTC",
+                  "ETH",
+                  "SOL",
+                  "OTHER"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asset",
+            "description": "BTC, ETH or SOL; OTHER for any other coin"
+          },
+          "side": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "long",
+                  "short"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Side"
+          },
+          "leverage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leverage"
+          },
+          "entry": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry",
+            "description": "Entry price in USDT; null if not given or 'at market'"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop",
+            "description": "Stop-loss price in USDT"
+          },
+          "qty_coins": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty Coins",
+            "description": "Size in coins, e.g. 0.2 (BTC)"
+          },
+          "notional_usdt": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notional Usdt",
+            "description": "Size as the position's dollar value"
+          },
+          "margin_usdt": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin Usdt",
+            "description": "Size as the margin put in"
+          },
+          "margin_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "isolated",
+                  "cross"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin Mode"
+          },
+          "wallet_usdt": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wallet Usdt",
+            "description": "Cross margin: the whole wallet balance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent"
+        ],
+        "title": "ParsedTrade",
+        "description": "What the user typed, field by field. null = not stated (never guessed)."
       },
       "RiskOut": {
         "properties": {

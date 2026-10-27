@@ -1,0 +1,19 @@
+{
+  "model": "claude-haiku-5-5",
+  "prompts_commit": "2fda5fd",
+  "test_set": "docs/m8/cases_200_final.csv",
+  "labels": "two blind AI passes (Claude), not human",
+  "parsers": {
+    "rules": {
+      "cases": 200,
+      "failed": 0,
+      "retried": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cost_usd": 0.0,
+      "cost_per_parse_usd": 0.0,
+      "median_seconds": 0.0,
+      "p95_seconds": 0.0
+    }
+  }
+}

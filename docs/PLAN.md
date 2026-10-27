@@ -67,6 +67,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 5 Volatility forecaster + liquidation risk (M7) | Done 26 Oct. HAR-S + LightGBM beats HAR on all 3 coins x 2 horizons (-5.7% to -18.1% QLIKE, p < 0.002); FHS liquidation probabilities calibrated to 0.06-0.65% ECE (random walk 1.1-3.9%). App: FHS on live HAR-S with SHAP drivers. Weak spot: long-side risk understated in crashes (Phase 6). |
 | 6 Stress early warning (M10 part 1) | Done 26 Oct. Classifier AUC 0.80-0.83 vs 0.66-0.71 for the best simple rule; average precision about 2x. Live stress gauge (identical live features, checked hour by hour). 10 Oct forensic timeline. |
 | 6b Direction-aware liquidation risk | Done 26 Oct: tried and not adopted (see decision log); FHS stays in the app. |
+| 7 LLM trade parser + full risk-check screen (M8, M9) | Built 27 Oct on branch `phase7-parser`: `/parse-trade` (Claude Haiku 5.5), three-step Risk Check, drivers chart, saved history. 200-message test set (two blind AI passes, full agreement); rule-reader baseline 76% all fields right. Claude accuracy run waits for the API key. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -317,6 +318,12 @@ sessions once approved.
 | 2026-10-26 | 10 Oct forensic timeline uses reported times for the whale short and the post | The wallet address is not in the public reports and the ENS lookup was blocked by a bot check; its fill history needs the address (HypurrScan/Arkham). |
 | 2026-10-26 | Phase 6b (direction-aware liquidation risk) added before Phases 7-8 | The crash-window weakness is the biggest gap in the core product; Saeed approved fixing it first. |
 | 2026-10-26 | Phase 6b: direction-aware liquidation model tried, NOT adopted; FHS stays | Worse overall at 24 h (ECE 0.68-1.43% vs 0.49-0.65%, Brier worse), equal at 1 h, and mixed in crash windows (better for 10x longs, worse at 50x). With funding, open interest, crowding, stress and returns, the direction of the next day's move is not predictable in advance; the stress gauge warns that a big move may come, not which way. Results: data/reports/phase6b_*.csv. |
+| 2026-10-27 | Trade parser model: Claude Haiku 5.5 (`claude-haiku-5-5`), structured outputs, effort low | Reading one sentence needs no large model; about $0.0003 per parse. `PARSER_MODEL` can switch it. |
+| 2026-10-27 | The parser model has no free-text output; every sentence the user sees (follow-ups, refusals, warnings) is fixed text in our code | The "never gives advice" guardrail holds by construction, not only by instruction. |
+| 2026-10-27 | A rule reader (regular expressions) added as the baseline and as the fallback | The page works without a key, past the spending cap, or when the API fails; the LLM gets a baseline to beat. Written and frozen before the test set. |
+| 2026-10-27 | Paid parser calls capped (60 a minute, 2,000 a day by default; past the cap the rule reader answers) | A public page must not run up a bill. |
+| 2026-10-27 | Parser test set: 200 messages written by Claude, labelled again blind by a second Claude pass; reported as AI-labelled | As for the M3 labels. The passes agreed on every field (intent kappa 1.00): the rules are clear for these messages, but the set is likely cleaner than real user text. |
+| 2026-10-27 | Saved risk checks kept in the browser behind one interface until `/me/checks` exists (Phase 8) | Phase 7 and 8 run in parallel; the page does not change when the store does. |
 
 ## Parking list (not now)
 
@@ -337,3 +344,6 @@ sessions once approved.
 - Fine-tune a sentiment model on our own crypto headlines (needs ~1,000 labels, not 100).
 - Weight headlines by how many outlets ran them (`copies`) and use GDELT's tone as an extra feature (M7).
 - Fill GDELT's 15 Jun - 1 Jul 2025 outage from the news sites' own archives or sitemaps.
+- Second parser test set from real user messages (logged with consent), since the AI-written set is likely too clean.
+- Switch saved risk checks to `/me/checks` once Phase 8 is merged (an `ApiHistory` store in `web/src/lib/history.ts`).
+- Read take-profit and horizon from the typed trade too.

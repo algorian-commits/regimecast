@@ -77,3 +77,50 @@ export function ProbabilityBar({ p, limit }: { p: number; limit: number }) {
     </div>
   );
 }
+
+/**
+ * What moves the volatility forecast (exact SHAP values of HAR-S): one diverging bar per input, from a zero line.
+ * Warm = pushes the forecast (and so the risk) up, blue = pulls it down; the signed value is printed too, so the
+ * meaning never rests on colour alone.
+ */
+export function DriversChart({ drivers }: { drivers: { name: string; effect_pct: number }[] }) {
+  const rows = [...drivers].sort((a, b) => Math.abs(b.effect_pct) - Math.abs(a.effect_pct));
+  const max = Math.max(5, ...rows.map((d) => Math.abs(d.effect_pct)));
+  return (
+    <figure>
+      <ul className="space-y-2.5" aria-label="What moves the volatility forecast">
+        {rows.map((d) => {
+          const up = d.effect_pct > 0;
+          const w = (Math.abs(d.effect_pct) / max) * 50;
+          const label = `${up ? "+" : ""}${d.effect_pct.toFixed(1)}%`;
+          return (
+            <li key={d.name} className="grid grid-cols-[minmax(0,1fr)_3.5rem] items-center gap-x-3 gap-y-1 sm:grid-cols-[11rem_minmax(0,1fr)_3.5rem]">
+              <span className="col-span-2 text-xs text-muted sm:col-span-1 sm:text-sm">{d.name}</span>
+              <div className="relative h-3 rounded-full bg-surface-2" title={`${d.name}: ${label} vs a typical hour`}>
+                <div className="absolute inset-y-0 left-1/2 w-px bg-muted/60" aria-hidden />
+                <div
+                  className="absolute inset-y-0.5 rounded-full"
+                  style={{
+                    background: up ? "var(--warn)" : "var(--chart-1)",
+                    width: `${Math.max(w, 1)}%`,
+                    ...(up ? { left: "50%" } : { right: "50%" }),
+                  }}
+                />
+              </div>
+              <span className="text-right font-mono text-sm">{label}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <figcaption className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--warn)" }} aria-hidden /> raises expected volatility
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--chart-1)" }} aria-hidden /> lowers it
+        </span>
+        <span>vs a typical hour</span>
+      </figcaption>
+    </figure>
+  );
+}
