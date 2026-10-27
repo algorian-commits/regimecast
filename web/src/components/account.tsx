@@ -13,6 +13,7 @@ import {
   parseProfileForm,
   updateProfile,
   useSession,
+  type Alert,
   type Me,
   type Profile,
 } from "@/lib/account";
@@ -177,19 +178,44 @@ const KINDS: { v: Schemas["AlertIn"]["kind"]; label: string }[] = [
   { v: "price_below", label: "Price falls below" },
   { v: "price_above", label: "Price rises above" },
   { v: "stress_elevated", label: "Stress gauge elevated or high" },
+  { v: "stress_high", label: "Stress gauge high" },
   { v: "regime_stressed", label: "Regime turns stressed" },
+  { v: "position_risk", label: "Saved position's liquidation risk goes above" },
+  { v: "whale_watch", label: "Whale Watch event" },
 ];
+
+function alertState(a: Alert) {
+  if (!a.active) return <Badge>paused</Badge>;
+  if (a.kind === "whale_watch") return <Badge tone="good">on</Badge>;
+  if (a.armed == null) return <Badge>first check soon</Badge>;
+  return a.armed ? <Badge tone="good">waiting</Badge> : <Badge tone="warn">fired, waits to clear</Badge>;
+}
 
 function AlertsCard() {
   const [alerts, reload] = useLoad(() => listAlerts(), "alerts");
-  const [f, setF] = useState<{ symbol: Symbol; kind: Schemas["AlertIn"]["kind"]; threshold: string }>({ symbol: "BTCUSDT", kind: "price_below", threshold: "" });
+  const [checks] = useLoad(() => listChecks({ limit: 50 }), "alert-checks");
+  const [f, setF] = useState<{ symbol: Symbol; kind: Schemas["AlertIn"]["kind"]; threshold: string; checkId: string }>({
+    symbol: "BTCUSDT",
+    kind: "price_below",
+    threshold: "",
+    checkId: "",
+  });
   const [err, setErr] = useState<string | null>(null);
   const needsPrice = f.kind.startsWith("price_");
+  const isPosition = f.kind === "position_risk";
+  const saved = checks.state === "ok" ? checks.data.checks : [];
   async function add(e: FormEvent) {
     e.preventDefault();
-    const th = Number(f.threshold.replace(/[,\s]/g, ""));
+    const th = Number(f.threshold.replace(/[,\s%]/g, ""));
     if (needsPrice && !(th > 0)) return setErr("Enter the price for this alert.");
-    const r = await createAlert({ symbol: f.symbol, kind: f.kind, threshold: needsPrice ? th : null });
+    if (isPosition && !f.checkId) return setErr("Pick the saved check that holds your position.");
+    if (isPosition && f.threshold && !(th > 0 && th < 100)) return setErr("Enter the limit as a percentage, e.g. 2.");
+    const r = await createAlert({
+      symbol: f.symbol,
+      kind: f.kind,
+      threshold: needsPrice ? th : isPosition && f.threshold ? th / 100 : null,
+      check_id: isPosition ? Number(f.checkId) : null,
+    });
     setErr(r.state === "ok" ? null : r.state === "error" ? r.message : "Could not save right now.");
     if (r.state === "ok") {
       setF({ ...f, threshold: "" });
@@ -197,17 +223,28 @@ function AlertsCard() {
     }
   }
   const sel = "rounded-lg border border-border bg-bg px-3 py-2.5 text-sm";
+  const describe = (a: Alert) => {
+    const label = KINDS.find((k) => k.v === a.kind)?.label;
+    if (a.kind === "position_risk") {
+      const c = saved.find((x) => x.id === a.check_id);
+      const t = c?.trade as { leverage?: number; side?: string; entry?: number } | undefined;
+      return `${label} ${a.threshold != null ? prob(a.threshold) : "your risk limit"}${t ? ` (${t.leverage}x ${t.side} from ${usd(t.entry)})` : ""}`;
+    }
+    return a.threshold != null ? `${label} ${usd(a.threshold)}` : label;
+  };
   return (
-    <Card title="Alerts" action={<Badge>fire from Phase 11</Badge>}>
+    <Card title="Alerts" action={<span className="text-xs text-muted">checked once a minute · fired alerts go to the bell</span>}>
       <form onSubmit={add} className="flex flex-wrap items-end gap-2" noValidate>
-        <select className={sel} value={f.symbol} onChange={(e) => setF({ ...f, symbol: e.target.value as Symbol })} aria-label="Coin">
-          {SYMBOLS.map((s) => (
-            <option key={s} value={s}>
-              {coin(s)}
-            </option>
-          ))}
-        </select>
-        <select className={sel} value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as Schemas["AlertIn"]["kind"] })} aria-label="When">
+        {!isPosition && (
+          <select className={sel} value={f.symbol} onChange={(e) => setF({ ...f, symbol: e.target.value as Symbol })} aria-label="Coin">
+            {SYMBOLS.map((s) => (
+              <option key={s} value={s}>
+                {coin(s)}
+              </option>
+            ))}
+          </select>
+        )}
+        <select className={sel} value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as Schemas["AlertIn"]["kind"], threshold: "" })} aria-label="When">
           {KINDS.map((k) => (
             <option key={k.v} value={k.v}>
               {k.label}
@@ -215,6 +252,22 @@ function AlertsCard() {
           ))}
         </select>
         {needsPrice && <input className={`${input} w-36`} inputMode="decimal" placeholder="price" value={f.threshold} onChange={(e) => setF({ ...f, threshold: e.target.value })} aria-label="Price (USDT)" />}
+        {isPosition && (
+          <>
+            <select className={`${sel} max-w-64`} value={f.checkId} onChange={(e) => setF({ ...f, checkId: e.target.value })} aria-label="Saved position">
+              <option value="">{saved.length ? "Pick a saved check" : "No saved checks yet"}</option>
+              {saved.map((c) => {
+                const t = c.trade as { leverage?: number; entry?: number };
+                return (
+                  <option key={c.id} value={c.id}>
+                    {coin(c.symbol)} {t.leverage}x {c.side} from {usd(t.entry)} · {c.created_at.slice(0, 10)}
+                  </option>
+                );
+              })}
+            </select>
+            <input className={`${input} w-40`} inputMode="decimal" placeholder="limit % (or profile)" value={f.threshold} onChange={(e) => setF({ ...f, threshold: e.target.value })} aria-label="Limit (%)" />
+          </>
+        )}
         <Button type="submit" variant="ghost">
           Add alert
         </Button>
@@ -228,16 +281,21 @@ function AlertsCard() {
         <LoadView load={alerts} onRetry={reload} notReady={(d) => <NotReady title="Not available">{d}</NotReady>}>
           {(list) =>
             list.length === 0 ? (
-              <p className="text-sm text-muted">No alerts yet. They are saved to your account now and start notifying you when the alert engine arrives (Phase 11).</p>
+              <p className="text-sm text-muted">
+                No alerts yet. Each alert fires once, then waits until its condition has cleared before it can fire again.
+              </p>
             ) : (
               <ul className="divide-y divide-border text-sm">
                 {list.map((a) => (
-                  <li key={a.id} className="flex items-center gap-3 py-2">
+                  <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
                     <span className="font-medium">{coin(a.symbol)}</span>
-                    <span>
-                      {KINDS.find((k) => k.v === a.kind)?.label}
-                      {a.threshold != null && <span className="font-mono"> {usd(a.threshold)}</span>}
-                    </span>
+                    <span>{describe(a)}</span>
+                    {alertState(a)}
+                    {a.fired_count > 0 && (
+                      <span className="text-xs text-muted">
+                        fired {a.fired_count}× · last {a.last_fired_at?.slice(0, 16).replace("T", " ")} UTC
+                      </span>
+                    )}
                     <button className="ml-auto text-xs text-muted hover:text-bad" onClick={async () => (await deleteAlert(a.id), reload())}>
                       Delete
                     </button>

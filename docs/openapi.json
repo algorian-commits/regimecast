@@ -468,7 +468,7 @@
           "accounts"
         ],
         "summary": "List Alerts",
-        "description": "The user's alerts, newest first. They are stored now and start firing with the alert engine (Phase 11).",
+        "description": "The user's alerts, newest first, with their state in the alert engine.",
         "operationId": "list_alerts_me_alerts_get",
         "responses": {
           "200": {
@@ -522,6 +522,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
           },
           "409": {
             "description": "Conflict"
@@ -675,6 +678,415 @@
           },
           "503": {
             "description": "Nothing published yet"
+          }
+        }
+      }
+    },
+    "/replay/events": {
+      "get": {
+        "tags": [
+          "replay"
+        ],
+        "summary": "Replay Events",
+        "description": "Crashes that can be replayed. The October 2025 crash is listed but not available until\nthe final evaluation has run (it is inside the final test period).",
+        "operationId": "replay_events_replay_events_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReplayEvent"
+                  },
+                  "type": "array",
+                  "title": "Response Replay Events Replay Events Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/replay/{event_id}": {
+      "get": {
+        "tags": [
+          "replay"
+        ],
+        "summary": "Replay",
+        "description": "Every minute of the crash as the dashboard and the Risk Check would have shown it, for a\nposition opened at the start (isolated margin). Frozen models only: nothing is fitted.",
+        "operationId": "replay_replay__event_id__get",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Event Id"
+            }
+          },
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "default": "BTCUSDT",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "side",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "long",
+                "short"
+              ],
+              "type": "string",
+              "default": "long",
+              "title": "Side"
+            }
+          },
+          {
+            "name": "leverage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 100,
+              "exclusiveMinimum": 0,
+              "default": 10,
+              "title": "Leverage"
+            }
+          },
+          {
+            "name": "entry",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Default: first price",
+              "title": "Entry"
+            },
+            "description": "Default: first price"
+          },
+          {
+            "name": "horizon_hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "1",
+                "24"
+              ],
+              "type": "string",
+              "default": "24",
+              "title": "Horizon Hours"
+            }
+          },
+          {
+            "name": "risk_limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 0.5,
+              "minimum": 0.0005,
+              "default": 0.01,
+              "title": "Risk Limit"
+            }
+          },
+          {
+            "name": "margin",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 10000000.0,
+              "exclusiveMinimum": 0,
+              "default": 1000.0,
+              "title": "Margin"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/inbox": {
+      "get": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Inbox",
+        "operationId": "inbox_me_inbox_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 30,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "unread_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Unread Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/inbox/read": {
+      "post": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Mark Read",
+        "operationId": "mark_read_me_inbox_read_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alerts/engine": {
+      "get": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Engine Status",
+        "description": "Whether the alert engine is running in this API process, and its last run.",
+        "operationId": "engine_status_alerts_engine_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EngineStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/whales/events": {
+      "get": {
+        "tags": [
+          "whales"
+        ],
+        "summary": "Whale Events List",
+        "description": "Latest Whale Watch events: whale moves, fresh wallets and suspicious timing (a pattern, not an accusation).",
+        "operationId": "whale_events_list_whales_events_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "BTCUSDT",
+                    "ETHUSDT",
+                    "SOLUSDT"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "whale_move",
+                    "fresh_wallet",
+                    "suspicious_timing"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhaleEventsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/whales/status": {
+      "get": {
+        "tags": [
+          "whales"
+        ],
+        "summary": "Whale Status",
+        "operationId": "whale_status_whales_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhaleStatus"
+                }
+              }
+            }
           }
         }
       }
@@ -1344,7 +1756,10 @@
               "price_above",
               "price_below",
               "stress_elevated",
-              "regime_stressed"
+              "stress_high",
+              "regime_stressed",
+              "position_risk",
+              "whale_watch"
             ],
             "title": "Kind"
           },
@@ -1359,7 +1774,19 @@
               }
             ],
             "title": "Threshold",
-            "description": "Price in USDT (price alerts only)"
+            "description": "Price in USDT (price alerts) or probability (position_risk, e.g. 0.02 = 2%)"
+          },
+          "check_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Id",
+            "description": "position_risk only: the saved risk check with the position"
           },
           "note": {
             "anyOf": [
@@ -1379,7 +1806,8 @@
           "symbol",
           "kind"
         ],
-        "title": "AlertIn"
+        "title": "AlertIn",
+        "description": "price_above / price_below: the mark price crosses ``threshold``. stress_elevated / stress_high: the\nstress gauge reaches that level. regime_stressed: the regime turns stressed. position_risk: the saved\ncheck ``check_id``'s chance of liquidation goes above ``threshold`` (default: the profile's risk limit).\nwhale_watch: every new Whale Watch event for the coin. Each alert fires once, then waits until its\ncondition has cleared (Phase 11 alert engine, checked once a minute)."
       },
       "AlertOut": {
         "properties": {
@@ -1397,7 +1825,10 @@
               "price_above",
               "price_below",
               "stress_elevated",
-              "regime_stressed"
+              "stress_high",
+              "regime_stressed",
+              "position_risk",
+              "whale_watch"
             ],
             "title": "Kind"
           },
@@ -1430,6 +1861,68 @@
           "created_at": {
             "type": "string",
             "title": "Created At"
+          },
+          "check_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Id"
+          },
+          "armed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Armed",
+            "description": "True: waiting for its condition; False: fired, waiting for the condition to clear; null: not checked yet"
+          },
+          "last_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Value",
+            "description": "Last value compared (price or probability)"
+          },
+          "last_checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Checked At"
+          },
+          "last_fired_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fired At"
+          },
+          "fired_count": {
+            "type": "integer",
+            "title": "Fired Count",
+            "default": 0
           }
         },
         "type": "object",
@@ -1950,6 +2443,41 @@
         ],
         "title": "Driver"
       },
+      "EngineStatus": {
+        "properties": {
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          },
+          "last_run": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run"
+          },
+          "last_fired": {
+            "type": "integer",
+            "title": "Last Fired"
+          },
+          "every_seconds": {
+            "type": "number",
+            "title": "Every Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "running",
+          "last_run",
+          "last_fired",
+          "every_seconds"
+        ],
+        "title": "EngineStatus"
+      },
       "EquityDay": {
         "properties": {
           "day": {
@@ -1990,6 +2518,109 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "InboxItem": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "alert_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Id",
+            "description": "The alert that fired (null if it was deleted since)"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "fired_at": {
+            "type": "string",
+            "title": "Fired At"
+          },
+          "read": {
+            "type": "boolean",
+            "title": "Read"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "alert_id",
+          "symbol",
+          "kind",
+          "title",
+          "message",
+          "value",
+          "detail",
+          "fired_at",
+          "read"
+        ],
+        "title": "InboxItem"
+      },
+      "InboxOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InboxItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "Newest first"
+          },
+          "unread": {
+            "type": "integer",
+            "title": "Unread"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "unread"
+        ],
+        "title": "InboxOut"
       },
       "MarketOut": {
         "properties": {
@@ -2532,6 +3163,385 @@
         ],
         "title": "ProfileOut"
       },
+      "ReadIn": {
+        "properties": {
+          "ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array",
+                "maxItems": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ids",
+            "description": "Leave out to mark everything as read"
+          }
+        },
+        "type": "object",
+        "title": "ReadIn"
+      },
+      "ReplayEvent": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "start": {
+            "type": "string",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "title": "End"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "description": "False until its replay file has been generated (scripts/make_replay.py)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "start",
+          "end",
+          "available"
+        ],
+        "title": "ReplayEvent"
+      },
+      "ReplayHour": {
+        "properties": {
+          "t": {
+            "type": "string",
+            "title": "T",
+            "description": "Hour END (UTC): these values were known from this time on"
+          },
+          "regime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regime"
+          },
+          "p_stressed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Stressed"
+          },
+          "p_stress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Stress",
+            "description": "Stress gauge: P(stress event in the next hour), app's frozen model"
+          },
+          "stress_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress Level"
+          },
+          "stress_drivers": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Stress Drivers",
+            "description": "Top drivers of the stress gauge: [name, up|down]"
+          },
+          "p_stress_walk_forward": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Stress Walk Forward",
+            "description": "The same hour from Phase 6's walk-forward run (models fitted on earlier data only)"
+          },
+          "sigma_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sigma Pct",
+            "description": "Volatility forecast over the horizon (std of log return, %)"
+          },
+          "safe_leverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safe Leverage",
+            "description": "Risk Check's highest safe leverage for a new trade at this hour"
+          }
+        },
+        "type": "object",
+        "required": [
+          "t",
+          "regime",
+          "p_stressed",
+          "p_stress",
+          "stress_level",
+          "stress_drivers",
+          "p_stress_walk_forward",
+          "sigma_pct",
+          "safe_leverage"
+        ],
+        "title": "ReplayHour"
+      },
+      "ReplayMinutes": {
+        "properties": {
+          "price": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Price",
+            "description": "Mark price at each minute's close"
+          },
+          "low": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Low"
+          },
+          "high": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "High"
+          },
+          "p_liquidation": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "P Liquidation",
+            "description": "Chance the position is liquidated within the horizon"
+          },
+          "distance_pct": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Distance Pct",
+            "description": "Move still needed to reach liquidation, % of price"
+          },
+          "hour": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Hour",
+            "description": "Index into hours: the last complete hour at this minute (-1: none yet)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "price",
+          "low",
+          "high",
+          "p_liquidation",
+          "distance_pct",
+          "hour"
+        ],
+        "title": "ReplayMinutes"
+      },
+      "ReplayOut": {
+        "properties": {
+          "event": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Event"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "leverage": {
+            "type": "number",
+            "title": "Leverage"
+          },
+          "entry": {
+            "type": "number",
+            "title": "Entry"
+          },
+          "margin": {
+            "type": "number",
+            "title": "Margin"
+          },
+          "horizon_hours": {
+            "type": "integer",
+            "title": "Horizon Hours"
+          },
+          "risk_limit": {
+            "type": "number",
+            "title": "Risk Limit"
+          },
+          "liquidation_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidation Price"
+          },
+          "liquidated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidated At",
+            "description": "First minute close at which the mark price reached liquidation"
+          },
+          "first_close": {
+            "type": "string",
+            "title": "First Close",
+            "description": "Close time of the first minute; minute i closes i minutes later"
+          },
+          "n_minutes": {
+            "type": "integer",
+            "title": "N Minutes"
+          },
+          "minutes": {
+            "$ref": "#/components/schemas/ReplayMinutes"
+          },
+          "hours": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayHour"
+            },
+            "type": "array",
+            "title": "Hours"
+          },
+          "stress_base_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress Base Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event",
+          "symbol",
+          "side",
+          "leverage",
+          "entry",
+          "margin",
+          "horizon_hours",
+          "risk_limit",
+          "liquidation_price",
+          "liquidated_at",
+          "first_close",
+          "n_minutes",
+          "minutes",
+          "hours",
+          "stress_base_rate"
+        ],
+        "title": "ReplayOut"
+      },
       "RiskOut": {
         "properties": {
           "symbol": {
@@ -2903,6 +3913,176 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WhaleEvent": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "ts": {
+            "type": "string",
+            "title": "Ts"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "whale_move",
+              "fresh_wallet",
+              "suspicious_timing"
+            ],
+            "title": "Kind"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why it fired, in plain words"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "explorer_url": {
+            "type": "string",
+            "title": "Explorer Url",
+            "description": "The account on a public Hyperliquid explorer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ts",
+          "symbol",
+          "kind",
+          "address",
+          "title",
+          "reason",
+          "detail",
+          "explorer_url"
+        ],
+        "title": "WhaleEvent"
+      },
+      "WhaleEventsOut": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/WhaleEvent"
+            },
+            "type": "array",
+            "title": "Events",
+            "description": "Newest first"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "database",
+              "memory"
+            ],
+            "title": "Source"
+          },
+          "thresholds": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Thresholds"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events",
+          "source",
+          "thresholds",
+          "note"
+        ],
+        "title": "WhaleEventsOut"
+      },
+      "WhaleStatus": {
+        "properties": {
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          },
+          "connected": {
+            "type": "boolean",
+            "title": "Connected"
+          },
+          "tracked_accounts": {
+            "type": "integer",
+            "title": "Tracked Accounts"
+          },
+          "known_accounts": {
+            "type": "integer",
+            "title": "Known Accounts"
+          },
+          "rows": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Rows"
+          },
+          "last_row_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Row At"
+          },
+          "recent_errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recent Errors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "running",
+          "connected",
+          "tracked_accounts",
+          "known_accounts",
+          "rows",
+          "last_row_at",
+          "recent_errors"
+        ],
+        "title": "WhaleStatus"
       }
     }
   }

@@ -184,20 +184,35 @@ class ChecksOut(BaseModel):
     total: int = Field(description="How many checks match the filters (before limit/offset)")
 
 
-AlertKind = Literal["price_above", "price_below", "stress_elevated", "regime_stressed"]
+AlertKind = Literal["price_above", "price_below", "stress_elevated", "stress_high", "regime_stressed",
+                    "position_risk", "whale_watch"]
 
 
 class AlertIn(BaseModel):
+    """price_above / price_below: the mark price crosses ``threshold``. stress_elevated / stress_high: the
+    stress gauge reaches that level. regime_stressed: the regime turns stressed. position_risk: the saved
+    check ``check_id``'s chance of liquidation goes above ``threshold`` (default: the profile's risk limit).
+    whale_watch: every new Whale Watch event for the coin. Each alert fires once, then waits until its
+    condition has cleared (Phase 11 alert engine, checked once a minute)."""
     symbol: Symbol
     kind: AlertKind
-    threshold: float | None = Field(None, gt=0, description="Price in USDT (price alerts only)")
+    threshold: float | None = Field(None, gt=0, description="Price in USDT (price alerts) or probability "
+                                                            "(position_risk, e.g. 0.02 = 2%)")
+    check_id: int | None = Field(None, description="position_risk only: the saved risk check with the position")
     note: str | None = Field(None, max_length=200)
 
     @model_validator(mode="after")
     def _threshold(self):
         if self.kind.startswith("price_") and self.threshold is None:
             raise ValueError("price alerts need a threshold price")
-        if not self.kind.startswith("price_"):
+        if self.kind == "position_risk":
+            if self.check_id is None:
+                raise ValueError("position alerts need the saved check (check_id) that holds the position")
+            if self.threshold is not None and not 0 < self.threshold < 1:
+                raise ValueError("the limit for a position alert is a probability between 0 and 1")
+        else:
+            self.check_id = None
+        if not self.kind.startswith("price_") and self.kind != "position_risk":
             self.threshold = None
         return self
 
@@ -210,6 +225,13 @@ class AlertOut(BaseModel):
     note: str | None
     active: bool
     created_at: str
+    check_id: int | None = None
+    armed: bool | None = Field(None, description="True: waiting for its condition; False: fired, waiting for "
+                                                 "the condition to clear; null: not checked yet")
+    last_value: float | None = Field(None, description="Last value compared (price or probability)")
+    last_checked_at: str | None = None
+    last_fired_at: str | None = None
+    fired_count: int = 0
 
 
 class Ok(BaseModel):
@@ -273,7 +295,11 @@ def _check_out(r) -> CheckOut:
 
 def _alert_out(r) -> AlertOut:
     return AlertOut(id=r["id"], symbol=r["symbol"], kind=r["kind"], threshold=r["threshold"], note=r["note"],
-                    active=r["active"], created_at=_iso(r["created_at"]))
+                    active=r["active"], created_at=_iso(r["created_at"]), check_id=r["check_id"], armed=r["armed"],
+                    last_value=r["last_value"] if r["kind"] != "whale_watch" else None,
+                    last_checked_at=_iso(r["last_checked_at"]) if r["last_checked_at"] else None,
+                    last_fired_at=_iso(r["last_fired_at"]) if r["last_fired_at"] else None,
+                    fired_count=r["fired_count"] or 0)
 
 
 # ------------------------------------------------------------------ routes
@@ -381,17 +407,24 @@ def delete_check(check_id: int, uid: int = Depends(current_user), conn: sa.Conne
 
 @router.get("/me/alerts", response_model=list[AlertOut], responses={401: {}, **NOT_READY})
 def list_alerts(uid: int = Depends(current_user), conn: sa.Connection = Depends(get_conn)) -> list[AlertOut]:
-    """The user's alerts, newest first. They are stored now and start firing with the alert engine (Phase 11)."""
+    """The user's alerts, newest first, with their state in the alert engine."""
     rows = conn.execute(sa.select(alerts).where(alerts.c.user_id == uid)
                         .order_by(alerts.c.created_at.desc(), alerts.c.id.desc())).mappings().all()
     return [_alert_out(r) for r in rows]
 
 
-@router.post("/me/alerts", response_model=AlertOut, status_code=201, responses={401: {}, 409: {}, **NOT_READY})
+@router.post("/me/alerts", response_model=AlertOut, status_code=201,
+             responses={401: {}, 404: {}, 409: {}, **NOT_READY})
 def create_alert(body: AlertIn, uid: int = Depends(current_user), conn: sa.Connection = Depends(get_conn)) -> AlertOut:
     n = conn.execute(sa.select(sa.func.count()).select_from(alerts).where(alerts.c.user_id == uid)).scalar_one()
     if n >= MAX_ALERTS:
         raise HTTPException(409, f"You have {MAX_ALERTS} alerts already. Delete one first.")
+    if body.kind == "position_risk":
+        chk = conn.execute(sa.select(risk_checks.c.symbol).where(risk_checks.c.id == body.check_id,
+                                                                 risk_checks.c.user_id == uid)).first()
+        if not chk:
+            raise HTTPException(404, "No such saved check.")
+        body.symbol = chk.symbol   # the position's coin, whatever was sent
     r = conn.execute(sa.insert(alerts).values(user_id=uid, active=True, created_at=_now(), **body.model_dump())
                      .returning(*alerts.c)).mappings().one()
     return _alert_out(r)

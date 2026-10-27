@@ -169,7 +169,7 @@ export interface paths {
         };
         /**
          * List Alerts
-         * @description The user's alerts, newest first. They are stored now and start firing with the alert engine (Phase 11).
+         * @description The user's alerts, newest first, with their state in the alert engine.
          */
         get: operations["list_alerts_me_alerts_get"];
         put?: never;
@@ -231,6 +231,139 @@ export interface paths {
          *     and the development-period backtest its settings were frozen on. Paper trading only; not advice.
          */
         get: operations["agent_agent_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/replay/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Replay Events
+         * @description Crashes that can be replayed. The October 2025 crash is listed but not available until
+         *     the final evaluation has run (it is inside the final test period).
+         */
+        get: operations["replay_events_replay_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/replay/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Replay
+         * @description Every minute of the crash as the dashboard and the Risk Check would have shown it, for a
+         *     position opened at the start (isolated margin). Frozen models only: nothing is fitted.
+         */
+        get: operations["replay_replay__event_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inbox */
+        get: operations["inbox_me_inbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/inbox/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Read */
+        post: operations["mark_read_me_inbox_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alerts/engine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Engine Status
+         * @description Whether the alert engine is running in this API process, and its last run.
+         */
+        get: operations["engine_status_alerts_engine_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whales/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whale Events List
+         * @description Latest Whale Watch events: whale moves, fresh wallets and suspicious timing (a pattern, not an accusation).
+         */
+        get: operations["whale_events_list_whales_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/whales/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whale Status */
+        get: operations["whale_status_whales_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -480,7 +613,14 @@ export interface components {
              */
             band: number;
         };
-        /** AlertIn */
+        /**
+         * AlertIn
+         * @description price_above / price_below: the mark price crosses ``threshold``. stress_elevated / stress_high: the
+         *     stress gauge reaches that level. regime_stressed: the regime turns stressed. position_risk: the saved
+         *     check ``check_id``'s chance of liquidation goes above ``threshold`` (default: the profile's risk limit).
+         *     whale_watch: every new Whale Watch event for the coin. Each alert fires once, then waits until its
+         *     condition has cleared (Phase 11 alert engine, checked once a minute).
+         */
         AlertIn: {
             /**
              * Symbol
@@ -491,12 +631,17 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "price_above" | "price_below" | "stress_elevated" | "regime_stressed";
+            kind: "price_above" | "price_below" | "stress_elevated" | "stress_high" | "regime_stressed" | "position_risk" | "whale_watch";
             /**
              * Threshold
-             * @description Price in USDT (price alerts only)
+             * @description Price in USDT (price alerts) or probability (position_risk, e.g. 0.02 = 2%)
              */
             threshold?: number | null;
+            /**
+             * Check Id
+             * @description position_risk only: the saved risk check with the position
+             */
+            check_id?: number | null;
             /** Note */
             note?: string | null;
         };
@@ -510,7 +655,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "price_above" | "price_below" | "stress_elevated" | "regime_stressed";
+            kind: "price_above" | "price_below" | "stress_elevated" | "stress_high" | "regime_stressed" | "position_risk" | "whale_watch";
             /** Threshold */
             threshold: number | null;
             /** Note */
@@ -519,6 +664,27 @@ export interface components {
             active: boolean;
             /** Created At */
             created_at: string;
+            /** Check Id */
+            check_id?: number | null;
+            /**
+             * Armed
+             * @description True: waiting for its condition; False: fired, waiting for the condition to clear; null: not checked yet
+             */
+            armed?: boolean | null;
+            /**
+             * Last Value
+             * @description Last value compared (price or probability)
+             */
+            last_value?: number | null;
+            /** Last Checked At */
+            last_checked_at?: string | null;
+            /** Last Fired At */
+            last_fired_at?: string | null;
+            /**
+             * Fired Count
+             * @default 0
+             */
+            fired_count: number;
         };
         /** AuthIn */
         AuthIn: {
@@ -749,6 +915,17 @@ export interface components {
              */
             effect_pct: number;
         };
+        /** EngineStatus */
+        EngineStatus: {
+            /** Running */
+            running: boolean;
+            /** Last Run */
+            last_run: string | null;
+            /** Last Fired */
+            last_fired: number;
+            /** Every Seconds */
+            every_seconds: number;
+        };
         /** EquityDay */
         EquityDay: {
             /** Day */
@@ -764,6 +941,44 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** InboxItem */
+        InboxItem: {
+            /** Id */
+            id: number;
+            /**
+             * Alert Id
+             * @description The alert that fired (null if it was deleted since)
+             */
+            alert_id: number | null;
+            /** Symbol */
+            symbol: string;
+            /** Kind */
+            kind: string;
+            /** Title */
+            title: string;
+            /** Message */
+            message: string;
+            /** Value */
+            value: number | null;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            } | null;
+            /** Fired At */
+            fired_at: string;
+            /** Read */
+            read: boolean;
+        };
+        /** InboxOut */
+        InboxOut: {
+            /**
+             * Items
+             * @description Newest first
+             */
+            items: components["schemas"]["InboxItem"][];
+            /** Unread */
+            unread: number;
         };
         /** MarketOut */
         MarketOut: {
@@ -1003,6 +1218,138 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
+        /** ReadIn */
+        ReadIn: {
+            /**
+             * Ids
+             * @description Leave out to mark everything as read
+             */
+            ids?: number[] | null;
+        };
+        /** ReplayEvent */
+        ReplayEvent: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /** Start */
+            start: string;
+            /** End */
+            end: string;
+            /**
+             * Available
+             * @description False until its replay file has been generated (scripts/make_replay.py)
+             */
+            available: boolean;
+        };
+        /** ReplayHour */
+        ReplayHour: {
+            /**
+             * T
+             * @description Hour END (UTC): these values were known from this time on
+             */
+            t: string;
+            /** Regime */
+            regime: string | null;
+            /** P Stressed */
+            p_stressed: number | null;
+            /**
+             * P Stress
+             * @description Stress gauge: P(stress event in the next hour), app's frozen model
+             */
+            p_stress: number | null;
+            /** Stress Level */
+            stress_level: string | null;
+            /**
+             * Stress Drivers
+             * @description Top drivers of the stress gauge: [name, up|down]
+             */
+            stress_drivers: string[][];
+            /**
+             * P Stress Walk Forward
+             * @description The same hour from Phase 6's walk-forward run (models fitted on earlier data only)
+             */
+            p_stress_walk_forward: number | null;
+            /**
+             * Sigma Pct
+             * @description Volatility forecast over the horizon (std of log return, %)
+             */
+            sigma_pct: number | null;
+            /**
+             * Safe Leverage
+             * @description Risk Check's highest safe leverage for a new trade at this hour
+             */
+            safe_leverage: number | null;
+        };
+        /** ReplayMinutes */
+        ReplayMinutes: {
+            /**
+             * Price
+             * @description Mark price at each minute's close
+             */
+            price: (number | null)[];
+            /** Low */
+            low: (number | null)[];
+            /** High */
+            high: (number | null)[];
+            /**
+             * P Liquidation
+             * @description Chance the position is liquidated within the horizon
+             */
+            p_liquidation: (number | null)[];
+            /**
+             * Distance Pct
+             * @description Move still needed to reach liquidation, % of price
+             */
+            distance_pct: (number | null)[];
+            /**
+             * Hour
+             * @description Index into hours: the last complete hour at this minute (-1: none yet)
+             */
+            hour: number[];
+        };
+        /** ReplayOut */
+        ReplayOut: {
+            /** Event */
+            event: {
+                [key: string]: unknown;
+            };
+            /** Symbol */
+            symbol: string;
+            /** Side */
+            side: string;
+            /** Leverage */
+            leverage: number;
+            /** Entry */
+            entry: number;
+            /** Margin */
+            margin: number;
+            /** Horizon Hours */
+            horizon_hours: number;
+            /** Risk Limit */
+            risk_limit: number;
+            /** Liquidation Price */
+            liquidation_price: number | null;
+            /**
+             * Liquidated At
+             * @description First minute close at which the mark price reached liquidation
+             */
+            liquidated_at: string | null;
+            /**
+             * First Close
+             * @description Close time of the first minute; minute i closes i minutes later
+             */
+            first_close: string;
+            /** N Minutes */
+            n_minutes: number;
+            minutes: components["schemas"]["ReplayMinutes"];
+            /** Hours */
+            hours: components["schemas"]["ReplayHour"][];
+            /** Stress Base Rate */
+            stress_base_rate: number | null;
+        };
         /** RiskOut */
         RiskOut: {
             /** Symbol */
@@ -1147,6 +1494,76 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WhaleEvent */
+        WhaleEvent: {
+            /** Id */
+            id: number | null;
+            /** Ts */
+            ts: string;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "whale_move" | "fresh_wallet" | "suspicious_timing";
+            /** Address */
+            address: string;
+            /** Title */
+            title: string;
+            /**
+             * Reason
+             * @description Why it fired, in plain words
+             */
+            reason: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Explorer Url
+             * @description The account on a public Hyperliquid explorer
+             */
+            explorer_url: string;
+        };
+        /** WhaleEventsOut */
+        WhaleEventsOut: {
+            /**
+             * Events
+             * @description Newest first
+             */
+            events: components["schemas"]["WhaleEvent"][];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "database" | "memory";
+            /** Thresholds */
+            thresholds: {
+                [key: string]: number;
+            };
+            /** Note */
+            note: string;
+        };
+        /** WhaleStatus */
+        WhaleStatus: {
+            /** Running */
+            running: boolean;
+            /** Connected */
+            connected: boolean;
+            /** Tracked Accounts */
+            tracked_accounts: number;
+            /** Known Accounts */
+            known_accounts: number;
+            /** Rows */
+            rows: {
+                [key: string]: number;
+            };
+            /** Last Row At */
+            last_row_at: string | null;
+            /** Recent Errors */
+            recent_errors: string[];
         };
     };
     responses: never;
@@ -1612,6 +2029,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Conflict */
             409: {
                 headers: {
@@ -1752,6 +2176,239 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    replay_events_replay_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayEvent"][];
+                };
+            };
+        };
+    };
+    replay_replay__event_id__get: {
+        parameters: {
+            query?: {
+                symbol?: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
+                side?: "long" | "short";
+                leverage?: number;
+                /** @description Default: first price */
+                entry?: number | null;
+                horizon_hours?: "1" | "24";
+                risk_limit?: number;
+                margin?: number;
+            };
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inbox_me_inbox_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                unread_only?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    mark_read_me_inbox_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    engine_status_alerts_engine_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngineStatus"];
+                };
+            };
+        };
+    };
+    whale_events_list_whales_events_get: {
+        parameters: {
+            query?: {
+                symbol?: ("BTCUSDT" | "ETHUSDT" | "SOLUSDT") | null;
+                kind?: ("whale_move" | "fresh_wallet" | "suspicious_timing") | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhaleEventsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    whale_status_whales_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WhaleStatus"];
+                };
             };
         };
     };
