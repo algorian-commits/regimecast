@@ -259,12 +259,13 @@ Done when
 Phases 7 and 8 touch different parts (parser + risk screen vs accounts + dashboard) and can run as two parallel
 sessions once approved.
 
-## Phases 9-11 (direction from Saeed, 27 Oct)
+## Phases 9-12 (direction from Saeed, 27 Oct)
 
-Order: Phases 9 and 11 run as two parallel sessions now. When Phase 9's agent is frozen, the models are frozen and the
-final evaluation (Phase 10, part A) runs **once**, before any UI polish. The rest of Phase 10 comes after.
+Order: Phases 9, 11 and 12 run as parallel sessions. When Phase 9's agent and Phase 12's signals are frozen, the
+models are frozen and the final evaluation (Phase 10, part A) runs **once**, before any UI polish. The rest of
+Phase 10 comes after.
 
-**Both sessions keep the final test period closed.** No code in Phase 9 or 11 reads data from 2025-10-01 on, except
+**Every session keeps the final test period closed.** No code in Phase 9, 11 or 12 reads data from 2025-10-01 on, except
 the Phase 11 replay of the October 2025 crash, which is switched on only after the final evaluation has run.
 
 ### Phase 9: Paper-trading risk agent (M10, part 2)
@@ -329,9 +330,47 @@ Done when
 
 Demo: the FTX replay, and an alert set on the live site that fires.
 
+### Phase 12: Trade verdict for beginners (M9, extended)
+
+Goal: someone who knows nothing about trading types a trade and learns, in plain words, whether it is a **well-built**
+trade and how to make it safer. It judges the setup (size, leverage, stop, costs, timing, crowding), **not** which
+way the price will go: Phase 6b showed our data cannot predict direction, so the app never pretends to.
+
+Default view is for beginners: one verdict, three plain reasons, one suggested fix. A "show me the numbers" toggle
+opens the full detail for experienced users.
+
+Tasks
+1. **Trade Grade (A to F)** with three plain-English reasons, from what the risk check already computes: chance of
+   liquidation vs the user's limit, chance the stop is hit by normal movement, fees and funding as a share of the
+   expected move, regime, stress, crowding and timing. The grading rules are written down and fixed on the dev
+   period.
+2. **Break-even win rate:** "with this stop and target you need to be right X% of the time to make money after fees
+   and funding". Pure arithmetic; tested.
+3. **Fix my trade:** the closest safer version of the same trade (lower leverage, smaller size, a stop outside normal
+   noise) that meets the user's risk limit, shown side by side with the original.
+4. **What-if strip:** what the trade gains or loses on a normal day, a bad day (dev-period 90th/99th percentile moves
+   at the current regime) and a crash day like 10 Oct 2025, in dollars.
+5. **Crowd warning:** when funding, top traders' long/short ratio and open-interest growth are at extremes (thresholds
+   chosen on dev data and frozen), show the historical odds of a sudden 5% move against the crowd within 24 h.
+6. **Similar moments:** the past hours (strictly before now) that looked most like the current one (regime, volatility
+   forecast, trend, funding, crowding); show how big the next 24 h move usually was and how often it went up, with a
+   plain note that direction is close to a coin flip when it is.
+7. **Bad timing warnings:** scheduled US macro events (FOMC, CPI, jobs report) within the trade's horizon, weekends
+   and thin hours, stress rising. Event dates from a fixed calendar file in the repo.
+8. API: the risk check returns the verdict, fix and what-if; the Risk Check results screen shows them first.
+   Regenerate the contract and client; tests for every rule; dev-period results in `data/reports/phase12_*`.
+9. Freeze the grading rules, crowding thresholds and similar-moments settings in `regimecast/verdict/frozen.json`,
+   with a `final=True` entry point that is **not** run here (Phase 10 runs it once).
+
+Done when
+- A typed trade on the live URL shows its grade, reasons, the fix and the what-if strip; dev-period tables are saved;
+  the settings are frozen.
+
+Demo: a beginner's 25x BTC long graded F, the suggested fix graded B, and the crash-day line.
+
 ### Phase 10: Final evaluation, then UI polish (M11)
 
-Part A, as soon as Phase 9's agent is frozen:
+Part A, as soon as Phase 9's agent and Phase 12's signals are frozen:
 1. Freeze: tag the commit `final-eval` (code, settings and model files); the pass bars below are already committed.
 2. Run `scripts/final_eval.py` once with `final=True`. It writes `data/reports/final_*` and a log with the commit, the
    start time and the data range. The walk-forward schedule continues as in development (refit every 90 days on past
@@ -356,6 +395,9 @@ ETH and SOL. Same targets, labels and scoring code as in development.
 | Stress warning (M10 part 1): next-hour classifier | The best of the three simple rules (stress continues, volatility above its 95th percentile, regime says stressed) on the same hours | AUC at least 0.75 on every coin and above the best rule on every coin, and average precision above the best rule on at least 2 of 3 coins. |
 | Regimes (M4) | Their own definition | Next-day volatility is ordered calm < active < stressed on all 3 coins. |
 | Paper agent (M10 part 2): frozen settings, equal-weight portfolio | Buy-and-hold, 1x long in each perpetual, after the same fees and funding | Higher Sharpe ratio **and** a maximum drawdown at least 25% smaller than buy-and-hold. Return, the volatility-targeting baseline and the bootstrap interval are reported alongside, not as bars. |
+| Trade Grade (Phase 12) | Its own claim: worse grades are riskier | On a fixed grid of example trades (every 6 hours, each coin, long and short, leverage 2x to 50x, stops at 0.5 to 3 times the forecast move; grades with under 200 trades merged with the next), the share hit by liquidation or the stop within 24 h rises from A to F on all 3 coins, and F's share is at least 3 times A's. |
+| Crowd warning (Phase 12) | Hours without the warning | A sudden 5% move against the crowd within 24 h happens at least 1.5 times as often after a warning as in other hours, with the 90% block-bootstrap interval of that ratio above 1, on at least 2 of 3 coins. |
+| Similar moments (Phase 12) | Honesty about size and direction | The 80% range of the next 24 h move contains the actual move 75-85% of the time on every coin, and its chance of an up move has a Brier score no worse than always saying the dev-period up share. |
 | App (M2, M5, M6, M8, M9) | Its own spec | A one-time check on the live URL passes (Saeed clicks through a short checklist, since Claude does not create accounts on the live site): sign up, set balance and limit, type a trade, confirm, get a result, see it saved on the account, see the dashboard price update within 10 s, log out; the risk check answers in under 2 s for 95% of 50 requests. |
 | Trade parser (M8) | The 95% target in the proposal | Every field at least 95% correct on the 200-message set. **Runs only once the Anthropic key is set**; until then it is reported as not run (the rule reader's 76% is the fallback, not the result). |
 
@@ -366,7 +408,7 @@ Rules for the run
 - Crash windows (10-11 Oct 2025) are reported for every part, with no bar: the long-side weakness in crashes is
   already known (Phase 5).
 - The verdict, as Saeed defined it: the project is "good" if the model parts (volatility, liquidation, stress), the
-  paper agent and the app all pass. Anything that fails is reported as failed, with what it means.
+  paper agent, the Phase 12 trade verdict (grade, crowd warning, similar moments) and the app all pass. Anything that fails is reported as failed, with what it means.
 
 ## Open questions
 
@@ -449,6 +491,9 @@ Rules for the run
 | 2026-10-27 | Paper agent is long-only, 0x to 1x, judged against buy-and-hold on Sharpe and drawdown | RegimeCast is a risk co-pilot for someone who holds, not a trading signal; shorting would make it a different product. |
 | 2026-10-27 | October 2025 crash replay generated only after the final evaluation | It shows model outputs inside the final test period. |
 | 2026-10-27 | Phase 10 cut to the final evaluation plus UI polish: no Track Record page, automated end-to-end tests, hardening or guides | Saeed doesn't need them. The app bar is checked once by hand on the live URL instead of by a test script. |
+| 2026-10-27 | Phase 12 added: trade verdict for beginners (grade, break-even win rate, fix my trade, what-if, crowd warning, similar moments, timing) | Saeed wants beginners to know whether a trade is worth taking. It judges the setup, not the direction (Phase 6b: direction is not predictable from our data). |
+| 2026-10-27 | Final evaluation waits for Phase 12's signals; their pass bars are added now, before opening | New forecasting claims need the sealed year too, and it can be opened only once. |
+| 2026-10-27 | Main user: a beginner; detail behind a "show me the numbers" toggle | Saeed left it to Claude; the app's point is to protect people who don't know trading. |
 
 ## Parking list (not now)
 
