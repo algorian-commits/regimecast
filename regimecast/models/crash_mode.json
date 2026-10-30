@@ -1,0 +1,85 @@
+{
+  "frozen_at": "2026-10-31",
+  "settings": {
+    "train_cut": 0.1,
+    "combine": "replace",
+    "floor": false
+  },
+  "name": "crash_cut10_replace_nofloor",
+  "switch_on": 0.1,
+  "min_past": 500,
+  "applies_to": "long side only, 1 h and 24 h, on FHS with the HAR-S forecast (the app's liquidation model)",
+  "stress_input": "P(stress in the next hour), the stress classifier's probability (models/stress.py, gbm)",
+  "chosen_on": "BTC, ETH, SOL, origins 2022-01-01 to 2024-09-30, 24 h (scripts/crash_mode_dev.py rule)",
+  "passed_dev_ece_check": true,
+  "choose_period": {
+    "crash_cut10_replace_nofloor": {
+      "worst_ece_excess": 0.000541,
+      "mean_gap": 0.003428,
+      "fhs_mean_gap": 0.011698,
+      "admissible": true
+    },
+    "crash_cut10_replace_floor": {
+      "worst_ece_excess": 0.001791,
+      "mean_gap": 0.037291,
+      "fhs_mean_gap": 0.011698,
+      "admissible": true
+    },
+    "crash_cut10_max_nofloor": {
+      "worst_ece_excess": 0.000541,
+      "mean_gap": 0.003744,
+      "fhs_mean_gap": 0.011698,
+      "admissible": true
+    },
+    "crash_cut10_max_floor": {
+      "worst_ece_excess": 0.001795,
+      "mean_gap": 0.037432,
+      "fhs_mean_gap": 0.011698,
+      "admissible": true
+    },
+    "crash_cut30_replace_nofloor": {
+      "worst_ece_excess": 1e-05,
+      "mean_gap": 0.011604,
+      "fhs_mean_gap": 0.011698,
+      "admissible": true
+    },
+    "crash_cut30_replace_floor": {
+      "worst_ece_excess": 4.3e-05,
+      "mean_gap": 0.011263,
+      "fhs_mean_gap": 0.011698,
+      "admissible": true
+    },
+    "crash_cut30_max_nofloor": {
+      "worst_ece_excess": 1e-05,
+      "mean_gap": 0.011604,
+      "fhs_mean_gap": 0.011698,
+      "admissible": true
+    },
+    "crash_cut30_max_floor": {
+      "worst_ece_excess": 4.3e-05,
+      "mean_gap": 0.011263,
+      "fhs_mean_gap": 0.011698,
+      "admissible": true
+    }
+  },
+  "check_period_chosen": {
+    "BTCUSDT": {
+      "hot_long_gap": 0.003808,
+      "fhs_hot_long_gap": 0.01857,
+      "ece": 0.004284,
+      "fhs_ece": 0.004192
+    },
+    "ETHUSDT": {
+      "hot_long_gap": 0.002951,
+      "fhs_hot_long_gap": 0.014945,
+      "ece": 0.001923,
+      "fhs_ece": 0.002352
+    },
+    "SOLUSDT": {
+      "hot_long_gap": 0.006091,
+      "fhs_hot_long_gap": 0.012197,
+      "ece": 0.004135,
+      "fhs_ece": 0.003585
+    }
+  }
+}

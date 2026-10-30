@@ -9,6 +9,10 @@ data/reports/*
 # final evaluation results (small tables; per-hour predictions stay local)
 !data/reports/final_*.csv
 !data/reports/final_*.json
+# Phase 13B: crash-mode grid and new-coin exam results (small tables)
+!data/reports/p13b_*.csv
+!data/reports/new_coin_*.csv
+!data/reports/new_coin_*.json
 __pycache__/
 *.pyc
 .venv/
