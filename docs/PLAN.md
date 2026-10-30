@@ -75,6 +75,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 11 Crash replay and alerts (M12) | Built 27 Oct, merged 28 Oct (`docs/M12_WALKTHROUGH.md`): FTX replay minute by minute with the frozen models, alert engine once a minute into an in-app inbox (bell), Whale Watch alerts from Hyperliquid's public data. October 2025 replay waits for the final evaluation. |
 | 12 Trade verdict for beginners (M9, extended) | Built 28 Oct, run on the dev data and frozen 30 Oct (`docs/M12_VERDICT_WALKTHROUGH.md`). Grade: share knocked out within 24 h rises A to F on all 3 coins, F/A 13-26x. Crowd warning: BTC 3.05x and ETH 1.93x (90% intervals above 1), SOL 1.23x (fails). Similar moments: range covers 78-81%; up chance no better than the base rate (a coin flip). Final run not done (Phase 10). |
 | 10 Final evaluation, then UI polish (M11) | Part A run once 30-31 Oct from tag `final-eval` (`docs/FINAL_EVALUATION.md`): volatility, liquidation, stress, regimes and the paper agent PASS; trade verdict FAIL (grade passed, crowd warning and similar-moments up chance did not); app speed passes, Saeed's click-through pending; parser not run (key). Part B (UI polish) next. |
+| 13 From calculator to co-pilot | Planned 31 Oct with pass marks: 13A stronger live forecaster + cut failed signals, 13B crash mode + new-coin exam (XRP, DOGE, BNB, ADA, AVAX), 13C Position Guardian with Telegram, 13D Hyperliquid trader tracker (scorecards, liquidation map, copy test). |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
 
@@ -429,6 +430,219 @@ Rules for the run
 - The verdict, as Saeed defined it: the project is "good" if the model parts (volatility, liquidation, stress), the
   paper agent, the Phase 12 trade verdict (grade, crowd warning, similar moments) and the app all pass. Anything that fails is reported as failed, with what it means.
 
+## Phase 13: From calculator to co-pilot (direction from Saeed, 31 Oct)
+
+Why: the final evaluation showed what RegimeCast can and cannot do.
+- **It can:** forecast how violent the market will be, give honest liquidation odds over normal days, warn about
+  stress, and grade a trade's setup.
+- **It cannot:** tell anyone which way the price goes (crowd warning and up/down odds failed; Phase 6b failed too).
+
+Phase 13 builds on what passed and fixes the three gaps between "tested models" and "something people keep using":
+1. The live app runs the weaker volatility model.
+2. The liquidation odds are dangerously calm for longs on crash days.
+3. Risk is checked once, before a trade, while people get liquidated later, while they're not looking.
+
+It also adds the trader monitoring Saeed asked for, done so that skill is separated from luck.
+
+Four workstreams, run as four parallel sessions (own worktrees and branches; the coordinator merges):
+
+| | Workstream | Main files | Depends on |
+|---|---|---|---|
+| 13A | Ship the stronger forecaster, cut what failed | `regimecast/vol/`, `regimecast/verdict/` (display only), `web/src/components/trade-verdict.tsx` | nothing |
+| 13B | Crash mode and the new-coin exam | `regimecast/models/`, `regimecast/data/`, `scripts/new_coin_exam.py`, Modal jobs | nothing (app adoption after 13A merges) |
+| 13C | Position Guardian with Telegram alerts | `regimecast/guardian/`, `regimecast/notify/`, `regimecast/api/guardian.py`, account pages | nothing |
+| 13D | Popular trader tracker | `regimecast/traders/`, `regimecast/api/traders.py`, Traders page | nothing (Telegram delivery after 13C merges) |
+
+Shared files (`regimecast/api/main.py`, the nav, `README.md`, this plan) get small, additive edits only.
+
+### 13A: Ship the stronger forecaster, cut what failed
+
+Goal: every number on screen is one the final evaluation proved.
+
+Tasks
+1. Live HAR-S + LightGBM combination for 1 h and 24 h, replacing HAR-S alone in `/forecast`, `/risk-check` and the
+   dashboard. Inputs come from the live cache the stress gauge already fills (funding, open interest, long/short
+   ratios, taker flow, DVOL), through the same training feature code. The order-book features are dropped from the
+   live model, because there is no live order book.
+2. One live model per coin and horizon, fitted on all data through 2026-09-30, with the final evaluation's fixed
+   settings. Store it as files in the repo, as for HAR-S and the stress model, so the API image needs no training.
+3. SHAP drivers of the live LightGBM in the risk check ("what moves the forecast"), next to HAR-S's.
+4. Remove from the app: the crowd warning (the Trade Grade's crowd step included) and the similar-moments up/down
+   chance. Keep the 80% move range, the grade, "fix my trade", the what-if strip and the timing warnings. The grade's
+   frozen bands are unchanged, minus the crowd step. Log it in the decision log as a product change after the test.
+5. Update `docs/M12_VERDICT_WALKTHROUGH.md` and the README to say what was removed and why (with the final-evaluation
+   numbers).
+
+Pass marks (fixed 31 Oct, before building)
+- Live inputs equal the archive features: over 48 consecutive hours checked against the archive (as
+  `scripts/check_live_features.py` does), every model input matches within 1e-6 relative, or the difference is
+  explained.
+- The live forecast equals the offline model on the same inputs (a test).
+- The risk check still answers in under 2 s for 95% of 50 live requests.
+
+Done when: the live site shows forecasts from the combination with its drivers, and no crowd or up/down figure
+remains anywhere.
+
+### 13B: Crash mode for the liquidation odds, proven on coins the models never saw
+
+Goal: stop under-warning long positions on crash days, and prove it, plus the existing models' accuracy, on fresh
+unseen data. The final test period is used up, so the new exam is **five coins RegimeCast has never touched**:
+XRP, DOGE, BNB, ADA, AVAX (Binance USD-M perpetuals).
+
+Tasks
+1. **Crash mode, designed on BTC/ETH/SOL** (2020-2026; the old final test period may now be used for development).
+   - What it is: when the stress probability is at elevated or above (10%+), the long side's liquidation
+     probability comes from FHS fitted only on past high-stress hours.
+   - Optional extra: a floor from the worst moves seen in past crash windows, written as one rule.
+   - Same walk-forward and past-only rules as Phase 5.
+   - Keep it small: at most 3 settings, chosen by a rule written before the grid runs.
+   - Freeze it in `regimecast/models/crash_mode.json`.
+2. **New coins' data**: download and validate on Modal (same pipeline as Phase 4), then build the features and
+   targets. Before the freeze, only the data health checks may look at these coins: no model output, no plots of
+   results.
+3. **One rehearsal** of `scripts/new_coin_exam.py` on BTC/ETH/SOL. Then freeze with the git tag `new-coin-exam`, then
+   one run on the five new coins.
+   - Every model is walk-forward on each coin's own past, with exactly the frozen code and settings.
+   - Scored from each coin's first full year after 6 months of warm-up, through 2026-09-30.
+4. If crash mode passes, adopt it in the app (after 13A merges); if not, keep FHS and report the attempt.
+5. `docs/NEW_COIN_EXAM.md` in plain words, with every metric explained.
+
+Pass marks (fixed 31 Oct 2026, before any new-coin data is downloaded). 5 coins x 2 horizons = 10 cases.
+
+| Part | Compared with | Pass if |
+|---|---|---|
+| Volatility (combination) | HAR-RV | Lower QLIKE in at least 8 of 10 cases, significantly lower (two-sided DM p < 0.05) in at least 5 of 10. |
+| Liquidation (FHS on HAR-S) | Random walk on HAR-S | Lower ECE in at least 9 of 10, lower Brier in at least 8 of 10, ECE at most 0.5% (1 h) / 1.5% (24 h) in at least 8 of 10. |
+| Stress warning | Best of the three simple rules | AUC at least 0.75 and above the best rule on at least 4 of 5 coins; average precision above the best rule on at least 4 of 5. |
+| Regimes | Their own definition | Next-day volatility ordered calm < active < stressed on at least 4 of 5 coins. |
+| Crash mode | Plain FHS, same hours | In hours with stress at elevated or above: the long side's 24 h calibration gap (mean predicted minus observed, absolute) is smaller than plain FHS's on at least 4 of 5 coins. Over all hours: ECE no more than 0.25 percentage points worse than plain FHS on every coin. |
+
+The same rules as the final evaluation apply: one run, bugs fixed and logged, never a changed model.
+
+### 13C: Position Guardian with Telegram alerts
+
+Goal: RegimeCast watches your open leveraged positions 24/7 and messages your phone when the risk changes, with a
+safer version of the position in the same message.
+
+Tasks
+1. **Telegram.**
+   - Bot setup: one RegimeCast bot (Saeed creates it with @BotFather and sets `TELEGRAM_BOT_TOKEN` on Railway).
+   - Linking: a user links their account by pressing "Connect Telegram" (a one-time code, deep link
+     `t.me/<bot>?start=<code>`).
+   - Delivery: every alert kind (Phase 11's included) can be sent to Telegram as well as the in-app inbox.
+   - Users can unlink at any time.
+2. **Positions source 1, Hyperliquid by wallet address** (no key at all; positions are public). The user pastes
+   their address, and the API reads `clearinghouseState` once a minute.
+3. **Positions source 2, Binance by a read-only API key.**
+   - **Permissions:** first check on Binance's futures testnet which permission reading positions needs. Accept a
+     key only if trading and withdrawals are off (checked with Binance's API-restrictions endpoint on every save).
+     If reading futures positions needs a trading-capable permission, don't store Binance keys at all: ship source 1
+     and manual positions, and log it.
+   - **Storage:** keys are encrypted at rest (Fernet, server key `GUARDIAN_SECRET` on Railway), never logged, and
+     never sent back to the browser. A key is deleted at once when the user removes it.
+4. **Source 3, manual:** the user enters a position by hand (or from a saved risk check).
+5. **The Guardian loop**, once a minute:
+   - For each watched position: the liquidation chance over the next 24 h (FHS, crash mode once adopted), stress
+     level and distance to liquidation.
+   - Alert when the chance crosses the user's limit, when stress goes high while the position is leveraged and long,
+     or when the price is within 2 typical moves of liquidation.
+   - Each alert includes the closest safer version (reduce to X or add margin Y), using Phase 12's "fix my trade".
+   - Alerts fire once and re-arm when the condition clears (Phase 11's rule).
+6. **Guardian page:** connected sources, watched positions with live risk, alert history, mute per position.
+7. **Tests:**
+   - Encryption round-trip.
+   - Keys never in logs or API responses (a test scans both).
+   - Permission check rejects trading keys.
+   - Alert rules on a scripted price path.
+   - Telegram sending through a fake client.
+
+Pass marks (fixed 31 Oct 2026)
+- On the Binance futures testnet, with a read-only testnet key: a test position whose risk is forced over the limit
+  produces a Telegram message within 2 minutes, with the safer version inside.
+- Same for a Hyperliquid address (a public test wallet, or Saeed's own if he has one).
+- A key with trading or withdrawal permission is refused.
+- The security tests pass in CI.
+
+Needs from you: create the Telegram bot (5 minutes, @BotFather) and set `TELEGRAM_BOT_TOKEN` and `GUARDIAN_SECRET`
+on Railway yourself. Make a Binance futures testnet account for the test key. Never paste keys or tokens in chat.
+
+### 13D: Popular trader tracker (Hyperliquid)
+
+Goal: show what skilled traders are doing, where big positions would be liquidated, and test honestly whether
+following them pays.
+- **Why Hyperliquid:** every account's positions and fills are public there. Binance's leaderboard is opt-in,
+  partial and has no reliable history.
+- **The trap:** "top traders" lists are mostly survivors of luck. So skill is measured on one period and tested on a
+  later one.
+
+Tasks
+1. **Pool:** the accounts Whale Watch already tracks (Hyperliquid's leaderboard, about 180), plus any account above
+   $1M account value that appears in the leaderboard data.
+   - Download each account's fill history as far back as Hyperliquid's API allows (`userFillsByTime`), and store it
+     as Parquet.
+   - Record how far back it goes per account.
+2. **Scorecard per trader:**
+   - Track record: trades, win rate, profit factor, return on account value, Sharpe of daily PnL, max drawdown,
+     average leverage, typical holding time, and which coins.
+   - Skill test: is the average daily PnL above zero? Use a block bootstrap, with the Benjamini-Hochberg correction
+     across the whole pool so "skilled" isn't just the luckiest of 180.
+   - Labels: skilled (significant), unproven, losing.
+3. **Traders page:**
+   - The skilled traders and what they hold right now (coin, side, size, leverage, entry, liquidation price).
+   - Their recent trades, and the net long/short of skilled traders per coin.
+   - Every number carries its sample size.
+4. **Liquidation map** per coin, from the tracked accounts' open positions and their liquidation prices.
+   - What it shows: the dollar value of longs and shorts that would be liquidated at each price band, near the
+     current price.
+   - Labelled "tracked Hyperliquid accounts only, not the whole market".
+   - Refreshed every few minutes.
+5. **Copy test** (pre-registered below): would copying the skilled traders have made money?
+   - Selection: skill measured on period A only; copying simulated on the later period B.
+   - Execution: a 5-minute delay after their fill, Hyperliquid's taker fee (0.045%), funding.
+   - Sizing: equal risk per trader.
+   - Comparisons: copying random accounts from the same pool, and buy-and-hold.
+6. **Alerts:** "a skilled trader opened or closed a large position" and "price is near a liquidation cluster" as
+   new alert kinds (in-app now; Telegram once 13C merges).
+7. Tests: scorecard maths on synthetic fills, no look-ahead in the copy test (selection uses period A only), the
+   liquidation-map aggregation.
+
+Pass marks for the copy test (fixed 31 Oct 2026, before any fill history is downloaded)
+- Periods: A is the first two thirds of the common history, B is the last third.
+- **If at least 60 accounts have 6+ months of fills:**
+  - Selection: copy the top 10% of accounts by period-A skill score into period B.
+  - Pass if, after the delay, fees and funding, the copy portfolio has a higher Sharpe ratio than both
+    random-account copying (the median of 200 random draws of the same size) and buy-and-hold of the same coins,
+    and the 90% block-bootstrap interval of the Sharpe difference against random copying is above 0.
+- **Otherwise (not enough history):** the test becomes a forward test.
+  - Signals are logged live from the freeze date for 8 weeks, with each logged decision committed before its
+    outcome.
+  - It is then scored once with the same bar.
+- Either way, the page only says "following them has worked" if the test passed. Otherwise it says "past results;
+  following them was not shown to pay".
+
+The scorecards and the liquidation map are descriptive (no bar). They show their sample sizes and their limits.
+
+### Phase 13 order
+
+1. This plan (with every pass mark above) is committed before any new data is downloaded or any model is built.
+2. 13A, 13B, 13C and 13D start together as four sessions.
+3. The coordinator merges each when it reports done, and checks it on the live URL.
+4. Then the integration steps:
+   - crash mode into the app, if it passed (needs 13A and 13B);
+   - Telegram delivery for trader and crash alerts (needs 13C and 13D).
+5. The new-coin exam runs once, when 13B's crash mode is frozen. Its plain-words report goes to Saeed straight away.
+
+### Phase 13 risks
+
+| Risk | Plan |
+|---|---|
+| Hyperliquid fill history is short | The copy test turns into an 8-week forward test (pre-registered above) |
+| Binance read-only keys can't read futures positions | Ship Hyperliquid-by-address and manual positions; no trading-capable keys are ever stored |
+| New coins have messy early data (listings, halts) | 6-month warm-up; data health documented first; gaps reported |
+| Crash mode overfits the few crash days | At most 3 settings, a selection rule written first, judged only on unseen coins |
+| Telegram rate limits | One message per alert, re-arm rule, at most 20 messages per user per hour |
+
+
 ## Open questions
 
 1. **Criteria 1 and 4:** do you want to ask Mr. Awais to word them as "we test and report either way", or leave them as they are?
@@ -543,3 +757,7 @@ Rules for the run
 | 2026-10-30 | Similar moments' up chance pulled toward the frozen dev-period up share instead of the library's past up share; shrinkage 10 added to the candidates | On the real dev data the old version was worse than the base rate on all 3 coins (the bar's baseline is the dev-period share). Now ETH and SOL are no worse; BTC 0.2497 vs 0.2495. |
 | 2026-10-30 | Frozen (rules as written): knock-out bands 5/15/30/50%, market steps for stress, crowding and timing (regime off); crowd extremes 10%, open interest 25%; similar moments k = 400, unscaled, shrinkage 10 | Chosen on 2022-01 to 2024-09 (48 / 8 / 32 candidates in `data/reports/phase12_*_grid.csv`), checked on 2024-10 to 2025-09. |
 | 2026-10-31 | Final evaluation run once from tag `final-eval`; results in `docs/FINAL_EVALUATION.md` and committed `data/reports/final_*.csv/json` | The bars were fixed on 27 Oct; the run reproduced the dev period exactly. Results are reported whatever they are and never replaced. |
+| 2026-10-31 | Phase 13 planned: four parallel workstreams; pass marks for the new-coin exam, crash mode, Guardian and the copy test fixed before any new data is downloaded | The final test period is used up, so new claims need fresh unseen data: five never-touched coins, or a forward test. |
+| 2026-10-31 | Trader tracker on Hyperliquid, not Binance's leaderboard; skill measured on one period and tested on a later one | Hyperliquid's accounts and fills are public with history; top-trader lists are mostly survivors of luck. |
+| 2026-10-31 | Guardian never stores exchange keys that can trade or withdraw; Hyperliquid positions read by public address | Holding other people's trading keys is a risk a student project should not take. |
+| 2026-10-31 | No research paper for now | Saeed: product first. |
