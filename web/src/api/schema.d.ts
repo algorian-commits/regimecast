@@ -721,6 +721,22 @@ export interface components {
             /** Avg Exposure */
             avg_exposure: number;
         };
+        /** BreakEvenOut */
+        BreakEvenOut: {
+            /**
+             * Win Rate
+             * @description Share of trades that must reach the target to break even after costs
+             */
+            win_rate: number;
+            /** Win Usdt */
+            win_usdt: number;
+            /** Loss Usdt */
+            loss_usdt: number;
+            /** Reward To Risk */
+            reward_to_risk: number;
+            /** Text */
+            text: string;
+        };
         /** Candle */
         Candle: {
             /**
@@ -860,6 +876,32 @@ export interface components {
             /** Reasons */
             reasons: string[];
         };
+        /** CrowdOut */
+        CrowdOut: {
+            /**
+             * Side
+             * @description long or short when the crowd warning is on; None otherwise
+             */
+            side?: string | null;
+            /** Text */
+            text: string;
+            /**
+             * After Warning
+             * @description Past chance of a 5% move against the crowd within 24 h after a warning
+             */
+            after_warning?: number | null;
+            /**
+             * Normally
+             * @description The same chance in hours without a warning
+             */
+            normally?: number | null;
+            /** Funding Rank */
+            funding_rank?: number | null;
+            /** Ls Top Rank */
+            ls_top_rank?: number | null;
+            /** Oi Growth Rank */
+            oi_growth_rank?: number | null;
+        };
         /** CurvePoint */
         CurvePoint: {
             /** Hour */
@@ -936,6 +978,38 @@ export interface components {
             buy_and_hold: number;
             /** Vol Target */
             vol_target: number;
+        };
+        /** FixOut */
+        FixOut: {
+            /** Leverage */
+            leverage: number;
+            /** Qty */
+            qty: number;
+            /** Notional Usdt */
+            notional_usdt: number;
+            /** Margin Usdt */
+            margin_usdt: number;
+            /** Stop */
+            stop: number | null;
+            /** Liquidation Price */
+            liquidation_price: number | null;
+            /** P Liquidation 24H */
+            p_liquidation_24h: number;
+            /** P Stop 24H */
+            p_stop_24h: number | null;
+            /** Loss At Stop Usdt */
+            loss_at_stop_usdt: number | null;
+            /** Grade */
+            grade: string;
+            /** Headline */
+            headline: string;
+            /** Points */
+            points: number;
+            /**
+             * Changes
+             * @description What changed, in plain words
+             */
+            changes: string[];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1226,6 +1300,21 @@ export interface components {
              */
             ids?: number[] | null;
         };
+        /** ReasonOut */
+        ReasonOut: {
+            /** Text */
+            text: string;
+            /**
+             * Good
+             * @description True for a point in the trade's favour
+             */
+            good: boolean;
+            /**
+             * Points
+             * @description Penalty points this reason adds to the grade
+             */
+            points: number;
+        };
         /** ReplayEvent */
         ReplayEvent: {
             /** Id */
@@ -1404,6 +1493,45 @@ export interface components {
             warnings: string[];
             /** Generated At */
             generated_at: string;
+            /** @description Trade verdict for beginners (Phase 12): grade, reasons, fix, what-if, crowd, similar moments, timing */
+            verdict?: components["schemas"]["VerdictOut"] | null;
+        };
+        /** SimilarExampleOut */
+        SimilarExampleOut: {
+            /** Time */
+            time: string;
+            /** Next 24H Move Pct */
+            next_24h_move_pct: number;
+        };
+        /** SimilarOut */
+        SimilarOut: {
+            /** N */
+            n: number;
+            /**
+             * Range Lo Pct
+             * @description 10th percentile of the next 24 h move, in %
+             */
+            range_lo_pct: number;
+            /**
+             * Range Hi Pct
+             * @description 90th percentile of the next 24 h move, in %
+             */
+            range_hi_pct: number;
+            /** Typical Move Pct */
+            typical_move_pct: number;
+            /** P Up */
+            p_up: number;
+            /** Coin Flip */
+            coin_flip: boolean;
+            /** Text */
+            text: string[];
+            /** Examples */
+            examples: components["schemas"]["SimilarExampleOut"][];
+            /**
+             * Pool Until
+             * @description The most recent past hour the comparison can use
+             */
+            pool_until: string;
         };
         /** StopInfo */
         StopInfo: {
@@ -1465,6 +1593,11 @@ export interface components {
             /** Stop */
             stop?: number | null;
             /**
+             * Target
+             * @description Take-profit price (for the break-even win rate)
+             */
+            target?: number | null;
+            /**
              * Horizon Hours
              * @default 24
              * @enum {integer}
@@ -1494,6 +1627,58 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VerdictOut */
+        VerdictOut: {
+            /**
+             * Grade
+             * @description A (well built) to F
+             */
+            grade: string;
+            /** Headline */
+            headline: string;
+            /** Points */
+            points: number;
+            /**
+             * Leverage
+             * @description The trade's leverage, as asked
+             */
+            leverage: number;
+            /**
+             * Reasons
+             * @description The three plain reasons shown first
+             */
+            reasons: components["schemas"]["ReasonOut"][];
+            /** All Reasons */
+            all_reasons: components["schemas"]["ReasonOut"][];
+            /** P Liquidation 24H */
+            p_liquidation_24h: number;
+            /** P Stop 24H */
+            p_stop_24h: number | null;
+            /**
+             * Knockout 24H
+             * @description Chance the trade is ended within a day by the stop or liquidation
+             */
+            knockout_24h: number;
+            break_even?: components["schemas"]["BreakEvenOut"] | null;
+            /** Break Even Hint */
+            break_even_hint?: string | null;
+            fix?: components["schemas"]["FixOut"] | null;
+            /** Fix Note */
+            fix_note: string;
+            /** What If */
+            what_if: components["schemas"]["WhatIfOut"][];
+            crowd?: components["schemas"]["CrowdOut"] | null;
+            similar?: components["schemas"]["SimilarOut"] | null;
+            /**
+             * Timing
+             * @description Bad-timing warnings: macro events, weekend or thin hours, rising stress
+             */
+            timing: string[];
+            /** Notes */
+            notes: string[];
+            /** Frozen At */
+            frozen_at?: string | null;
         };
         /** WhaleEvent */
         WhaleEvent: {
@@ -1564,6 +1749,31 @@ export interface components {
             last_row_at: string | null;
             /** Recent Errors */
             recent_errors: string[];
+        };
+        /** WhatIfOut */
+        WhatIfOut: {
+            /**
+             * Key
+             * @description normal, bad, very_bad or crash
+             */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Move Pct
+             * @description Price change at the day's worst point, in % (negative = falls)
+             */
+            move_pct: number;
+            /**
+             * Pnl Usdt
+             * @description Gain (+) or loss (-) in USDT, after fees
+             */
+            pnl_usdt: number;
+            /**
+             * Outcome
+             * @description gain, loss, stopped out or liquidated
+             */
+            outcome: string;
         };
     };
     responses: never;

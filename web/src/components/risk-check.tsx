@@ -10,6 +10,8 @@ import { EXAMPLES, formFromParsed, type ParseResult } from "@/lib/parse";
 import { buildTrade, DEFAULT_FORM, entryFromMark, formFromRequest, RISK_LIMIT, withDefaults, type TradeForm } from "@/lib/trade-form";
 import { DriversChart, ProbabilityBar } from "./charts";
 import { Badge, Button, Card, ErrorBox, Loading, Stat } from "./ui";
+import { gradeTone } from "@/lib/verdict";
+import { VerdictView } from "./verdict";
 
 type Market = Schemas["MarketOut"];
 type Risk = Schemas["RiskOut"];
@@ -282,6 +284,13 @@ export function RiskCheck() {
               >
                 <input className={input} inputMode="decimal" value={f.stop} placeholder="none" onChange={(e) => set("stop", e.target.value)} />
               </Field>
+              <Field
+                label="Take-profit target (optional)"
+                error={errors.target}
+                hint="Where you plan to take profit. With a stop, it shows the win rate you need."
+              >
+                <input className={input} inputMode="decimal" value={f.target} placeholder="none" onChange={(e) => set("target", e.target.value)} />
+              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Horizon">
                   <Toggle value={f.horizon_hours} options={[{ v: 1, label: "1h" }, { v: 24, label: "24h" }]} onChange={(v) => set("horizon_hours", v)} />
@@ -467,8 +476,8 @@ const REGIME_TONE = { calm: "good", active: "warn", stressed: "bad" } as const;
 const STRESS_TONE = { low: "good", elevated: "warn", high: "bad" } as const;
 
 function RiskResult({ r, text, savedAt, limit }: { r: Risk; text: string | null; savedAt: string | null; limit: number }) {
-  const band = riskBand(r.p_liquidation);
-  const tone = band === "low" ? "good" : band === "elevated" ? "warn" : "bad";
+  const [numbers, setNumbers] = useState(false);
+  const v = r.verdict;
   return (
     <div className="space-y-4">
       {(savedAt || text) && (
@@ -477,6 +486,23 @@ function RiskResult({ r, text, savedAt, limit }: { r: Risk; text: string | null;
           {text && <>&ldquo;{text}&rdquo;</>}
         </p>
       )}
+      {v && <VerdictView r={r} v={v} />}
+      {v && (
+        <Button type="button" variant="ghost" className="w-full" aria-expanded={numbers} onClick={() => setNumbers((x) => !x)}>
+          {numbers ? "Hide the numbers" : "Show me the numbers"}
+        </Button>
+      )}
+      {(!v || numbers) && <RiskNumbers r={r} limit={limit} />}
+    </div>
+  );
+}
+
+/** The full detail for experienced users (the Phase 7 results screen). */
+function RiskNumbers({ r, limit }: { r: Risk; limit: number }) {
+  const band = riskBand(r.p_liquidation);
+  const tone = band === "low" ? "good" : band === "elevated" ? "warn" : "bad";
+  return (
+    <div className="space-y-4">
       <Card title={`${coin(r.symbol)} ${r.side}, ${r.horizon_hours}h horizon`} action={<Badge tone={tone}>{band} risk</Badge>}>
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -595,6 +621,7 @@ function History({ list, where, onOpen, onRemove }: { list: SavedCheck[]; where:
                 <button type="button" onClick={() => onOpen(c)} className="min-w-0 flex-1 rounded-md p-1 text-left hover:bg-surface-2">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     {coin(c.symbol)} {c.result.side} {c.request.leverage}x
+                    {c.result.verdict && <Badge tone={gradeTone(c.result.verdict.grade)}>{c.result.verdict.grade}</Badge>}
                     <Badge tone={band === "low" ? "good" : band === "elevated" ? "warn" : "bad"}>{prob(c.result.p_liquidation)}</Badge>
                   </div>
                   <div className="truncate text-xs text-muted">

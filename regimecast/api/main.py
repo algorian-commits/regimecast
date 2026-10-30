@@ -10,6 +10,7 @@ Endpoints that depend on models not built yet return HTTP 503 with
 from __future__ import annotations
 
 import json
+import logging
 import math
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -26,6 +27,8 @@ from regimecast.alerts.engine import engine as alert_engine
 from regimecast.whales.live import watch as whale_watch
 from regimecast.risk import fhs_live
 from regimecast.risk import liquidation as liq
+from regimecast.verdict import live as verdict_live
+from regimecast.verdict.schema import VerdictOut
 from regimecast.vol import live as vol_live
 
 
@@ -34,6 +37,7 @@ async def lifespan(app):
     vol_live.cache.start()   # HAR-S forecasts refresh in the background (vol/live.py)
     alert_engine.start()     # Phase 11: alert rules checked once a minute (alerts/engine.py)
     whale_watch.start()      # Phase 11: Whale Watch on Hyperliquid's public data (whales/live.py)
+    verdict_live.cache.start()   # Phase 12: crowd signals for the trade verdict (verdict/live.py)
     yield
 
 
@@ -49,6 +53,7 @@ inbox.install(app)      # Phase 11: alert inbox (inbox.py)
 whales.install(app)     # Phase 11: Whale Watch events (whales.py)
 
 Symbol = Literal["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+log = logging.getLogger("api")
 
 # Used only if no forecast is available (e.g. the first minutes after a restart). Flagged in responses.
 PLACEHOLDER_ANNUAL_VOL = {"BTCUSDT": 0.55, "ETHUSDT": 0.70, "SOLUSDT": 0.90}
@@ -65,6 +70,7 @@ class TradeIn(BaseModel):
     margin_mode: Literal["isolated", "cross"] = "isolated"
     wallet_balance: float | None = Field(None, gt=0, description="Cross margin: whole cross wallet in USDT")
     stop: float | None = Field(None, gt=0)
+    target: float | None = Field(None, gt=0, description="Take-profit price (for the break-even win rate)")
     horizon_hours: Literal[1, 24] = 24
     risk_limit: float = Field(0.01, gt=0, lt=1, description="Max acceptable P(liquidation) for safe leverage")
     sigma_annual: float | None = Field(None, gt=0, description="Override volatility (annualised, e.g. 0.6)")
@@ -77,6 +83,8 @@ class TradeIn(BaseModel):
             raise ValueError("cross margin needs wallet_balance")
         if self.stop is not None and (self.stop >= self.entry if self.side == "long" else self.stop <= self.entry):
             raise ValueError("stop must be below entry for a long and above entry for a short")
+        if self.target is not None and (self.target <= self.entry if self.side == "long" else self.target >= self.entry):
+            raise ValueError("target must be above entry for a long and below entry for a short")
         return self
 
 
@@ -116,6 +124,8 @@ class RiskOut(BaseModel):
     explanation: list[str]
     warnings: list[str]
     generated_at: str
+    verdict: VerdictOut | None = Field(None, description="Trade verdict for beginners (Phase 12): grade, reasons, "
+                                                         "fix, what-if, crowd, similar moments, timing")
 
 
 class NotReady(BaseModel):
@@ -251,6 +261,19 @@ def risk_check(t: TradeIn) -> RiskOut:
         f"Stress risk for the next hour: {st['level']} ({100 * st['p_stress_next_hour']:.0f}%, normally "
         f"{100 * st['base_rate']:.0f}%)." if st else "",
     ]
+    verdict = None
+    try:
+        sigma24, source24 = (sigma_h, source) if t.horizon_hours == 24 else _sigma(t.symbol, 24, t.sigma_annual)
+        hit24, _ = _hit_model(t.symbol, t.side, 24, source24)
+        mk = market.cache.peek(t.symbol)
+        verdict = VerdictOut(**verdict_live.build(
+            t.symbol, t.side, t.entry, qty, t.leverage, t.margin_mode, t.wallet_balance, t.stop, t.target,
+            t.risk_limit, sigma24, hit24, rg, st, funding_rate=mk.funding_rate if mk else None,
+            inputs=verdict_live.cache.get(t.symbol),
+            candles=(vol_live.cache.get_candles(t.symbol) or {}).get("candles")))
+    except Exception as e:   # the verdict must never break the risk check itself
+        log.exception("verdict failed: %r", e)
+        warnings.append("The trade verdict could not be computed right now.")
     return RiskOut(
         symbol=t.symbol, side=t.side, notional_usdt=round(pos.notional, 2), margin_usdt=round(margin, 2),
         liquidation_price=round(lp, 2) if finite else None,
@@ -262,7 +285,7 @@ def risk_check(t: TradeIn) -> RiskOut:
         stop=stop_info, regime=rg["regime"] if rg else None, drivers=fc_drivers,
         stress_level=st["level"] if st else None, p_stress_next_hour=round(st["p_stress_next_hour"], 4) if st else None,
         explanation=[e for e in expl if e], warnings=warnings,
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=datetime.now(timezone.utc).isoformat(), verdict=verdict,
     )
 
 

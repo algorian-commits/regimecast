@@ -68,6 +68,11 @@ class MarketCache:
         self.fetch, self.clock = fetch, clock
         self._store: dict[str, tuple[float, MarketOut]] = {}
 
+    def peek(self, symbol: str) -> MarketOut | None:
+        """The last value fetched, if any, without calling Binance (for the trade verdict's funding rate)."""
+        hit = self._store.get(symbol)
+        return hit[1] if hit and self.clock() - hit[0] < STALE_SECONDS else None
+
     def get(self, symbol: str) -> MarketOut | None:
         now = self.clock()
         hit = self._store.get(symbol)

@@ -228,6 +228,29 @@ python scripts/make_replay.py oct_2025     :: refused until docs/FINAL_EVALUATIO
 Whale thresholds (env): `WHALE_MOVE_USD`, `WHALE_FRESH_USD`, `WHALE_TIMING_USD` (all $5M), `WHALE_TIMING_HOURS` (6).
 See `docs/M12_WALKTHROUGH.md`.
 
+## Trade verdict for beginners (Module M9, extended)
+
+For someone who knows nothing about trading: one grade (A to F), three plain reasons and one suggested fix, first on
+the Risk Check results; "Show me the numbers" opens the full detail. It judges how the trade is built (size,
+leverage, stop, costs, timing, crowding), never the direction. Plain-English overview and results:
+`docs/M12_VERDICT_WALKTHROUGH.md`.
+
+| Part | File | What it does |
+|---|---|---|
+| Rules | `regimecast/verdict/rules.py` | Trade Grade (written step tables, letters from points), break-even win rate, "fix my trade" (closest safer version within the user's risk limit), the what-if strip. One table drives both the app and the vectorised dev/final scoring (tested equal). |
+| Crowd warning | `regimecast/verdict/crowd.py` | Funding, top traders' long/short ratio and 24 h open-interest growth as 14-day ranks (past only); odds of a sudden 5% move against the crowd within 24 h; block-bootstrap ratio. |
+| Similar moments | `regimecast/verdict/similar.py` | The 400 nearest past hours whose next day had finished; 80% range of the next 24 h move and the up chance, pulled toward the dev-period up share. Pools ship as `similar_pool_<coin>.parquet` (dev hours only). |
+| Timing | `regimecast/verdict/calendar.py`, `macro_events.csv` | Fed decisions, CPI and jobs reports 2020-2027 (from the Fed and BLS calendars, in UTC), weekends, the 4 quietest hours. |
+| History and scoring | `regimecast/verdict/history.py`, `evaluate.py` | Hour-by-hour inputs on past data (walk-forward HAR-S, FHS refitted every 90 days, Phase 6 stress, Phase 4 regimes); the measures behind the three final bars. |
+| Settings | `regimecast/verdict/frozen.json` | Chosen on 2022-01 to 2024-09 (every candidate in `data/reports/phase12_*_grid.csv`), checked on 2024-10 to 2025-09, frozen 30 Oct 2026. |
+| Final evaluation | `regimecast/verdict/final.py` | `run_final(final=True)`: Phase 10 runs it once. |
+| API and app | `regimecast/verdict/live.py`, `schema.py`, `web/src/components/verdict.tsx` | `POST /risk-check` returns `verdict` (grade, reasons, fix, what-if, break-even, crowd, similar moments, timing); live crowd inputs refresh every 10 minutes from Binance's public 1-hour history. `target` (take-profit) added to the request. |
+
+```bat
+python scripts/run_phase12.py               :: choose, check, freeze; data/reports/phase12_* (about 2 min)
+python scripts/run_phase12.py --refreeze    :: only after logging why in docs/PLAN.md
+```
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.

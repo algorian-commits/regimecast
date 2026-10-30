@@ -1,6 +1,6 @@
 # RegimeCast build plan
 
-Status (28 Oct): Phases 1-9 and 11 done and merged. Next: Phase 12 (trade verdict), then the final evaluation
+Status (30 Oct): Phases 1-9 and 11 done and merged; Phase 12 (trade verdict) built and frozen. Next: the final evaluation
 (Phase 10, part A) once, then UI polish. The final evaluation's pass bars are fixed below **before** the final test
 period is opened.
 
@@ -73,7 +73,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 8 Live dashboard and accounts (M5, M6) | Built and merged 27 Oct (`docs/M5_M6_WALKTHROUGH.md`): sign up / log in on Postgres, Risk Radar dashboard with live WebSocket feed and regime-coloured candles. Logged-in Risk Checks use the account's risk limit, margin mode and balance, and save to the account. |
 | 9 Paper-trading risk agent (M10 part 2) | Built 27 Oct, merged 28 Oct (`docs/M10_AGENT_WALKTHROUGH.md`), settings frozen. Dev period 2022-01 to 2025-09: Sharpe 0.62 vs 0.46 for buy-and-hold, max drawdown -38% vs -79%, FTX week -12% vs -27%. Plain trailing-vol targeting does as well (0.65); the grid switched the stress and regime cuts off (fees). Live paper log hourly on `agent-data`; Agent page. Final run not done (Phase 10). |
 | 11 Crash replay and alerts (M12) | Built 27 Oct, merged 28 Oct (`docs/M12_WALKTHROUGH.md`): FTX replay minute by minute with the frozen models, alert engine once a minute into an in-app inbox (bell), Whale Watch alerts from Hyperliquid's public data. October 2025 replay waits for the final evaluation. |
-| 12 Trade verdict for beginners (M9, extended) | Planned 27 Oct, not started. Pass bars already fixed. |
+| 12 Trade verdict for beginners (M9, extended) | Built 30 Oct (`docs/M12_VERDICT_WALKTHROUGH.md`), settings frozen. Grade: share knocked out within 24 h rises A to F on all 3 coins, F/A 8.6-10.5x. Crowd warning: BTC 1.84x (90% interval 1.24-2.55); ETH and SOL do not pass. Similar moments: 80% range covers 77-80%; up chance no better than the base rate (a coin flip, as 6b found). Final run not done (Phase 10). |
 | 10 Final evaluation, then UI polish (M11) | Waiting for Phase 12. Track Record page, end-to-end tests, hardening and guides dropped. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
@@ -512,6 +512,16 @@ Rules for the run
 | 2026-10-27 | Alert kinds added to the Phase 8 table: stress high, saved position's liquidation risk (a saved check, limit = profile risk limit unless set), Whale Watch (migration 0002) | Covers the plan's four rules, with Whale Watch delivered to the same inbox. |
 | 2026-10-27 | Whale Watch in the API reads Hyperliquid's public endpoints with the recorder's own `HyperliquidWatcher` (recorder unchanged) | The recorder's files are on its own volume; its file endpoint needs a token the API does not have. |
 | 2026-10-27 | Whale thresholds $5M (move, fresh wallet, timing), timing window 6 h; moves only for tracked top accounts; "fresh" = not seen by Whale Watch before (kept in `whale_seen`) | On the recorded week: about 2.6 moves and 10 fresh wallets a day. Hyperliquid gives no account age, so "fresh" is documented as new to Whale Watch. |
+| 2026-10-30 | Trade Grade built on one "knock-out chance" (stop or liquidation, whichever comes first) plus extra points for liquidation vs the user's limit, instead of separate liquidation and stop points | With separate points, tight-stop low-leverage trades got few points but were stopped out most often, so the grade did not rise A to F (BTC grid period). One knock-out number counts each trade's real exit once. |
+| 2026-10-30 | Grade cut points A < 2, B < 5, C < 8, D < 11 points, chosen on 2022-01 to 2024-09 from 5 sets written beforehand | Rule: meets the final bar on all 3 coins with every letter used by 200+ trades; largest smallest F/A ratio. Check period F/A 8.7-10.6x. |
+| 2026-10-30 | The verdict always looks 24 h ahead, whatever horizon the user picks | The grade bar, the what-if strip and similar moments are all about the next day. |
+| 2026-10-30 | Crowd signals as ranks against their own last 14 days, not fixed levels | Top traders' long/short ratio drifts a lot (ETH 1.1 to 3.5 in 2022-25); 14 days is what Binance's public 1-hour history lets the live app compute. |
+| 2026-10-30 | Crowd warning: 2 of the 3 signals in their top/bottom 5% (9 settings tried) | Chosen by the rule "most coins meeting the bar (ratio >= 1.5, 90% interval above 1) on the grid period"; works for BTC only (dev 1.84x, interval 1.24-2.55); no setting worked for ETH or SOL. Reported as found. |
+| 2026-10-30 | Crowd and similar-moments choice rules revised once after the first run, before freezing | The first crowd rule ignored the bootstrap interval the bar uses (its pick, all 3 signals in the top 10%, failed the interval even on BTC); the first similar rule chose on Brier differences of 0.0001 and left BTC's coverage at 84%, next to the 85% edge. Both now follow the bars; chosen on the grid period only. |
+| 2026-10-30 | Similar moments: 400 nearest hours, moves scaled to today's volatility, up chance pulled toward the dev-period up share (10 pseudo-hours per neighbour) | 32 settings tried; coverage 77-80% on the dev period. The up chance is about the base rate: direction is a coin flip (Phase 6b), and the app says so. In the dev tables the dev-period up share is known in advance (slightly favourable); in the final run it is genuinely fixed beforehand. |
+| 2026-10-30 | What-if crash line = the fall within 24 h on 10 Oct 2025 (BTC -16.3%, ETH -21.8%, SOL -35.6%), read once from the final test period | The plan asks for "a crash day like 10 Oct 2025". One descriptive number per coin; nothing is fitted or chosen on it. |
+| 2026-10-30 | Macro calendar: Fed decisions, CPI and jobs reports 2020-2027 as a CSV in the repo, from the Federal Reserve and BLS calendars, converted to UTC | Fixed and reviewable; includes the 2020 emergency cuts and the 2025 shutdown's moved releases. Thin hours 03:00-07:00 UTC (lowest median volume, grid period). |
+| 2026-10-30 | `target` (take-profit) added to `POST /risk-check` and the form | The break-even win rate needs it. The trade parser still does not read it (parking list). |
 
 ## Parking list (not now)
 

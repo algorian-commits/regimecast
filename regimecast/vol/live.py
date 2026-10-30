@@ -197,7 +197,11 @@ def stress_from_bars(bars: pd.DataFrame, symbol: str, stress_model, regime_model
     t = pd.DataFrame({"ts": h["ts"], "y_1h": np.nan, "y_24h": np.nan})
     X, _ = stress.dataset(h, t, reg, dv if not dv.empty else None)
     booster, meta = stress_model
-    return stress.live_gauge(booster, meta, X)
+    g = stress.live_gauge(booster, meta, X)
+    back = X.index[-1] - pd.Timedelta(hours=3)        # for the verdict's "stress rising" check (Phase 12)
+    if back in X.index:
+        g["p_stress_3h_ago"] = float(booster.predict(X.loc[[back], meta["features"]])[0])
+    return g
 
 
 def fetch_bars(symbol: str, minutes: int = HISTORY_MINUTES, client=None) -> pd.DataFrame:

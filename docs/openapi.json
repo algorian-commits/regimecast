@@ -2029,6 +2029,40 @@
         ],
         "title": "BacktestRow"
       },
+      "BreakEvenOut": {
+        "properties": {
+          "win_rate": {
+            "type": "number",
+            "title": "Win Rate",
+            "description": "Share of trades that must reach the target to break even after costs"
+          },
+          "win_usdt": {
+            "type": "number",
+            "title": "Win Usdt"
+          },
+          "loss_usdt": {
+            "type": "number",
+            "title": "Loss Usdt"
+          },
+          "reward_to_risk": {
+            "type": "number",
+            "title": "Reward To Risk"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "win_rate",
+          "win_usdt",
+          "loss_usdt",
+          "reward_to_risk",
+          "text"
+        ],
+        "title": "BreakEvenOut"
+      },
       "Candle": {
         "properties": {
           "t": {
@@ -2345,6 +2379,88 @@
         ],
         "title": "CoinDecision"
       },
+      "CrowdOut": {
+        "properties": {
+          "side": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Side",
+            "description": "long or short when the crowd warning is on; None otherwise"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "after_warning": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Warning",
+            "description": "Past chance of a 5% move against the crowd within 24 h after a warning"
+          },
+          "normally": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normally",
+            "description": "The same chance in hours without a warning"
+          },
+          "funding_rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Funding Rank"
+          },
+          "ls_top_rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ls Top Rank"
+          },
+          "oi_growth_rank": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oi Growth Rank"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "CrowdOut"
+      },
       "CurvePoint": {
         "properties": {
           "hour": {
@@ -2505,6 +2621,111 @@
           "vol_target"
         ],
         "title": "EquityDay"
+      },
+      "FixOut": {
+        "properties": {
+          "leverage": {
+            "type": "number",
+            "title": "Leverage"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "notional_usdt": {
+            "type": "number",
+            "title": "Notional Usdt"
+          },
+          "margin_usdt": {
+            "type": "number",
+            "title": "Margin Usdt"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          },
+          "liquidation_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidation Price"
+          },
+          "p_liquidation_24h": {
+            "type": "number",
+            "title": "P Liquidation 24H"
+          },
+          "p_stop_24h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Stop 24H"
+          },
+          "loss_at_stop_usdt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loss At Stop Usdt"
+          },
+          "grade": {
+            "type": "string",
+            "title": "Grade"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "changes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Changes",
+            "description": "What changed, in plain words"
+          }
+        },
+        "type": "object",
+        "required": [
+          "leverage",
+          "qty",
+          "notional_usdt",
+          "margin_usdt",
+          "stop",
+          "liquidation_price",
+          "p_liquidation_24h",
+          "p_stop_24h",
+          "loss_at_stop_usdt",
+          "grade",
+          "headline",
+          "points",
+          "changes"
+        ],
+        "title": "FixOut"
       },
       "HTTPValidationError": {
         "properties": {
@@ -3185,6 +3406,31 @@
         "type": "object",
         "title": "ReadIn"
       },
+      "ReasonOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "good": {
+            "type": "boolean",
+            "title": "Good",
+            "description": "True for a point in the trade's favour"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points",
+            "description": "Penalty points this reason adds to the grade"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "good",
+          "points"
+        ],
+        "title": "ReasonOut"
+      },
       "ReplayEvent": {
         "properties": {
           "id": {
@@ -3688,6 +3934,17 @@
           "generated_at": {
             "type": "string",
             "title": "Generated At"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VerdictOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Trade verdict for beginners (Phase 12): grade, reasons, fix, what-if, crowd, similar moments, timing"
           }
         },
         "type": "object",
@@ -3712,6 +3969,86 @@
           "generated_at"
         ],
         "title": "RiskOut"
+      },
+      "SimilarExampleOut": {
+        "properties": {
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "next_24h_move_pct": {
+            "type": "number",
+            "title": "Next 24H Move Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "time",
+          "next_24h_move_pct"
+        ],
+        "title": "SimilarExampleOut"
+      },
+      "SimilarOut": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "range_lo_pct": {
+            "type": "number",
+            "title": "Range Lo Pct",
+            "description": "10th percentile of the next 24 h move, in %"
+          },
+          "range_hi_pct": {
+            "type": "number",
+            "title": "Range Hi Pct",
+            "description": "90th percentile of the next 24 h move, in %"
+          },
+          "typical_move_pct": {
+            "type": "number",
+            "title": "Typical Move Pct"
+          },
+          "p_up": {
+            "type": "number",
+            "title": "P Up"
+          },
+          "coin_flip": {
+            "type": "boolean",
+            "title": "Coin Flip"
+          },
+          "text": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Text"
+          },
+          "examples": {
+            "items": {
+              "$ref": "#/components/schemas/SimilarExampleOut"
+            },
+            "type": "array",
+            "title": "Examples"
+          },
+          "pool_until": {
+            "type": "string",
+            "title": "Pool Until",
+            "description": "The most recent past hour the comparison can use"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "range_lo_pct",
+          "range_hi_pct",
+          "typical_move_pct",
+          "p_up",
+          "coin_flip",
+          "text",
+          "examples",
+          "pool_until"
+        ],
+        "title": "SimilarOut"
       },
       "StopInfo": {
         "properties": {
@@ -3834,6 +4171,19 @@
             ],
             "title": "Stop"
           },
+          "target": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target",
+            "description": "Take-profit price (for the break-even win rate)"
+          },
           "horizon_hours": {
             "type": "integer",
             "enum": [
@@ -3913,6 +4263,168 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VerdictOut": {
+        "properties": {
+          "grade": {
+            "type": "string",
+            "title": "Grade",
+            "description": "A (well built) to F"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "leverage": {
+            "type": "number",
+            "title": "Leverage",
+            "description": "The trade's leverage, as asked"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonOut"
+            },
+            "type": "array",
+            "title": "Reasons",
+            "description": "The three plain reasons shown first"
+          },
+          "all_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/ReasonOut"
+            },
+            "type": "array",
+            "title": "All Reasons"
+          },
+          "p_liquidation_24h": {
+            "type": "number",
+            "title": "P Liquidation 24H"
+          },
+          "p_stop_24h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Stop 24H"
+          },
+          "knockout_24h": {
+            "type": "number",
+            "title": "Knockout 24H",
+            "description": "Chance the trade is ended within a day by the stop or liquidation"
+          },
+          "break_even": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BreakEvenOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "break_even_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Break Even Hint"
+          },
+          "fix": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FixOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fix_note": {
+            "type": "string",
+            "title": "Fix Note"
+          },
+          "what_if": {
+            "items": {
+              "$ref": "#/components/schemas/WhatIfOut"
+            },
+            "type": "array",
+            "title": "What If"
+          },
+          "crowd": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrowdOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "similar": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimilarOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Timing",
+            "description": "Bad-timing warnings: macro events, weekend or thin hours, rising stress"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "frozen_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frozen At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "grade",
+          "headline",
+          "points",
+          "leverage",
+          "reasons",
+          "all_reasons",
+          "p_liquidation_24h",
+          "p_stop_24h",
+          "knockout_24h",
+          "fix_note",
+          "what_if",
+          "timing",
+          "notes"
+        ],
+        "title": "VerdictOut"
       },
       "WhaleEvent": {
         "properties": {
@@ -4083,6 +4595,43 @@
           "recent_errors"
         ],
         "title": "WhaleStatus"
+      },
+      "WhatIfOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "normal, bad, very_bad or crash"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "move_pct": {
+            "type": "number",
+            "title": "Move Pct",
+            "description": "Price change at the day's worst point, in % (negative = falls)"
+          },
+          "pnl_usdt": {
+            "type": "number",
+            "title": "Pnl Usdt",
+            "description": "Gain (+) or loss (-) in USDT, after fees"
+          },
+          "outcome": {
+            "type": "string",
+            "title": "Outcome",
+            "description": "gain, loss, stopped out or liquidated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "move_pct",
+          "pnl_usdt",
+          "outcome"
+        ],
+        "title": "WhatIfOut"
       }
     }
   }

@@ -1,0 +1,256 @@
+time_utc,kind,name,local_time_et
+2020-01-10T13:30Z,jobs,US jobs report (nonfarm payrolls),2020-01-10 08:30
+2020-01-14T13:30Z,cpi,US inflation report (CPI),2020-01-14 08:30
+2020-01-29T19:00Z,fomc,Fed interest-rate decision (FOMC),2020-01-29 14:00
+2020-02-07T13:30Z,jobs,US jobs report (nonfarm payrolls),2020-02-07 08:30
+2020-02-13T13:30Z,cpi,US inflation report (CPI),2020-02-13 08:30
+2020-03-03T15:00Z,fomc,Fed interest-rate decision (FOMC),2020-03-03 10:00
+2020-03-06T13:30Z,jobs,US jobs report (nonfarm payrolls),2020-03-06 08:30
+2020-03-11T12:30Z,cpi,US inflation report (CPI),2020-03-11 08:30
+2020-03-15T21:00Z,fomc,Fed interest-rate decision (FOMC),2020-03-15 17:00
+2020-04-03T12:30Z,jobs,US jobs report (nonfarm payrolls),2020-04-03 08:30
+2020-04-10T12:30Z,cpi,US inflation report (CPI),2020-04-10 08:30
+2020-04-29T18:00Z,fomc,Fed interest-rate decision (FOMC),2020-04-29 14:00
+2020-05-08T12:30Z,jobs,US jobs report (nonfarm payrolls),2020-05-08 08:30
+2020-05-12T12:30Z,cpi,US inflation report (CPI),2020-05-12 08:30
+2020-06-05T12:30Z,jobs,US jobs report (nonfarm payrolls),2020-06-05 08:30
+2020-06-10T12:30Z,cpi,US inflation report (CPI),2020-06-10 08:30
+2020-06-10T18:00Z,fomc,Fed interest-rate decision (FOMC),2020-06-10 14:00
+2020-07-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2020-07-02 08:30
+2020-07-14T12:30Z,cpi,US inflation report (CPI),2020-07-14 08:30
+2020-07-29T18:00Z,fomc,Fed interest-rate decision (FOMC),2020-07-29 14:00
+2020-08-07T12:30Z,jobs,US jobs report (nonfarm payrolls),2020-08-07 08:30
+2020-08-12T12:30Z,cpi,US inflation report (CPI),2020-08-12 08:30
+2020-09-04T12:30Z,jobs,US jobs report (nonfarm payrolls),2020-09-04 08:30
+2020-09-11T12:30Z,cpi,US inflation report (CPI),2020-09-11 08:30
+2020-09-16T18:00Z,fomc,Fed interest-rate decision (FOMC),2020-09-16 14:00
+2020-10-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2020-10-02 08:30
+2020-10-13T12:30Z,cpi,US inflation report (CPI),2020-10-13 08:30
+2020-11-05T19:00Z,fomc,Fed interest-rate decision (FOMC),2020-11-05 14:00
+2020-11-06T13:30Z,jobs,US jobs report (nonfarm payrolls),2020-11-06 08:30
+2020-11-12T13:30Z,cpi,US inflation report (CPI),2020-11-12 08:30
+2020-12-04T13:30Z,jobs,US jobs report (nonfarm payrolls),2020-12-04 08:30
+2020-12-10T13:30Z,cpi,US inflation report (CPI),2020-12-10 08:30
+2020-12-16T19:00Z,fomc,Fed interest-rate decision (FOMC),2020-12-16 14:00
+2021-01-08T13:30Z,jobs,US jobs report (nonfarm payrolls),2021-01-08 08:30
+2021-01-13T13:30Z,cpi,US inflation report (CPI),2021-01-13 08:30
+2021-01-27T19:00Z,fomc,Fed interest-rate decision (FOMC),2021-01-27 14:00
+2021-02-05T13:30Z,jobs,US jobs report (nonfarm payrolls),2021-02-05 08:30
+2021-02-10T13:30Z,cpi,US inflation report (CPI),2021-02-10 08:30
+2021-03-05T13:30Z,jobs,US jobs report (nonfarm payrolls),2021-03-05 08:30
+2021-03-10T13:30Z,cpi,US inflation report (CPI),2021-03-10 08:30
+2021-03-17T18:00Z,fomc,Fed interest-rate decision (FOMC),2021-03-17 14:00
+2021-04-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2021-04-02 08:30
+2021-04-13T12:30Z,cpi,US inflation report (CPI),2021-04-13 08:30
+2021-04-28T18:00Z,fomc,Fed interest-rate decision (FOMC),2021-04-28 14:00
+2021-05-07T12:30Z,jobs,US jobs report (nonfarm payrolls),2021-05-07 08:30
+2021-05-12T12:30Z,cpi,US inflation report (CPI),2021-05-12 08:30
+2021-06-04T12:30Z,jobs,US jobs report (nonfarm payrolls),2021-06-04 08:30
+2021-06-10T12:30Z,cpi,US inflation report (CPI),2021-06-10 08:30
+2021-06-16T18:00Z,fomc,Fed interest-rate decision (FOMC),2021-06-16 14:00
+2021-07-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2021-07-02 08:30
+2021-07-13T12:30Z,cpi,US inflation report (CPI),2021-07-13 08:30
+2021-07-28T18:00Z,fomc,Fed interest-rate decision (FOMC),2021-07-28 14:00
+2021-08-06T12:30Z,jobs,US jobs report (nonfarm payrolls),2021-08-06 08:30
+2021-08-11T12:30Z,cpi,US inflation report (CPI),2021-08-11 08:30
+2021-09-03T12:30Z,jobs,US jobs report (nonfarm payrolls),2021-09-03 08:30
+2021-09-14T12:30Z,cpi,US inflation report (CPI),2021-09-14 08:30
+2021-09-22T18:00Z,fomc,Fed interest-rate decision (FOMC),2021-09-22 14:00
+2021-10-08T12:30Z,jobs,US jobs report (nonfarm payrolls),2021-10-08 08:30
+2021-10-13T12:30Z,cpi,US inflation report (CPI),2021-10-13 08:30
+2021-11-03T18:00Z,fomc,Fed interest-rate decision (FOMC),2021-11-03 14:00
+2021-11-05T12:30Z,jobs,US jobs report (nonfarm payrolls),2021-11-05 08:30
+2021-11-10T13:30Z,cpi,US inflation report (CPI),2021-11-10 08:30
+2021-12-03T13:30Z,jobs,US jobs report (nonfarm payrolls),2021-12-03 08:30
+2021-12-10T13:30Z,cpi,US inflation report (CPI),2021-12-10 08:30
+2021-12-15T19:00Z,fomc,Fed interest-rate decision (FOMC),2021-12-15 14:00
+2022-01-07T13:30Z,jobs,US jobs report (nonfarm payrolls),2022-01-07 08:30
+2022-01-12T13:30Z,cpi,US inflation report (CPI),2022-01-12 08:30
+2022-01-26T19:00Z,fomc,Fed interest-rate decision (FOMC),2022-01-26 14:00
+2022-02-04T13:30Z,jobs,US jobs report (nonfarm payrolls),2022-02-04 08:30
+2022-02-10T13:30Z,cpi,US inflation report (CPI),2022-02-10 08:30
+2022-03-04T13:30Z,jobs,US jobs report (nonfarm payrolls),2022-03-04 08:30
+2022-03-10T13:30Z,cpi,US inflation report (CPI),2022-03-10 08:30
+2022-03-16T18:00Z,fomc,Fed interest-rate decision (FOMC),2022-03-16 14:00
+2022-04-01T12:30Z,jobs,US jobs report (nonfarm payrolls),2022-04-01 08:30
+2022-04-12T12:30Z,cpi,US inflation report (CPI),2022-04-12 08:30
+2022-05-04T18:00Z,fomc,Fed interest-rate decision (FOMC),2022-05-04 14:00
+2022-05-06T12:30Z,jobs,US jobs report (nonfarm payrolls),2022-05-06 08:30
+2022-05-11T12:30Z,cpi,US inflation report (CPI),2022-05-11 08:30
+2022-06-03T12:30Z,jobs,US jobs report (nonfarm payrolls),2022-06-03 08:30
+2022-06-10T12:30Z,cpi,US inflation report (CPI),2022-06-10 08:30
+2022-06-15T18:00Z,fomc,Fed interest-rate decision (FOMC),2022-06-15 14:00
+2022-07-08T12:30Z,jobs,US jobs report (nonfarm payrolls),2022-07-08 08:30
+2022-07-13T12:30Z,cpi,US inflation report (CPI),2022-07-13 08:30
+2022-07-27T18:00Z,fomc,Fed interest-rate decision (FOMC),2022-07-27 14:00
+2022-08-05T12:30Z,jobs,US jobs report (nonfarm payrolls),2022-08-05 08:30
+2022-08-10T12:30Z,cpi,US inflation report (CPI),2022-08-10 08:30
+2022-09-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2022-09-02 08:30
+2022-09-13T12:30Z,cpi,US inflation report (CPI),2022-09-13 08:30
+2022-09-21T18:00Z,fomc,Fed interest-rate decision (FOMC),2022-09-21 14:00
+2022-10-07T12:30Z,jobs,US jobs report (nonfarm payrolls),2022-10-07 08:30
+2022-10-13T12:30Z,cpi,US inflation report (CPI),2022-10-13 08:30
+2022-11-02T18:00Z,fomc,Fed interest-rate decision (FOMC),2022-11-02 14:00
+2022-11-04T12:30Z,jobs,US jobs report (nonfarm payrolls),2022-11-04 08:30
+2022-11-10T13:30Z,cpi,US inflation report (CPI),2022-11-10 08:30
+2022-12-02T13:30Z,jobs,US jobs report (nonfarm payrolls),2022-12-02 08:30
+2022-12-13T13:30Z,cpi,US inflation report (CPI),2022-12-13 08:30
+2022-12-14T19:00Z,fomc,Fed interest-rate decision (FOMC),2022-12-14 14:00
+2023-01-06T13:30Z,jobs,US jobs report (nonfarm payrolls),2023-01-06 08:30
+2023-01-12T13:30Z,cpi,US inflation report (CPI),2023-01-12 08:30
+2023-02-01T19:00Z,fomc,Fed interest-rate decision (FOMC),2023-02-01 14:00
+2023-02-03T13:30Z,jobs,US jobs report (nonfarm payrolls),2023-02-03 08:30
+2023-02-14T13:30Z,cpi,US inflation report (CPI),2023-02-14 08:30
+2023-03-10T13:30Z,jobs,US jobs report (nonfarm payrolls),2023-03-10 08:30
+2023-03-14T12:30Z,cpi,US inflation report (CPI),2023-03-14 08:30
+2023-03-22T18:00Z,fomc,Fed interest-rate decision (FOMC),2023-03-22 14:00
+2023-04-07T12:30Z,jobs,US jobs report (nonfarm payrolls),2023-04-07 08:30
+2023-04-12T12:30Z,cpi,US inflation report (CPI),2023-04-12 08:30
+2023-05-03T18:00Z,fomc,Fed interest-rate decision (FOMC),2023-05-03 14:00
+2023-05-05T12:30Z,jobs,US jobs report (nonfarm payrolls),2023-05-05 08:30
+2023-05-10T12:30Z,cpi,US inflation report (CPI),2023-05-10 08:30
+2023-06-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2023-06-02 08:30
+2023-06-13T12:30Z,cpi,US inflation report (CPI),2023-06-13 08:30
+2023-06-14T18:00Z,fomc,Fed interest-rate decision (FOMC),2023-06-14 14:00
+2023-07-07T12:30Z,jobs,US jobs report (nonfarm payrolls),2023-07-07 08:30
+2023-07-12T12:30Z,cpi,US inflation report (CPI),2023-07-12 08:30
+2023-07-26T18:00Z,fomc,Fed interest-rate decision (FOMC),2023-07-26 14:00
+2023-08-04T12:30Z,jobs,US jobs report (nonfarm payrolls),2023-08-04 08:30
+2023-08-10T12:30Z,cpi,US inflation report (CPI),2023-08-10 08:30
+2023-09-01T12:30Z,jobs,US jobs report (nonfarm payrolls),2023-09-01 08:30
+2023-09-13T12:30Z,cpi,US inflation report (CPI),2023-09-13 08:30
+2023-09-20T18:00Z,fomc,Fed interest-rate decision (FOMC),2023-09-20 14:00
+2023-10-06T12:30Z,jobs,US jobs report (nonfarm payrolls),2023-10-06 08:30
+2023-10-12T12:30Z,cpi,US inflation report (CPI),2023-10-12 08:30
+2023-11-01T18:00Z,fomc,Fed interest-rate decision (FOMC),2023-11-01 14:00
+2023-11-03T12:30Z,jobs,US jobs report (nonfarm payrolls),2023-11-03 08:30
+2023-11-14T13:30Z,cpi,US inflation report (CPI),2023-11-14 08:30
+2023-12-08T13:30Z,jobs,US jobs report (nonfarm payrolls),2023-12-08 08:30
+2023-12-12T13:30Z,cpi,US inflation report (CPI),2023-12-12 08:30
+2023-12-13T19:00Z,fomc,Fed interest-rate decision (FOMC),2023-12-13 14:00
+2024-01-05T13:30Z,jobs,US jobs report (nonfarm payrolls),2024-01-05 08:30
+2024-01-11T13:30Z,cpi,US inflation report (CPI),2024-01-11 08:30
+2024-01-31T19:00Z,fomc,Fed interest-rate decision (FOMC),2024-01-31 14:00
+2024-02-02T13:30Z,jobs,US jobs report (nonfarm payrolls),2024-02-02 08:30
+2024-02-13T13:30Z,cpi,US inflation report (CPI),2024-02-13 08:30
+2024-03-08T13:30Z,jobs,US jobs report (nonfarm payrolls),2024-03-08 08:30
+2024-03-12T12:30Z,cpi,US inflation report (CPI),2024-03-12 08:30
+2024-03-20T18:00Z,fomc,Fed interest-rate decision (FOMC),2024-03-20 14:00
+2024-04-05T12:30Z,jobs,US jobs report (nonfarm payrolls),2024-04-05 08:30
+2024-04-10T12:30Z,cpi,US inflation report (CPI),2024-04-10 08:30
+2024-05-01T18:00Z,fomc,Fed interest-rate decision (FOMC),2024-05-01 14:00
+2024-05-03T12:30Z,jobs,US jobs report (nonfarm payrolls),2024-05-03 08:30
+2024-05-15T12:30Z,cpi,US inflation report (CPI),2024-05-15 08:30
+2024-06-07T12:30Z,jobs,US jobs report (nonfarm payrolls),2024-06-07 08:30
+2024-06-12T12:30Z,cpi,US inflation report (CPI),2024-06-12 08:30
+2024-06-12T18:00Z,fomc,Fed interest-rate decision (FOMC),2024-06-12 14:00
+2024-07-05T12:30Z,jobs,US jobs report (nonfarm payrolls),2024-07-05 08:30
+2024-07-11T12:30Z,cpi,US inflation report (CPI),2024-07-11 08:30
+2024-07-31T18:00Z,fomc,Fed interest-rate decision (FOMC),2024-07-31 14:00
+2024-08-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2024-08-02 08:30
+2024-08-14T12:30Z,cpi,US inflation report (CPI),2024-08-14 08:30
+2024-09-06T12:30Z,jobs,US jobs report (nonfarm payrolls),2024-09-06 08:30
+2024-09-11T12:30Z,cpi,US inflation report (CPI),2024-09-11 08:30
+2024-09-18T18:00Z,fomc,Fed interest-rate decision (FOMC),2024-09-18 14:00
+2024-10-04T12:30Z,jobs,US jobs report (nonfarm payrolls),2024-10-04 08:30
+2024-10-10T12:30Z,cpi,US inflation report (CPI),2024-10-10 08:30
+2024-11-01T12:30Z,jobs,US jobs report (nonfarm payrolls),2024-11-01 08:30
+2024-11-07T19:00Z,fomc,Fed interest-rate decision (FOMC),2024-11-07 14:00
+2024-11-13T13:30Z,cpi,US inflation report (CPI),2024-11-13 08:30
+2024-12-06T13:30Z,jobs,US jobs report (nonfarm payrolls),2024-12-06 08:30
+2024-12-11T13:30Z,cpi,US inflation report (CPI),2024-12-11 08:30
+2024-12-18T19:00Z,fomc,Fed interest-rate decision (FOMC),2024-12-18 14:00
+2025-01-10T13:30Z,jobs,US jobs report (nonfarm payrolls),2025-01-10 08:30
+2025-01-15T13:30Z,cpi,US inflation report (CPI),2025-01-15 08:30
+2025-01-29T19:00Z,fomc,Fed interest-rate decision (FOMC),2025-01-29 14:00
+2025-02-07T13:30Z,jobs,US jobs report (nonfarm payrolls),2025-02-07 08:30
+2025-02-12T13:30Z,cpi,US inflation report (CPI),2025-02-12 08:30
+2025-03-07T13:30Z,jobs,US jobs report (nonfarm payrolls),2025-03-07 08:30
+2025-03-12T12:30Z,cpi,US inflation report (CPI),2025-03-12 08:30
+2025-03-19T18:00Z,fomc,Fed interest-rate decision (FOMC),2025-03-19 14:00
+2025-04-04T12:30Z,jobs,US jobs report (nonfarm payrolls),2025-04-04 08:30
+2025-04-10T12:30Z,cpi,US inflation report (CPI),2025-04-10 08:30
+2025-05-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2025-05-02 08:30
+2025-05-07T18:00Z,fomc,Fed interest-rate decision (FOMC),2025-05-07 14:00
+2025-05-13T12:30Z,cpi,US inflation report (CPI),2025-05-13 08:30
+2025-06-06T12:30Z,jobs,US jobs report (nonfarm payrolls),2025-06-06 08:30
+2025-06-11T12:30Z,cpi,US inflation report (CPI),2025-06-11 08:30
+2025-06-18T18:00Z,fomc,Fed interest-rate decision (FOMC),2025-06-18 14:00
+2025-07-03T12:30Z,jobs,US jobs report (nonfarm payrolls),2025-07-03 08:30
+2025-07-15T12:30Z,cpi,US inflation report (CPI),2025-07-15 08:30
+2025-07-30T18:00Z,fomc,Fed interest-rate decision (FOMC),2025-07-30 14:00
+2025-08-01T12:30Z,jobs,US jobs report (nonfarm payrolls),2025-08-01 08:30
+2025-08-12T12:30Z,cpi,US inflation report (CPI),2025-08-12 08:30
+2025-09-05T12:30Z,jobs,US jobs report (nonfarm payrolls),2025-09-05 08:30
+2025-09-11T12:30Z,cpi,US inflation report (CPI),2025-09-11 08:30
+2025-09-17T18:00Z,fomc,Fed interest-rate decision (FOMC),2025-09-17 14:00
+2025-10-24T12:30Z,cpi,US inflation report (CPI),2025-10-24 08:30
+2025-10-29T18:00Z,fomc,Fed interest-rate decision (FOMC),2025-10-29 14:00
+2025-11-20T13:30Z,jobs,US jobs report (nonfarm payrolls),2025-11-20 08:30
+2025-12-10T19:00Z,fomc,Fed interest-rate decision (FOMC),2025-12-10 14:00
+2025-12-16T13:30Z,jobs,US jobs report (nonfarm payrolls),2025-12-16 08:30
+2025-12-18T13:30Z,cpi,US inflation report (CPI),2025-12-18 08:30
+2026-01-09T13:30Z,jobs,US jobs report (nonfarm payrolls),2026-01-09 08:30
+2026-01-13T13:30Z,cpi,US inflation report (CPI),2026-01-13 08:30
+2026-01-28T19:00Z,fomc,Fed interest-rate decision (FOMC),2026-01-28 14:00
+2026-02-11T13:30Z,jobs,US jobs report (nonfarm payrolls),2026-02-11 08:30
+2026-02-13T13:30Z,cpi,US inflation report (CPI),2026-02-13 08:30
+2026-03-06T13:30Z,jobs,US jobs report (nonfarm payrolls),2026-03-06 08:30
+2026-03-11T12:30Z,cpi,US inflation report (CPI),2026-03-11 08:30
+2026-03-18T18:00Z,fomc,Fed interest-rate decision (FOMC),2026-03-18 14:00
+2026-04-03T12:30Z,jobs,US jobs report (nonfarm payrolls),2026-04-03 08:30
+2026-04-10T12:30Z,cpi,US inflation report (CPI),2026-04-10 08:30
+2026-04-29T18:00Z,fomc,Fed interest-rate decision (FOMC),2026-04-29 14:00
+2026-05-08T12:30Z,jobs,US jobs report (nonfarm payrolls),2026-05-08 08:30
+2026-05-12T12:30Z,cpi,US inflation report (CPI),2026-05-12 08:30
+2026-06-05T12:30Z,jobs,US jobs report (nonfarm payrolls),2026-06-05 08:30
+2026-06-10T12:30Z,cpi,US inflation report (CPI),2026-06-10 08:30
+2026-06-17T18:00Z,fomc,Fed interest-rate decision (FOMC),2026-06-17 14:00
+2026-07-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2026-07-02 08:30
+2026-07-14T12:30Z,cpi,US inflation report (CPI),2026-07-14 08:30
+2026-07-29T18:00Z,fomc,Fed interest-rate decision (FOMC),2026-07-29 14:00
+2026-08-07T12:30Z,jobs,US jobs report (nonfarm payrolls),2026-08-07 08:30
+2026-08-12T12:30Z,cpi,US inflation report (CPI),2026-08-12 08:30
+2026-09-04T12:30Z,jobs,US jobs report (nonfarm payrolls),2026-09-04 08:30
+2026-09-11T12:30Z,cpi,US inflation report (CPI),2026-09-11 08:30
+2026-09-16T18:00Z,fomc,Fed interest-rate decision (FOMC),2026-09-16 14:00
+2026-10-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2026-10-02 08:30
+2026-10-14T12:30Z,cpi,US inflation report (CPI),2026-10-14 08:30
+2026-10-28T18:00Z,fomc,Fed interest-rate decision (FOMC),2026-10-28 14:00
+2026-11-06T13:30Z,jobs,US jobs report (nonfarm payrolls),2026-11-06 08:30
+2026-11-10T13:30Z,cpi,US inflation report (CPI),2026-11-10 08:30
+2026-12-04T13:30Z,jobs,US jobs report (nonfarm payrolls),2026-12-04 08:30
+2026-12-09T19:00Z,fomc,Fed interest-rate decision (FOMC),2026-12-09 14:00
+2026-12-10T13:30Z,cpi,US inflation report (CPI),2026-12-10 08:30
+2027-01-08T13:30Z,jobs,US jobs report (nonfarm payrolls),2027-01-08 08:30
+2027-01-13T13:30Z,cpi,US inflation report (CPI),2027-01-13 08:30
+2027-01-27T19:00Z,fomc,Fed interest-rate decision (FOMC),2027-01-27 14:00
+2027-02-05T13:30Z,jobs,US jobs report (nonfarm payrolls),2027-02-05 08:30
+2027-02-11T13:30Z,cpi,US inflation report (CPI),2027-02-11 08:30
+2027-03-05T13:30Z,jobs,US jobs report (nonfarm payrolls),2027-03-05 08:30
+2027-03-10T13:30Z,cpi,US inflation report (CPI),2027-03-10 08:30
+2027-03-17T18:00Z,fomc,Fed interest-rate decision (FOMC),2027-03-17 14:00
+2027-04-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2027-04-02 08:30
+2027-04-13T12:30Z,cpi,US inflation report (CPI),2027-04-13 08:30
+2027-04-28T18:00Z,fomc,Fed interest-rate decision (FOMC),2027-04-28 14:00
+2027-05-07T12:30Z,jobs,US jobs report (nonfarm payrolls),2027-05-07 08:30
+2027-05-12T12:30Z,cpi,US inflation report (CPI),2027-05-12 08:30
+2027-06-04T12:30Z,jobs,US jobs report (nonfarm payrolls),2027-06-04 08:30
+2027-06-09T18:00Z,fomc,Fed interest-rate decision (FOMC),2027-06-09 14:00
+2027-06-10T12:30Z,cpi,US inflation report (CPI),2027-06-10 08:30
+2027-07-02T12:30Z,jobs,US jobs report (nonfarm payrolls),2027-07-02 08:30
+2027-07-14T12:30Z,cpi,US inflation report (CPI),2027-07-14 08:30
+2027-07-28T18:00Z,fomc,Fed interest-rate decision (FOMC),2027-07-28 14:00
+2027-08-06T12:30Z,jobs,US jobs report (nonfarm payrolls),2027-08-06 08:30
+2027-08-11T12:30Z,cpi,US inflation report (CPI),2027-08-11 08:30
+2027-09-03T12:30Z,jobs,US jobs report (nonfarm payrolls),2027-09-03 08:30
+2027-09-14T12:30Z,cpi,US inflation report (CPI),2027-09-14 08:30
+2027-09-15T18:00Z,fomc,Fed interest-rate decision (FOMC),2027-09-15 14:00
+2027-10-08T12:30Z,jobs,US jobs report (nonfarm payrolls),2027-10-08 08:30
+2027-10-14T12:30Z,cpi,US inflation report (CPI),2027-10-14 08:30
+2027-10-27T18:00Z,fomc,Fed interest-rate decision (FOMC),2027-10-27 14:00
+2027-11-05T12:30Z,jobs,US jobs report (nonfarm payrolls),2027-11-05 08:30
+2027-11-10T13:30Z,cpi,US inflation report (CPI),2027-11-10 08:30
+2027-12-03T13:30Z,jobs,US jobs report (nonfarm payrolls),2027-12-03 08:30
+2027-12-08T19:00Z,fomc,Fed interest-rate decision (FOMC),2027-12-08 14:00
+2027-12-10T13:30Z,cpi,US inflation report (CPI),2027-12-10 08:30
