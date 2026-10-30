@@ -6,6 +6,9 @@ data/reports/*
 !data/reports/data_health_*.json
 # M8 parser test results (small; the test set itself is in docs/m8/)
 !data/reports/m8_*
+# final evaluation results (small tables; per-hour predictions stay local)
+!data/reports/final_*.csv
+!data/reports/final_*.json
 __pycache__/
 *.pyc
 .venv/

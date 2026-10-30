@@ -1,0 +1,12 @@
+{
+  "n": 50,
+  "status_codes": [
+    200
+  ],
+  "median_s": 0.356,
+  "p95_s": 0.63,
+  "max_s": 1.366,
+  "under_2s": 50,
+  "checked_at": "2026-10-30 19:41 UTC",
+  "from": "Saeed's PC (Pakistan) to Railway EU via the website"
+}

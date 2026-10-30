@@ -1,0 +1,78 @@
+[
+  {
+    "time_utc": "2026-10-30T19:51:37+00:00",
+    "step": "produce",
+    "symbols": [
+      "BTCUSDT"
+    ],
+    "commit": "c0a7b3f2c7f5b998cfae4c15b0e6b90b2cd01e59",
+    "status": "started"
+  },
+  {
+    "time_utc": "2026-10-30T19:51:42+00:00",
+    "step": "produce",
+    "symbols": [
+      "ETHUSDT"
+    ],
+    "commit": "c0a7b3f2c7f5b998cfae4c15b0e6b90b2cd01e59",
+    "status": "started"
+  },
+  {
+    "time_utc": "2026-10-30T19:51:47+00:00",
+    "step": "produce",
+    "symbols": [
+      "SOLUSDT"
+    ],
+    "commit": "c0a7b3f2c7f5b998cfae4c15b0e6b90b2cd01e59",
+    "status": "started"
+  },
+  {
+    "time_utc": "2026-10-30T20:09:40+00:00",
+    "step": "produce",
+    "symbols": [
+      "SOLUSDT"
+    ],
+    "commit": "c0a7b3f2c7f5b998cfae4c15b0e6b90b2cd01e59",
+    "status": "done"
+  },
+  {
+    "time_utc": "2026-10-30T20:10:20+00:00",
+    "step": "produce",
+    "symbols": [
+      "BTCUSDT"
+    ],
+    "commit": "c0a7b3f2c7f5b998cfae4c15b0e6b90b2cd01e59",
+    "status": "done"
+  },
+  {
+    "time_utc": "2026-10-30T20:12:33+00:00",
+    "step": "produce",
+    "symbols": [
+      "ETHUSDT"
+    ],
+    "commit": "c0a7b3f2c7f5b998cfae4c15b0e6b90b2cd01e59",
+    "status": "done"
+  },
+  {
+    "time_utc": "2026-10-30T20:12:48+00:00",
+    "step": "score",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ],
+    "commit": "c0a7b3f2c7f5b998cfae4c15b0e6b90b2cd01e59",
+    "status": "started"
+  },
+  {
+    "time_utc": "2026-10-30T20:13:23+00:00",
+    "step": "score",
+    "symbols": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ],
+    "commit": "c0a7b3f2c7f5b998cfae4c15b0e6b90b2cd01e59",
+    "status": "done"
+  }
+]

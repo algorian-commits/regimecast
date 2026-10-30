@@ -1,0 +1,4 @@
+symbol,groups,rises,ratio_last_first,passes
+BTCUSDT,A < B < C < D < F,True,17.22287420685043,True
+ETHUSDT,A < B < C < D < F,True,20.451569783383604,True
+SOLUSDT,A < B < C < D < F,True,20.68644603000814,True

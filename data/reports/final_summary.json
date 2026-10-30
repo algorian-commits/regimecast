@@ -1,0 +1,56 @@
+{
+  "commit": "c0a7b3f2c7f5b998cfae4c15b0e6b90b2cd01e59",
+  "window": [
+    "2025-10-01",
+    "2026-10-01"
+  ],
+  "bars": {
+    "volatility": {
+      "lower": 6,
+      "significant": 5,
+      "of": 6,
+      "pass": true
+    },
+    "liquidation": {
+      "ece_lower": 6,
+      "brier_lower": 6,
+      "ece_within_limit": 6,
+      "of": 6,
+      "pass": true
+    },
+    "stress": {
+      "auc_ok": 3,
+      "ap_above": 3,
+      "of": 3,
+      "pass": true
+    },
+    "regimes": {
+      "ordered": 3,
+      "of": 3,
+      "pass": true
+    },
+    "paper_agent": {
+      "agent_sharpe": -0.38278868921086406,
+      "bh_sharpe": -0.5673325601594565,
+      "agent_max_drawdown": -0.38697118388007323,
+      "bh_max_drawdown": -0.6525504391974167,
+      "higher_sharpe": true,
+      "drawdown_25pct_smaller": true,
+      "pass": true
+    },
+    "trade_verdict": {
+      "grade_pass": true,
+      "crowd_pass": false,
+      "similar_pass": false,
+      "pass": false
+    },
+    "app": {
+      "pass": null,
+      "note": "one-time click-through by Saeed on the live URL, plus the latency check"
+    },
+    "trade_parser": {
+      "pass": null,
+      "note": "not run: waits for the Anthropic API key"
+    }
+  }
+}
