@@ -251,6 +251,25 @@ python scripts/run_phase12.py              :: choose, check, freeze -> data/repo
 python scripts/run_phase12.py --dry-run out :: the same steps on made-up data into .\out (real files untouched)
 ```
 
+## Crash mode and the new-coin exam (Phase 13B)
+
+On crash days the liquidation odds were too calm for longs (10 Oct 2025: BTC 10x long, 1.3% said, 46% liquidated).
+Crash mode: when the stress gauge is at "elevated" or above (10%+), the long side's chance comes from FHS fitted only on
+past high-stress hours. It is then proven, with every other model, on five coins RegimeCast never touched (XRP, DOGE,
+BNB, ADA, AVAX). Results in plain words: `docs/NEW_COIN_EXAM.md`. Not yet used by the app.
+
+| Part | File | What it does |
+|---|---|---|
+| Crash mode | `regimecast/models/crash_mode.py`, `crash_mode.json` | Walk-forward like Phase 5; 8 settings tried, frozen by a rule written first (`scripts/crash_mode_dev.py`). |
+| Exam | `scripts/new_coin_exam.py` | The final evaluation's own code on each new coin's past (6-month warm-up), plus crash mode; refuses to run unless HEAD is tag `new-coin-exam`; log in `data/reports/new_coin_log.json`. |
+
+```bat
+python scripts/crash_mode_dev.py run && python scripts/crash_mode_dev.py freeze
+python scripts/new_coin_exam.py rehearse                     :: on BTC/ETH/SOL
+python scripts/new_coin_exam.py produce --symbols XRPUSDT    :: once per new coin, from the tag
+python scripts/new_coin_exam.py score                        :: -> data/reports/new_coin_summary.json
+```
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.
