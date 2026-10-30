@@ -1,0 +1,356 @@
+{
+  "frozen_at": "2026-10-30",
+  "chosen_on": "2022-01-01 to 2024-09-30",
+  "checked_on": "2024-10-01 to 2025-09-30",
+  "rules": {
+    "grade": "among settings whose hit share rises A to F on all 3 coins (choose period), the highest smallest-coin F/A ratio; ties: fewer market factors, then the middle knock-out bands",
+    "crowd": "among candidates with at least 50 warning hours on every coin (choose period), the highest second-best coin's ratio; ties: more warnings",
+    "similar": "among settings with a Brier score no worse than the base rate's on every coin (choose period, every 6 hours), the smallest worst-coin |coverage - 80%|; ties: larger k"
+  },
+  "grade": {
+    "knockout_cuts": [
+      0.05,
+      0.15,
+      0.3,
+      0.5
+    ],
+    "weights": {
+      "regime": 0,
+      "stress": 1,
+      "crowd": 1,
+      "timing": 1
+    }
+  },
+  "grade_grid": {
+    "leverages": [
+      2,
+      3,
+      5,
+      10,
+      20,
+      50
+    ],
+    "stop_moves": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      3.0
+    ],
+    "every_hours": 6,
+    "margin_usdt": 1000.0,
+    "risk_limit": 0.01,
+    "horizon_hours": 24,
+    "min_trades_per_grade": 200
+  },
+  "crowd": {
+    "BTCUSDT": {
+      "level": 0.9,
+      "oi_level": 0.75,
+      "funding_hi": 0.9,
+      "funding_lo": 0.1,
+      "ls_hi": 0.9,
+      "ls_lo": 0.1,
+      "oi_hi": 0.75,
+      "odds": {
+        "other": 0.0621663,
+        "long": {
+          "after_warning": 0.27672956,
+          "n": 159
+        },
+        "short": {
+          "after_warning": 0.14469453,
+          "n": 311
+        }
+      }
+    },
+    "ETHUSDT": {
+      "level": 0.9,
+      "oi_level": 0.75,
+      "funding_hi": 0.9,
+      "funding_lo": 0.1,
+      "ls_hi": 0.9,
+      "ls_lo": 0.1,
+      "oi_hi": 0.75,
+      "odds": {
+        "other": 0.12185831,
+        "long": {
+          "after_warning": 0.29571984,
+          "n": 257
+        },
+        "short": {
+          "after_warning": 0.16591928,
+          "n": 223
+        }
+      }
+    },
+    "SOLUSDT": {
+      "level": 0.9,
+      "oi_level": 0.75,
+      "funding_hi": 0.9,
+      "funding_lo": 0.1,
+      "ls_hi": 0.9,
+      "ls_lo": 0.1,
+      "oi_hi": 0.75,
+      "odds": {
+        "other": 0.23612327,
+        "long": {
+          "after_warning": 0.344,
+          "n": 375
+        },
+        "short": {
+          "after_warning": 0.2166065,
+          "n": 277
+        }
+      }
+    }
+  },
+  "similar": {
+    "k": 400,
+    "shrink": 10.0,
+    "scale": false,
+    "scaling": {
+      "BTCUSDT": {
+        "center": {
+          "log_sigma": -3.58307288,
+          "ret_24h": 0.00023415,
+          "ret_168h": 0.00174616,
+          "funding_rate": 7.691e-05,
+          "ls_top": 1.242522,
+          "oi_chg_24h": 0.00144554
+        },
+        "spread": {
+          "log_sigma": 0.4512389,
+          "ret_24h": 0.02508406,
+          "ret_168h": 0.07869005,
+          "funding_rate": 7.681e-05,
+          "ls_top": 0.22665127,
+          "oi_chg_24h": 0.04250985
+        }
+      },
+      "ETHUSDT": {
+        "center": {
+          "log_sigma": -3.41203204,
+          "ret_24h": 9.913e-05,
+          "ret_168h": -0.00165487,
+          "funding_rate": 7.257e-05,
+          "ls_top": 1.35487361,
+          "oi_chg_24h": 0.00029055
+        },
+        "spread": {
+          "log_sigma": 0.49226076,
+          "ret_24h": 0.03221024,
+          "ret_168h": 0.10122804,
+          "funding_rate": 7.996e-05,
+          "ls_top": 0.67034679,
+          "oi_chg_24h": 0.04333326
+        }
+      },
+      "SOLUSDT": {
+        "center": {
+          "log_sigma": -2.94991922,
+          "ret_24h": -0.00120157,
+          "ret_168h": -0.00289772,
+          "funding_rate": 8.255e-05,
+          "ls_top": 1.36525651,
+          "oi_chg_24h": -3.156e-05
+        },
+        "spread": {
+          "log_sigma": 0.43369891,
+          "ret_24h": 0.05492832,
+          "ret_168h": 0.17262599,
+          "funding_rate": 0.0001165,
+          "ls_top": 0.6915806,
+          "oi_chg_24h": 0.05981639
+        }
+      }
+    },
+    "up_share": {
+      "BTCUSDT": 0.51361477,
+      "ETHUSDT": 0.50618299,
+      "SOLUSDT": 0.49043616
+    }
+  },
+  "whatif": {
+    "BTCUSDT": {
+      "calm": {
+        "normal": 0.03711297,
+        "bad": 0.07993881,
+        "n": 16615
+      },
+      "active": {
+        "normal": 0.04503459,
+        "bad": 0.09670224,
+        "n": 11976
+      },
+      "stressed": {
+        "normal": 0.05966719,
+        "bad": 0.11303952,
+        "n": 4241
+      },
+      "all": {
+        "normal": 0.04284129,
+        "bad": 0.09351847,
+        "n": 32832
+      }
+    },
+    "ETHUSDT": {
+      "calm": {
+        "normal": 0.04941191,
+        "bad": 0.09741399,
+        "n": 17471
+      },
+      "active": {
+        "normal": 0.0592924,
+        "bad": 0.12691297,
+        "n": 11231
+      },
+      "stressed": {
+        "normal": 0.08484007,
+        "bad": 0.17044963,
+        "n": 4130
+      },
+      "all": {
+        "normal": 0.05802578,
+        "bad": 0.12363641,
+        "n": 32832
+      }
+    },
+    "SOLUSDT": {
+      "calm": {
+        "normal": 0.07088079,
+        "bad": 0.13750896,
+        "n": 21218
+      },
+      "active": {
+        "normal": 0.08335612,
+        "bad": 0.16318391,
+        "n": 8745
+      },
+      "stressed": {
+        "normal": 0.12961788,
+        "bad": 0.40255322,
+        "n": 2869
+      },
+      "all": {
+        "normal": 0.0796141,
+        "bad": 0.1668722,
+        "n": 32832
+      }
+    }
+  },
+  "thin_hours": {
+    "BTCUSDT": [
+      4,
+      5,
+      6,
+      7
+    ],
+    "ETHUSDT": [
+      4,
+      5,
+      6,
+      22
+    ],
+    "SOLUSDT": [
+      4,
+      5,
+      6,
+      22
+    ]
+  },
+  "settings_tried": {
+    "grade": 48,
+    "crowd": 8,
+    "similar": 32
+  },
+  "check": {
+    "grade": [
+      {
+        "symbol": "BTCUSDT",
+        "groups": "A < B < C < D < F",
+        "rises": true,
+        "ratio_last_first": 19.39786167,
+        "passes": true
+      },
+      {
+        "symbol": "ETHUSDT",
+        "groups": "A < B < C < D < F",
+        "rises": true,
+        "ratio_last_first": 13.66890831,
+        "passes": true
+      },
+      {
+        "symbol": "SOLUSDT",
+        "groups": "A < B < C < D < F",
+        "rises": true,
+        "ratio_last_first": 22.45632757,
+        "passes": true
+      }
+    ],
+    "crowd": [
+      {
+        "symbol": "BTCUSDT",
+        "warning_hours": 156,
+        "hours": 8735,
+        "p_after_warning": 0.1474359,
+        "p_other": 0.04301201,
+        "ratio": 3.42778473,
+        "ratio_lo90": 0.0,
+        "ratio_hi90": 8.98248967,
+        "passes": false
+      },
+      {
+        "symbol": "ETHUSDT",
+        "warning_hours": 155,
+        "hours": 8735,
+        "p_after_warning": 0.30322581,
+        "p_other": 0.15104895,
+        "ratio": 2.00746714,
+        "ratio_lo90": 0.73236017,
+        "ratio_hi90": 3.48254592,
+        "passes": false
+      },
+      {
+        "symbol": "SOLUSDT",
+        "warning_hours": 228,
+        "hours": 8735,
+        "p_after_warning": 0.29824561,
+        "p_other": 0.20512519,
+        "ratio": 1.45396873,
+        "ratio_lo90": 0.83243562,
+        "ratio_hi90": 2.2315799,
+        "passes": false
+      }
+    ],
+    "similar": [
+      {
+        "symbol": "BTCUSDT",
+        "n": 8730,
+        "coverage": 0.8002291,
+        "brier": 0.24970057,
+        "brier_base": 0.24937752,
+        "up_share_actual": 0.52966781,
+        "passes": false
+      },
+      {
+        "symbol": "ETHUSDT",
+        "n": 8730,
+        "coverage": 0.760252,
+        "brier": 0.2498747,
+        "brier_base": 0.24981584,
+        "up_share_actual": 0.51798396,
+        "passes": false
+      },
+      {
+        "symbol": "SOLUSDT",
+        "n": 8730,
+        "coverage": 0.7997709,
+        "brier": 0.24998509,
+        "brier_base": 0.25011119,
+        "up_share_actual": 0.50103093,
+        "passes": true
+      }
+    ]
+  }
+}

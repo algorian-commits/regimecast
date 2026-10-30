@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from regimecast import config
 from regimecast.api import accounts, agent, inbox, live_ws, market, parser, replay, whales
+from regimecast.api import verdict as verdict_api
 from regimecast.alerts.engine import engine as alert_engine
 from regimecast.whales.live import watch as whale_watch
 from regimecast.risk import fhs_live
@@ -65,6 +66,7 @@ class TradeIn(BaseModel):
     margin_mode: Literal["isolated", "cross"] = "isolated"
     wallet_balance: float | None = Field(None, gt=0, description="Cross margin: whole cross wallet in USDT")
     stop: float | None = Field(None, gt=0)
+    take_profit: float | None = Field(None, gt=0, description="Optional; used for the break-even win rate")
     horizon_hours: Literal[1, 24] = 24
     risk_limit: float = Field(0.01, gt=0, lt=1, description="Max acceptable P(liquidation) for safe leverage")
     sigma_annual: float | None = Field(None, gt=0, description="Override volatility (annualised, e.g. 0.6)")
@@ -77,6 +79,9 @@ class TradeIn(BaseModel):
             raise ValueError("cross margin needs wallet_balance")
         if self.stop is not None and (self.stop >= self.entry if self.side == "long" else self.stop <= self.entry):
             raise ValueError("stop must be below entry for a long and above entry for a short")
+        if self.take_profit is not None and (self.take_profit <= self.entry if self.side == "long"
+                                             else self.take_profit >= self.entry):
+            raise ValueError("take-profit must be above entry for a long and below entry for a short")
         return self
 
 
@@ -116,6 +121,9 @@ class RiskOut(BaseModel):
     explanation: list[str]
     warnings: list[str]
     generated_at: str
+    verdict: verdict_api.VerdictOut | None = Field(None, description="Phase 12: Trade Grade A-F, reasons, crowd, similar moments, timing")
+    fix: verdict_api.FixOut | None = Field(None, description="Phase 12: the closest safer version of the same trade")
+    what_if: list[verdict_api.WhatIfOut] = Field([], description="Phase 12: dollars on a normal, bad and crash day")
 
 
 class NotReady(BaseModel):
@@ -251,6 +259,8 @@ def risk_check(t: TradeIn) -> RiskOut:
         f"Stress risk for the next hour: {st['level']} ({100 * st['p_stress_next_hour']:.0f}%, normally "
         f"{100 * st['base_rate']:.0f}%)." if st else "",
     ]
+    sigma_24h = sigma_h if t.horizon_hours == 24 else _sigma(t.symbol, 24, t.sigma_annual)[0]
+    v, fix, what_if = verdict_api.assess(t, pos, sigma_h, sigma_24h, hit_prob, rg, st, vol_live.cache.get_state(t.symbol))
     return RiskOut(
         symbol=t.symbol, side=t.side, notional_usdt=round(pos.notional, 2), margin_usdt=round(margin, 2),
         liquidation_price=round(lp, 2) if finite else None,
@@ -262,7 +272,7 @@ def risk_check(t: TradeIn) -> RiskOut:
         stop=stop_info, regime=rg["regime"] if rg else None, drivers=fc_drivers,
         stress_level=st["level"] if st else None, p_stress_next_hour=round(st["p_stress_next_hour"], 4) if st else None,
         explanation=[e for e in expl if e], warnings=warnings,
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=datetime.now(timezone.utc).isoformat(), verdict=v, fix=fix, what_if=what_if,
     )
 
 

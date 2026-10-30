@@ -197,7 +197,20 @@ def stress_from_bars(bars: pd.DataFrame, symbol: str, stress_model, regime_model
     t = pd.DataFrame({"ts": h["ts"], "y_1h": np.nan, "y_24h": np.nan})
     X, _ = stress.dataset(h, t, reg, dv if not dv.empty else None)
     booster, meta = stress_model
-    return stress.live_gauge(booster, meta, X)
+    return {**stress.live_gauge(booster, meta, X), "state": market_state(h, X, booster, meta)}
+
+
+def market_state(h: pd.DataFrame, X: pd.DataFrame, booster, meta: dict) -> dict:
+    """The last hour's crowding and trend inputs for Phase 12 (crowd warning, similar moments), from the same
+    feature rows as the stress gauge, and the stress probability three hours earlier (stress rising)."""
+    num = lambda v: float(v) if pd.notna(v) else None                    # noqa: E731
+    last = h.iloc[-1]
+    before = X.index[-1] - pd.Timedelta(hours=3)
+    p_before = float(booster.predict(X.loc[[before], meta["features"]])[0]) if before in X.index else None
+    return {"funding_rate": num(last["funding_rate"]), "ls_top": num(last["ls_top"]),
+            "oi_chg_24h": num(last["oi_chg_24h"]), "ret_24h": num(last["ret_24h"]),
+            "ret_168h": num(h["ret"].rolling(168, min_periods=120).sum().iloc[-1]),
+            "p_stress_3h_ago": p_before, "inputs_until": X.index[-1].isoformat()}
 
 
 def fetch_bars(symbol: str, minutes: int = HISTORY_MINUTES, client=None) -> pd.DataFrame:
@@ -243,6 +256,7 @@ class ForecastCache:
         self.regimes: dict[str, dict] = {}
         self.candles: dict[str, dict] = {}   # hourly candles + regime, for the dashboard chart
         self.stress: dict[str, dict] = {}
+        self.state: dict[str, dict] = {}     # crowding and trend inputs of the last hour (Phase 12)
         self.stress_models = None   # loaded on first refresh (models/stress_live/)
         self.fetch_inputs = None    # None -> features.live.fetch_inputs; tests inject a fake
         self._lock = threading.Lock()
@@ -278,8 +292,16 @@ class ForecastCache:
             g = stress_from_bars(bars, symbol, self.stress_models[symbol], self.regime_models[symbol], now,
                                  self.fetch_inputs)
             if g:
+                state = g.pop("state")
+                if self.fetch_inputs is None:   # live only (tests inject fake inputs): the crowd rule's 14-day ranks
+                    try:
+                        from regimecast.verdict import crowd
+                        state.update(crowd.fetch_live_ranks(symbol))
+                    except Exception as e:   # no ranks: the verdict skips the crowd check
+                        log.warning("crowd ranks %s failed: %r", symbol, e)
                 with self._lock:
                     self.stress[symbol] = {**g, "made_at": made}
+                    self.state[symbol] = {**state, "made_at": made}
 
     def refresh_all(self) -> None:
         for s in self.symbols:
@@ -303,6 +325,14 @@ class ForecastCache:
             return None
         age = (datetime.now(timezone.utc) - datetime.fromisoformat(g["made_at"])).total_seconds()
         return g if age <= max_age_s else None
+
+    def get_state(self, symbol: str, max_age_s: float = 3 * 3600) -> dict | None:
+        with self._lock:
+            s = self.state.get(symbol)
+        if not s:
+            return None
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(s["made_at"])).total_seconds()
+        return s if age <= max_age_s else None
 
     def get_regime(self, symbol: str, max_age_s: float = 3 * 3600) -> dict | None:
         with self._lock:
