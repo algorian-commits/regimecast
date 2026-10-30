@@ -243,7 +243,8 @@ def _similar(ctx: Context, state: dict | None, sigma_24h: float) -> SimilarOut |
     sc = CFG["similar"].get("scaling", {}).get(ctx.t.symbol)
     if lib is None or not sc or not state:
         return None
-    m = S.query(lib, state, ctx.regime, sigma_24h, pd.Timestamp(ctx.now), CFG["similar"], sc)
+    m = S.query(lib, state, ctx.regime, sigma_24h, pd.Timestamp(ctx.now), CFG["similar"], sc,
+                base=CFG["similar"].get("up_share", {}).get(ctx.t.symbol))
     if m is None:
         return None
     pc = lambda x: round(100 * (math.exp(x) - 1), 2)        # noqa: E731

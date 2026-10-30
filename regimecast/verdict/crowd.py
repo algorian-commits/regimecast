@@ -1,15 +1,16 @@
 """Crowd warning: when traders pile into one side, a sudden move against them is more common.
 
-At each hour end H (all inputs known at H, from the hourly feature table or the same feature code live):
+At each hour end H (all inputs known at H, from the hourly feature table or Binance's public 1-hour history live),
+each of funding, top traders' long/short position ratio and open-interest growth over 24 h is ranked against its
+own last 14 days (``trailing_rank``: H and the 335 hours before it, nothing after), so the rule keeps working when a
+coin's usual level drifts (ETH's ratio ranged from 1.1 to 3.5 in 2022-25):
 
-* long-crowded warning: funding at or above its ``level`` percentile AND top traders' long/short position ratio at
-  or above its ``level`` percentile AND open-interest growth over 24 h at or above its ``oi_level`` percentile;
-* short-crowded warning: funding and the ratio at or below their (1 - ``level``) percentiles, open interest growing
-  as above.
+* long-crowded warning: funding rank and ratio rank at or above ``level`` AND open-interest growth rank at or above
+  ``oi_level``;
+* short-crowded warning: funding rank and ratio rank at or below 1 - ``level``, open interest growing as above.
 
-The percentiles are fixed per coin on 2022-01 to 2024-09 and frozen as numbers, so later hours never move them.
-Outside warnings the crowd still leans one way: long when (funding - median) / IQR + (ratio - median) / IQR >= 0,
-else short. A "sudden 5% move against the crowd" = within (H, H + 24 h] the mark price falls at least 5% below
+``level`` and ``oi_level`` are chosen on 2022-01 to 2024-09 and frozen. Outside warnings the crowd still leans one
+way: long when funding rank + ratio rank >= 1, else short. A "sudden 5% move against the crowd" = within (H, H + 24 h] the mark price falls at least 5% below
 its value at H (crowd long) or rises at least 5% above it (crowd short), from the 24 h worst-move targets.
 """
 from __future__ import annotations
@@ -24,19 +25,40 @@ AGAINST_LONG = -np.log(1 - MOVE)       # mae_long_24h at or above this: a 5% fal
 AGAINST_SHORT = np.log(1 + MOVE)       # mae_short_24h at or above this: a 5% rise
 LEVELS = (0.80, 0.85, 0.90, 0.95)      # candidates for funding and the ratio (chosen on the dev period)
 OI_LEVELS = (0.75, 0.90)               # candidates for open-interest growth
-COLS = ("funding_rate", "ls_top", "oi_chg_24h")
+RAW = ("funding_rate", "ls_top", "oi_chg_24h")
+COLS = ("funding_rank", "ls_rank", "oi_rank")           # what the rule reads: RAW ranked over the last 14 days
+WINDOW_HOURS = 14 * 24
+MIN_HOURS = int(0.75 * WINDOW_HOURS)
+
+
+def trailing_rank(x: pd.Series, window: int = WINDOW_HOURS, min_hours: int = MIN_HOURS) -> pd.Series:
+    """Percentile rank of each hourly value among the last ``window`` hours (itself included, nothing after it):
+    share below + half the share equal. NaN with fewer than ``min_hours`` values in the window."""
+    x = x.astype(float).sort_index()
+    if not len(x):
+        return x
+    full = x.reindex(pd.date_range(x.index.min(), x.index.max(), freq="1h"))
+    v = full.to_numpy()
+    win_all = np.lib.stride_tricks.sliding_window_view(np.concatenate([np.full(window - 1, np.nan), v]), window)
+    r = np.full(len(v), np.nan)
+    for a in range(0, len(v), 5000):        # in chunks: the full window matrix is large
+        win, cur = win_all[a:a + 5000], v[a:a + 5000, None]
+        valid = ~np.isnan(win)
+        n = valid.sum(axis=1)
+        rr = (((win < cur) & valid).sum(axis=1) + 0.5 * ((win == cur) & valid).sum(axis=1)) / np.maximum(n, 1)
+        r[a:a + 5000] = np.where((n >= min_hours) & ~np.isnan(v[a:a + 5000]), rr, np.nan)
+    return pd.Series(r, index=full.index).reindex(x.index)
+
+
+def with_ranks(P: pd.DataFrame) -> pd.DataFrame:
+    """P with the three rank columns added (P hourly, indexed by hour end)."""
+    return P.assign(**{c: trailing_rank(P[raw]) for c, raw in zip(COLS, RAW)})
 
 
 def fit(P: pd.DataFrame, level: float, oi_level: float) -> dict:
-    """Thresholds from the hours in P (the choose period only)."""
-    f, r, o = (P[c].dropna() for c in COLS)
-    iqr = lambda s: float(s.quantile(0.75) - s.quantile(0.25)) or 1e-12     # noqa: E731
-    return {"level": level, "oi_level": oi_level,
-            "funding_hi": float(f.quantile(level)), "funding_lo": float(f.quantile(1 - level)),
-            "ls_hi": float(r.quantile(level)), "ls_lo": float(r.quantile(1 - level)),
-            "oi_hi": float(o.quantile(oi_level)),
-            "funding_mid": float(f.median()), "funding_scale": iqr(f),
-            "ls_mid": float(r.median()), "ls_scale": iqr(r)}
+    """Thresholds on the rank scale (the same for every coin; ``P`` is kept for the call signature)."""
+    return {"level": level, "oi_level": oi_level, "funding_hi": level, "funding_lo": 1 - level,
+            "ls_hi": level, "ls_lo": 1 - level, "oi_hi": oi_level}
 
 
 def warning(P: pd.DataFrame, th: dict) -> pd.Series:
@@ -50,7 +72,7 @@ def warning(P: pd.DataFrame, th: dict) -> pd.Series:
 
 def lean(P: pd.DataFrame, th: dict) -> pd.Series:
     """+1 the crowd leans long, -1 short, 0 an input is missing."""
-    z = (P["funding_rate"] - th["funding_mid"]) / th["funding_scale"] + (P["ls_top"] - th["ls_mid"]) / th["ls_scale"]
+    z = P["funding_rank"] + P["ls_rank"] - 1
     return pd.Series(np.where(z.isna(), 0, np.where(z >= 0, 1, -1)), index=P.index)
 
 
@@ -104,8 +126,8 @@ class Crowd:
     def message(self, coin: str) -> str:
         if self.side is None:
             return ""
-        what = ("high funding, top traders long, open interest growing" if self.side == "long"
-                else "negative funding, top traders short, open interest growing")
+        what = ("funding and top traders' longs at two-week highs, open interest growing" if self.side == "long"
+                else "funding and top traders' longs at two-week lows, open interest growing")
         move = "fell" if self.side == "long" else "rose"
         tail = ""
         if self.p_after is not None and self.p_other is not None:
@@ -115,13 +137,57 @@ class Crowd:
 
 
 def assess(state: dict | None, th: dict | None) -> Crowd | None:
-    """state: the latest hour's funding_rate, ls_top, oi_chg_24h. None without inputs or frozen thresholds."""
+    """state: the latest hour's funding_rank, ls_rank, oi_rank (and the raw values, for display).
+    None without inputs or frozen thresholds."""
     if not state or not th or any(state.get(c) is None or not np.isfinite(state[c]) for c in COLS):
         return None
     w = int(warning(pd.DataFrame([{c: state[c] for c in COLS}]), th).iloc[0])
     side = {1: "long", -1: "short"}.get(w)
-    c = Crowd(side, state["funding_rate"], state["ls_top"], state["oi_chg_24h"])
+    c = Crowd(side, state.get("funding_rate"), state.get("ls_top"), state.get("oi_chg_24h"))
     od = th.get("odds", {})
     if side and od.get(side, {}).get("after_warning") is not None:
         c.p_after, c.p_other, c.n = od[side]["after_warning"], od.get("other"), od[side]["n"]
     return c
+
+
+# ------------------------------------------------------------------ live ranks
+def rank_frame(oi: pd.Series, ls: pd.Series, funding: pd.Series) -> pd.DataFrame:
+    """Hourly frame (index = hour end) from Binance's 1-hour open interest and long/short history and the funding
+    settlements, with the raw signals as in the feature table and their 14-day ranks."""
+    end = max(oi.index.max(), ls.index.max()).floor("1h")
+    grid = pd.date_range(end - pd.Timedelta(hours=max(len(oi), len(ls)) - 1), end, freq="1h")
+    asof = lambda s: s.sort_index().reindex(grid, method="ffill")   # noqa: E731  (last value known at each hour)
+    h = pd.DataFrame({"oi": asof(oi), "ls_top": asof(ls), "funding_rate": asof(funding)}, index=grid)
+    h["oi_chg_24h"] = np.log(h["oi"] / h["oi"].shift(24))
+    return with_ranks(h)
+
+
+def fetch_live_ranks(symbol: str, client=None, limit: int = 500) -> dict:
+    """The latest hour's crowd signals and their 14-day ranks from Binance's public API (about 20 days of 1-hour
+    history; the feature table used the 5-minute value at each hour end, the 1-hour history gives the same moments)."""
+    import httpx
+
+    from regimecast import config
+
+    own = client is None
+    client = client or httpx.Client(base_url=config.BINANCE_FAPI_URL, timeout=10.0)
+    try:
+        def stats(path: str, col: str) -> pd.Series:
+            r = client.get(path, params={"symbol": symbol, "period": "1h", "limit": limit})
+            r.raise_for_status()
+            df = pd.DataFrame(r.json())
+            ts = pd.to_datetime(df["timestamp"].astype("int64"), unit="ms", utc=True)
+            return pd.Series(df[col].astype(float).to_numpy(), index=ts)
+
+        oi = stats("/futures/data/openInterestHist", "sumOpenInterest")
+        ls = stats("/futures/data/topLongShortPositionRatio", "longShortRatio")
+        fr = client.get("/fapi/v1/fundingRate", params={"symbol": symbol, "limit": 100})
+        fr.raise_for_status()
+        f = pd.DataFrame(fr.json())
+    finally:
+        if own:
+            client.close()
+    funding = pd.Series(f["fundingRate"].astype(float).to_numpy(),
+                        index=pd.to_datetime(f["fundingTime"].astype("int64"), unit="ms", utc=True))
+    last = rank_frame(oi, ls, funding).iloc[-1]
+    return {c: (float(last[c]) if pd.notna(last[c]) else None) for c in COLS}

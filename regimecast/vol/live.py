@@ -293,6 +293,12 @@ class ForecastCache:
                                  self.fetch_inputs)
             if g:
                 state = g.pop("state")
+                if self.fetch_inputs is None:   # live only (tests inject fake inputs): the crowd rule's 14-day ranks
+                    try:
+                        from regimecast.verdict import crowd
+                        state.update(crowd.fetch_live_ranks(symbol))
+                    except Exception as e:   # no ranks: the verdict skips the crowd check
+                        log.warning("crowd ranks %s failed: %r", symbol, e)
                 with self._lock:
                     self.stress[symbol] = {**g, "made_at": made}
                     self.state[symbol] = {**state, "made_at": made}

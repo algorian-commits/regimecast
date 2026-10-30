@@ -78,6 +78,7 @@ def panel_from(h: pd.DataFrame, t: pd.DataFrame, p_stress: pd.Series, regime: pd
         P[c] = t[c].reindex(P.index)
     P["p_stress"] = p_stress.reindex(P.index)
     P["regime"] = regime.reindex(P.index).astype(float)
+    P = C.with_ranks(P)
     if not final:
         hold = holdout_start()
         P = P[P.index < hold].copy()
@@ -148,11 +149,47 @@ def liquidation_distance(symbol: str, side: str, leverage: float, margin: float 
     return liq.adverse_log_distance(pos, liq.liquidation_price(pos))
 
 
+FHS_REFIT_H = 24 * 90
+
+
+def walk_forward_fhs(P: pd.DataFrame, start=SIGMA_FROM, refit_hours: int = FHS_REFIT_H) -> list[tuple[pd.Timestamp, dict]]:
+    """[(block start, {"long": entry, "short": entry})]: the FHS table rebuilt every 90 days from the hours whose
+    24 h outcome was complete before the block (H + 24 h <= block start), in fhs_live's format. The dev tables use
+    these, so no grade is scored with a table that saw its own outcome; the app and the final run use the table
+    fitted on the whole dev period (risk/fhs_live.json), which is out of sample for the final test period."""
+    from regimecast.risk import fhs_live
+
+    ok = P["sigma"].notna() & (P["sigma"] > 0)
+    out, b = [], pd.Timestamp(start, tz="UTC") + pd.Timedelta(hours=refit_hours)
+    while b <= P.index.max():
+        past = ok & (P.index <= b - pd.Timedelta(hours=HORIZON))
+        if past.sum() >= 24 * 60:
+            out.append((b, {side: fhs_live.fit(P.loc[past, f"mae_{side}_24h"] / P.loc[past, "sigma"])
+                            for side in ("long", "short")}))
+        b += pd.Timedelta(hours=refit_hours)
+    return out
+
+
+def _fhs_survival(fhs24, side: str, d, sigma, ts: pd.DatetimeIndex) -> np.ndarray:
+    """survival() with one table ({"long", "short"}) or a walk-forward list of them (each hour uses the last
+    table that started at or before it; hours before the first table get NaN)."""
+    if isinstance(fhs24, dict):
+        return survival(fhs24[side], d, sigma)
+    d, sigma = np.broadcast_arrays(np.asarray(d, dtype=float), np.asarray(sigma, dtype=float))
+    starts = np.array([b.value for b, _ in fhs24], dtype=np.int64)
+    blk = np.searchsorted(starts, ts.as_unit("ns").asi8, side="right") - 1
+    out = np.full(len(d), np.nan)
+    for j in np.unique(blk[blk >= 0]):
+        m = blk == j
+        out[m] = survival(fhs24[j][1][side], d[m], sigma[m])
+    return out
+
+
 # ------------------------------------------------------------------ Trade Grade
 def example_trades(P: pd.DataFrame, symbol: str, fhs24: dict, crowd_th: dict | None, calendar: pd.DataFrame,
                    thin_hours=(), period=None, final: bool = False) -> pd.DataFrame:
     """The fixed grid of example trades opened in ``period`` (default: all of P), with everything the grade
-    needs and whether each was hit within 24 h."""
+    needs and whether each was hit within 24 h. ``fhs24``: one FHS table per side, or walk_forward_fhs(P)."""
     need = ["sigma", "mark", "mae_long_24h", "mae_short_24h"]
     W = window(P, period) if period else P
     O = W[(W.index.hour % GRID_EVERY_H == 0) & W[need].notna().all(axis=1) & (W["sigma"] > 0)]
@@ -170,16 +207,16 @@ def example_trades(P: pd.DataFrame, symbol: str, fhs24: dict, crowd_th: dict | N
         cost = (2 * TAKER_FEE + s * funding * SETTLEMENTS_PER_DAY) / sig
         for lev in LEVERAGES:
             d_liq = liquidation_distance(symbol, side, lev)
-            p_liq = survival(fhs24[side], d_liq, sig)
+            p_liq = _fhs_survival(fhs24, side, d_liq, sig, O.index)
             for k in STOP_MOVES:
                 d_stop = k * sig
                 exit_d = np.minimum(d_stop, d_liq)
                 out.append(pd.DataFrame({
                     "ts": O.index, "side": side, "leverage": lev, "stop_moves": k,
-                    "p_knockout": survival(fhs24[side], exit_d, sig), "p_liquidation": p_liq,
+                    "p_knockout": _fhs_survival(fhs24, side, exit_d, sig, O.index), "p_liquidation": p_liq,
                     "stop_past_liquidation": d_stop >= d_liq, "cost_share": cost, **common,
                     "crowd_on_side": warn == s, "hit": mae >= exit_d}))
-    T_ = pd.concat(out, ignore_index=True)
+    T_ = pd.concat(out, ignore_index=True).dropna(subset=["p_knockout", "p_liquidation"])
     T_.insert(0, "symbol", symbol)
     return T_
 
@@ -316,9 +353,10 @@ def similar_settings() -> list[dict]:
     return [{"k": k, "shrink": m, "scale": sc} for k, m, sc in itertools.product(S.KS, S.SHRINKS, S.SCALES)]
 
 
-def similar_predict(lib: S.Library, P: pd.DataFrame, scaling: dict, settings: list[dict], every_h: int = 1) -> pd.DataFrame:
+def similar_predict(lib: S.Library, P: pd.DataFrame, scaling: dict, settings: list[dict], every_h: int = 1,
+                    base: float | None = None) -> pd.DataFrame:
     Q = P[P.index.hour % every_h == 0]
-    return S.predict(lib, Q, S.standardize(S.features(Q), scaling), settings)
+    return S.predict(lib, Q, S.standardize(S.features(Q), scaling), settings, base=base)
 
 
 def similar_row(pred: pd.DataFrame, P: pd.DataFrame, up_share: float) -> dict:
@@ -379,7 +417,7 @@ def synthetic_panel(seed: int = 0, start="2021-01-01", end=config.HOLDOUT_START,
     P["p_stress"] = 1 / (1 + np.exp(-(reg * 1.6 - 3.5 + rng.normal(0, 0.7, n))))
     P["regime"] = reg.astype(float)
     P.index.name = "ts"
-    return P
+    return C.with_ranks(P)
 
 
 def synthetic_fhs(n: int = 100_000) -> dict:

@@ -53,7 +53,7 @@ def run_final(final: bool = False, reports: Path | None = None, symbols=None) ->
         crowd_rows.append({"symbol": sym, **E.crowd_row(C.outcomes(W, th))})
         sc = cfg["similar"]["scaling"][sym]
         lib = S.Library.from_panel(P, sc)
-        pred = E.similar_predict(lib, W, sc, [cfg["similar"]])
+        pred = E.similar_predict(lib, W, sc, [cfg["similar"]], base=cfg["similar"]["up_share"][sym])
         sim_rows.append({"symbol": sym, **E.similar_row(pred, W, cfg["similar"]["up_share"][sym])})
     tr = pd.concat(trades, ignore_index=True)
     table = E.grade_table(tr, E.grade_trades(tr, cfg["grade"]))

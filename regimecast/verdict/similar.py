@@ -9,8 +9,9 @@ nothing after now, and no outcome still running, is used. Among them the k neare
 at least k such hours, else all) give:
 * the 80% range of the next 24 h move (10th to 90th percentile of their moves; with ``scale``, each past move is
   taken in units of its own volatility forecast and multiplied by today's);
-* how often it went up, shrunk towards the share of up days among all candidates:
-  (ups + m * base) / (k + m) with m = shrink x k. When it is between 40% and 60% the app says plainly that the
+* how often it went up, shrunk towards ``base``: (ups + m * base) / (k + m) with m = shrink x k. ``base`` is the
+  dev-period up share (frozen), the same number the final bar compares with; without it, the share of up days
+  among all candidates. When it is between 40% and 60% the app says plainly that the
   direction is close to a coin flip.
 """
 from __future__ import annotations
@@ -26,7 +27,7 @@ REGIMES = ("calm", "active", "stressed")
 OUTCOME = pd.Timedelta(hours=24)
 RANGE = (0.10, 0.90)
 KS = (50, 100, 200, 400)               # candidates for k, the shrinkage and the scaling (chosen on the dev period)
-SHRINKS = (0.0, 1.0, 4.0)
+SHRINKS = (0.0, 1.0, 4.0, 10.0)
 SCALES = (True, False)
 COIN_FLIP = (0.40, 0.60)
 
@@ -137,7 +138,7 @@ def pick(same: np.ndarray, every: np.ndarray, k: int) -> tuple[np.ndarray, bool]
 
 
 def query(lib: Library, x_raw: dict, regime: str | None, sigma_now: float, now: pd.Timestamp, cfg: dict,
-          scaling: dict) -> Moments | None:
+          scaling: dict, base: float | None = None) -> Moments | None:
     """Similar moments for one hour. x_raw: the FEATURES at now (log_sigma may be given as sigma)."""
     n = lib.known_by(now)
     k = int(cfg["k"])
@@ -150,11 +151,12 @@ def query(lib: Library, x_raw: dict, regime: str | None, sigma_now: float, now: 
     r = REGIMES.index(regime) if regime in REGIMES else -1
     same, every = _nearest(lib, x, n, r, k)
     idx, is_same = pick(same, every, k)
-    base = float((lib.fwd[:n] > 0).mean())
+    base = float((lib.fwd[:n] > 0).mean()) if base is None else base
     return _summary(lib, idx, sigma_now, cfg["shrink"], cfg["scale"], base, is_same)
 
 
-def predict(lib: Library, Q: pd.DataFrame, X: np.ndarray, settings: list[dict]) -> pd.DataFrame:
+def predict(lib: Library, Q: pd.DataFrame, X: np.ndarray, settings: list[dict],
+            base: float | None = None) -> pd.DataFrame:
     """Out-of-sample predictions at every row of Q (query hours: columns sigma, regime), one per setting.
 
     X: the query rows' standardized features. Each query only sees library rows known by then (known_by)."""
@@ -167,10 +169,10 @@ def predict(lib: Library, Q: pd.DataFrame, X: np.ndarray, settings: list[dict]) 
             continue
         r = int(q["regime"]) if pd.notna(q.get("regime")) else -1
         same, every = _nearest(lib, X[i], n, r, kmax)
-        base = ups[n] / n
+        b = ups[n] / n if base is None else base
         for j, s in enumerate(settings):
             idx, is_same = pick(same, every, int(s["k"]))
-            m = _summary(lib, idx, float(q["sigma"]), s["shrink"], s["scale"], base, is_same)
+            m = _summary(lib, idx, float(q["sigma"]), s["shrink"], s["scale"], b, is_same)
             rows.append((t, j, m.lo, m.hi, m.p_up))
     return pd.DataFrame(rows, columns=["ts", "setting", "lo", "hi", "p_up"])
 

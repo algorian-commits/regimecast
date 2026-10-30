@@ -10,7 +10,8 @@ synthetic ones. The final test period stays closed: every panel ends before 2025
 4. similar moments: candidates every 6 hours on the choose period, choice by evaluate.choose_similar; coverage and
    Brier every ``every_h`` hours on choose / check / dev; the library of past hours for the app
                                                  phase12_similar_grid.csv, _similar.csv, verdict/similar/<coin>.npz
-5. Trade Grade: candidates on the example-trade grid of the choose period, choice by evaluate.choose_grade;
+5. Trade Grade: candidates on the example-trade grid of the choose period (FHS rebuilt every 90 days from past
+   outcomes only, evaluate.walk_forward_fhs), choice by evaluate.choose_grade;
    hit share by grade on choose / check / dev                     phase12_grade_grid.csv, _grade.csv, _grade_bar.csv
 6. freeze: frozen.json, never overwritten with different settings unless ``refreeze``.
 """
@@ -47,7 +48,7 @@ def _log(msg: str, t0: float) -> None:
 
 
 def run(panels: dict[str, pd.DataFrame], fhs: dict, calendar: pd.DataFrame, out: Path, frozen_path: Path,
-        similar_dir: Path, refreeze: bool = False, every_h: int = 1) -> dict:
+        similar_dir: Path, refreeze: bool = False, every_h: int = 1, walk_forward: bool = True) -> dict:
     t0 = time.time()
     out.mkdir(parents=True, exist_ok=True)
     syms = list(panels)
@@ -84,7 +85,7 @@ def run(panels: dict[str, pd.DataFrame], fhs: dict, calendar: pd.DataFrame, out:
         libs[s] = S.Library.from_panel(P, scaling[s])
         up_share[s] = float((E.window(P, E.DEV)["fwd_24h"].dropna() > 0).mean())
         ch_up = float((choose[s]["fwd_24h"].dropna() > 0).mean())
-        pred = E.similar_predict(libs[s], choose[s], scaling[s], sets, every_h=6)
+        pred = E.similar_predict(libs[s], choose[s], scaling[s], sets, every_h=6, base=up_share[s])
         for j, st in enumerate(sets):
             scores.append({"symbol": s, "setting": j, **st, **S.score(pred[pred["setting"] == j], P["fwd_24h"], ch_up)})
     sim_grid = pd.DataFrame(scores)
@@ -92,7 +93,8 @@ def run(panels: dict[str, pd.DataFrame], fhs: dict, calendar: pd.DataFrame, out:
     sim = E.choose_similar(sim_grid)
     rows = []
     for s, P in panels.items():
-        pred = E.similar_predict(libs[s], E.window(P, E.DEV), scaling[s], [sim], every_h)   # dev = choose + check
+        pred = E.similar_predict(libs[s], E.window(P, E.DEV), scaling[s], [sim], every_h,   # dev = choose + check
+                                 base=up_share[s])
         for name, per in PERIODS.items():
             W = E.window(P, per)
             rows.append({"period": name, "symbol": s,
@@ -103,7 +105,8 @@ def run(panels: dict[str, pd.DataFrame], fhs: dict, calendar: pd.DataFrame, out:
     _log(f"similar moments: {sim}", t0)
 
     # 5. Trade Grade
-    trades = {name: pd.concat([E.example_trades(P, s, fhs[s]["24h"], crowd_th[s], calendar, thin[s], period=per)
+    wf = {s: (E.walk_forward_fhs(P) if walk_forward else fhs[s]["24h"]) for s, P in panels.items()}
+    trades = {name: pd.concat([E.example_trades(P, s, wf[s], crowd_th[s], calendar, thin[s], period=per)
                                for s, P in panels.items()], ignore_index=True) for name, per in PERIODS.items()}
     cfg, ggrid = E.choose_grade(trades[next(iter(PERIODS))])          # the choose period
     ggrid.to_csv(out / "phase12_grade_grid.csv", index=False)

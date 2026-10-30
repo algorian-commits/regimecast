@@ -239,10 +239,10 @@ go: Phase 6b showed our data cannot predict direction. Plain-English overview: `
 | Trade Grade | `regimecast/verdict/grade.py` | A to F with three plain reasons: chance the stop or liquidation is reached, liquidation vs the user's limit, the stop, fees and funding vs a typical move; market steps for a stressed regime, stress, crowding and timing. Break-even win rate. |
 | Fix my trade | `regimecast/verdict/fix.py` | The closest safer version (lower leverage, same margin, a stop outside normal noise) that meets the user's limit and can lose no more. |
 | What-if strip | `regimecast/verdict/whatif.py` | Dollars on a normal day and a bad day (90th / 99th percentile 24 h move in the current regime) and a crash day like 10 Oct 2025. |
-| Crowd warning | `regimecast/verdict/crowd.py` | Funding, top traders' long/short ratio and open-interest growth at extremes, with the historical odds of a 5% move against the crowd within 24 h. |
+| Crowd warning | `regimecast/verdict/crowd.py` | Funding, top traders' long/short ratio and open-interest growth at extremes against their own last 14 days, with the historical odds of a 5% move against the crowd within 24 h. Live ranks from Binance's public 1-hour history (refreshed with the stress gauge). |
 | Similar moments | `regimecast/verdict/similar.py` | The past hours most like now (only hours whose next day had played out); the 80% range of the next 24 h move and how often it went up, with a coin-flip note. |
 | Bad timing | `regimecast/verdict/timing.py`, `macro_events.csv` | FOMC, CPI and the jobs report inside the trade's horizon (fixed calendar, 2020-2027), weekends, thin hours, stress rising. |
-| Settings | `regimecast/verdict/settings.py`, `frozen.json` | Chosen on 2022-01 to 2024-09, checked on 2024-10 to 2025-09, frozen by the run below; defaults until then (the API says so). |
+| Settings | `regimecast/verdict/settings.py`, `frozen.json`, `similar/*.npz` | Chosen on 2022-01 to 2024-09, checked on 2024-10 to 2025-09, frozen 30 Oct 2026 by the run below. |
 | Evaluation | `regimecast/verdict/evaluate.py`, `devrun.py`, `final.py` | The pass-bar measures (example-trade grid, crowd ratio with a 90% block bootstrap, coverage and Brier); `run_final(final=True)`: Phase 10 runs it once. |
 | API and app | `regimecast/api/verdict.py`, `web/src/components/trade-verdict.tsx` | `/risk-check` returns `verdict`, `fix` and `what_if` (optional `take_profit` in the request); the Risk Check result shows them first, the details behind "Show me the numbers". |
 

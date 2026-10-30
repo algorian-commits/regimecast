@@ -148,16 +148,42 @@ def test_timing_flags_match_the_single_check():
 
 
 # ------------------------------------------------------------------ crowd warning
-TH = {"funding_hi": 3e-4, "funding_lo": -1e-4, "ls_hi": 2.5, "ls_lo": 0.8, "oi_hi": 0.05,
-      "funding_mid": 1e-4, "funding_scale": 1e-4, "ls_mid": 1.5, "ls_scale": 0.5}
+TH = C.fit(None, 0.9, 0.75)
 
 
 def test_crowd_warning_needs_all_three_extremes():
-    P = pd.DataFrame({"funding_rate": [4e-4, 4e-4, -2e-4, -2e-4, np.nan], "ls_top": [3, 3, 0.5, 0.5, 3],
-                      "oi_chg_24h": [0.06, 0.01, 0.06, 0.06, 0.06]})
-    P.loc[3, "ls_top"] = 1.0                                              # ratio not at its low extreme
-    assert C.warning(P, TH).tolist() == [1, 0, -1 if P.loc[2, "ls_top"] <= 0.8 else 0, 0, 0]
+    P = pd.DataFrame({"funding_rank": [0.95, 0.95, 0.05, 0.05, np.nan], "ls_rank": [0.97, 0.97, 0.02, 0.5, 0.99],
+                      "oi_rank": [0.8, 0.5, 0.9, 0.9, 0.9]})
+    assert C.warning(P, TH).tolist() == [1, 0, -1, 0, 0]
     assert C.lean(P, TH).tolist() == [1, 1, -1, -1, 0]
+
+
+def test_crowd_ranks_use_only_the_last_14_days():
+    rng = np.random.default_rng(1)
+    ix = pd.date_range("2023-01-01 01:00", periods=1500, freq="1h", tz="UTC")
+    x = pd.Series(rng.normal(size=len(ix)), index=ix)
+    r = C.trailing_rank(x)
+    assert r.iloc[: C.MIN_HOURS - 1].isna().all() and r.iloc[C.MIN_HOURS:].notna().all()
+    t = 1200
+    later = x.copy()
+    later.iloc[t + 1:] = 99.0                                             # the future changes...
+    assert C.trailing_rank(later).iloc[: t + 1].equals(r.iloc[: t + 1])   # ...nothing up to t does
+    w = x.iloc[t - C.WINDOW_HOURS + 1: t + 1]
+    assert r.iloc[t] == pytest.approx(((w < x.iloc[t]).sum() + 0.5 * (w == x.iloc[t]).sum()) / len(w))
+    # a change of level that happened more than 14 days ago no longer matters
+    shifted = x.where(x.index >= ix[t - C.WINDOW_HOURS + 1], x + 50)
+    assert C.trailing_rank(shifted).iloc[t:].equals(r.iloc[t:])
+
+
+def test_live_ranks_match_the_dev_definition():
+    ix = pd.date_range("2024-01-01 01:00", periods=500, freq="1h", tz="UTC")
+    oi = pd.Series(np.linspace(100, 200, 500), index=ix)
+    ls = pd.Series(np.r_[np.full(499, 1.5), 3.0], index=ix)
+    funding = pd.Series([1e-4, 2e-4], index=[ix[0], ix[250] - pd.Timedelta(minutes=1)])
+    h = C.rank_frame(oi, ls, funding)
+    assert h.index[-1] == ix[-1] and h["funding_rate"].iloc[-1] == 2e-4
+    assert h["oi_chg_24h"].iloc[-1] == pytest.approx(math.log(oi.iloc[-1] / oi.iloc[-25]))
+    assert h["ls_rank"].iloc[-1] > 0.99 and h["funding_rank"].iloc[-1] > 0.5 and 0 <= h["oi_rank"].iloc[-1] <= 1
 
 
 def test_against_the_crowd_is_a_5_percent_move_within_24h():
@@ -222,6 +248,34 @@ def test_evaluation_and_live_query_agree(panel):
         q = panel.loc[p["ts"]]
         m = S.query(lib, {c: q[c] for c in S.FEATURES[1:]}, S.REGIMES[int(q["regime"])], q["sigma"], p["ts"], cfg, sc)
         assert (m.lo, m.hi, m.p_up) == pytest.approx((p["lo"], p["hi"], p["p_up"]))
+
+
+def test_up_chance_is_pulled_toward_the_given_dev_up_share(panel):
+    sc = S.fit_scaling(S.features(panel))
+    lib = S.Library.from_panel(panel, sc)
+    cfg = {"k": 50, "shrink": 1000.0, "scale": True}
+    Q = panel.loc["2021-07-01":"2021-07-02"]
+    pred = S.predict(lib, Q, S.standardize(S.features(Q), sc), [cfg], base=0.52)
+    assert np.allclose(pred["p_up"], 0.52, atol=0.001)                   # heavy shrinkage: the base itself
+    q = panel.loc[pred["ts"].iloc[0]]
+    m = S.query(lib, {c: q[c] for c in S.FEATURES[1:]}, S.REGIMES[int(q["regime"])], q["sigma"], pred["ts"].iloc[0],
+                cfg, sc, base=0.52)
+    assert m.p_up == pytest.approx(pred["p_up"].iloc[0])
+
+
+def test_walk_forward_fhs_uses_only_finished_outcomes():
+    P = E.synthetic_panel(seed=4, start="2021-01-01", end="2022-03-01")
+    tabs = E.walk_forward_fhs(P)
+    b = tabs[0][0]
+    P2 = P.copy()
+    P2.loc[P2.index > b - pd.Timedelta(hours=24), "mae_long_24h"] = 5.0  # outcomes not finished by the block start
+    assert E.walk_forward_fhs(P2)[0][1]["long"] == tabs[0][1]["long"]
+    tr = E.example_trades(P, "BTCUSDT", tabs, None, T.load_calendar(), period=("2021-01-01", "2022-03-01"))
+    assert tr["ts"].min() >= b                                              # no grade before the first table
+    first = tuple(x.strftime("%Y-%m-%d %H:%M") for x in (b, tabs[1][0]))
+    one = E.example_trades(P, "BTCUSDT", tabs[0][1], None, T.load_calendar(), period=first)
+    same = tr[tr["ts"] < tabs[1][0]].reset_index(drop=True)
+    assert np.allclose(one["p_knockout"].to_numpy(), same["p_knockout"].to_numpy())
 
 
 def test_up_chance_shrinks_to_the_base_rate_and_says_coin_flip():
@@ -396,11 +450,11 @@ def test_dev_pipeline_chooses_checks_and_freezes(monkeypatch, tmp_path):
     for name in ("grade", "grade_bar", "grade_grid", "crowd", "crowd_grid", "similar", "similar_grid", "whatif"):
         assert (tmp_path / f"phase12_{name}.csv").exists(), name
     assert S.Library.load(tmp_path / "similar" / "BTCUSDT.npz") is not None
-    # crowd thresholds come from the choose period only: changing later hours leaves them as they were
-    later = {s: P.assign(funding_rate=P["funding_rate"].where(P.index < pd.Timestamp("2021-07-01", tz="UTC"), 1.0))
+    # the crowd setting is chosen on the choose period only: changing later hours leaves it as it was
+    later = {s: P.assign(funding_rank=P["funding_rank"].where(P.index < pd.Timestamp("2021-07-01", tz="UTC"), 1.0))
              for s, P in panels.items()}
     again = devrun.run(later, fhs, T.load_calendar(), tmp_path / "b", tmp_path / "b.json", tmp_path / "b", every_h=6)
-    assert again["crowd"]["BTCUSDT"]["funding_hi"] == f["crowd"]["BTCUSDT"]["funding_hi"]
+    assert again["crowd"]["BTCUSDT"]["level"] == f["crowd"]["BTCUSDT"]["level"]
     # a second run with the same choice keeps the freeze date; different settings are refused
     saved["frozen_at"] = "2026-01-01"
     frozen_path.write_text(json.dumps(saved))
@@ -483,7 +537,7 @@ def test_crowd_and_similar_moments_in_the_api(api, monkeypatch, tmp_path):
                                               "other": 0.07}}
     cfg["similar"].update({"k": 100, "scaling": {"BTCUSDT": sc}})
     state = {"funding_rate": 5e-4, "ls_top": 3.0, "oi_chg_24h": 0.08, "ret_24h": 0.01, "ret_168h": -0.02,
-             "p_stress_3h_ago": 0.02}
+             "funding_rank": 0.97, "ls_rank": 0.99, "oi_rank": 0.95, "p_stress_3h_ago": 0.02}
     monkeypatch.setattr(main.vol_live.cache, "get_state", lambda s: state)
     v = c.post("/risk-check", json={**TRADE, "leverage": 2, "stop": 93000}).json()["verdict"]
     assert v["crowd"]["warning"] and v["crowd"]["side"] == "long" and "21% of the time, vs 7%" in v["crowd"]["message"]

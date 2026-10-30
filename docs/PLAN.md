@@ -1,7 +1,7 @@
 # RegimeCast build plan
 
-Status (28 Oct): Phases 1-9 and 11 done and merged; Phase 12 (trade verdict) built on `phase12-verdict`, its dev-period
-run and freeze next (Saeed's PC). Then the final evaluation (Phase 10, part A) once, then UI polish. The final evaluation's pass bars are fixed below **before** the final test
+Status (31 Oct): Phases 1-9 and 11 done and merged; Phase 12 (trade verdict) built, run on the dev data and frozen on
+`phase12-verdict`. Then the final evaluation (Phase 10, part A) once, then UI polish. The final evaluation's pass bars are fixed below **before** the final test
 period is opened.
 
 ## How we work
@@ -73,7 +73,7 @@ Code layout: `regimecast/` (Python: data, features, models, api, worker), `web/`
 | 8 Live dashboard and accounts (M5, M6) | Built and merged 27 Oct (`docs/M5_M6_WALKTHROUGH.md`): sign up / log in on Postgres, Risk Radar dashboard with live WebSocket feed and regime-coloured candles. Logged-in Risk Checks use the account's risk limit, margin mode and balance, and save to the account. |
 | 9 Paper-trading risk agent (M10 part 2) | Built 27 Oct, merged 28 Oct (`docs/M10_AGENT_WALKTHROUGH.md`), settings frozen. Dev period 2022-01 to 2025-09: Sharpe 0.62 vs 0.46 for buy-and-hold, max drawdown -38% vs -79%, FTX week -12% vs -27%. Plain trailing-vol targeting does as well (0.65); the grid switched the stress and regime cuts off (fees). Live paper log hourly on `agent-data`; Agent page. Final run not done (Phase 10). |
 | 11 Crash replay and alerts (M12) | Built 27 Oct, merged 28 Oct (`docs/M12_WALKTHROUGH.md`): FTX replay minute by minute with the frozen models, alert engine once a minute into an in-app inbox (bell), Whale Watch alerts from Hyperliquid's public data. October 2025 replay waits for the final evaluation. |
-| 12 Trade verdict for beginners (M9, extended) | Built 28 Oct on `phase12-verdict` (`docs/M12_VERDICT_WALKTHROUGH.md`): grade, break-even, fix, what-if, crowd, similar moments, timing; in `/risk-check` and the Risk Check screen. Tested on synthetic data; `scripts/run_phase12.py` (dev tables, freeze) waits for Saeed's PC. |
+| 12 Trade verdict for beginners (M9, extended) | Built 28 Oct, run on the dev data and frozen 30 Oct (`docs/M12_VERDICT_WALKTHROUGH.md`). Grade: share knocked out within 24 h rises A to F on all 3 coins, F/A 13-26x. Crowd warning: BTC 3.05x and ETH 1.93x (90% intervals above 1), SOL 1.23x (fails). Similar moments: range covers 78-81%; up chance no better than the base rate (a coin flip). Final run not done (Phase 10). |
 | 10 Final evaluation, then UI polish (M11) | Waiting for Phase 12. Track Record page, end-to-end tests, hardening and guides dropped. |
 
 ## Phases 1-3: P1 Mid (approved 23 Oct)
@@ -522,27 +522,8 @@ Rules for the run
 | 2026-10-28 | Before the freeze the app runs on defaults written in `verdict/settings.py` (`settings_frozen_at` null); crowd warning and similar moments switch on with `frozen.json` and `verdict/similar/<coin>.npz` | The code ships before Saeed's dev-period run; nothing in the app pretends to be fixed on data until it is. |
 | 2026-10-28 | Funding cost and crowding inputs in the live verdict come from the stress gauge's own hourly feature rows (`vol/live.py`), not a new Binance call | Same definitions as the dev tables (last settled funding, as-of joins) and no extra latency; `/stress` is unchanged. |
 | 2026-10-28 | Dev-period grade tables use the app's FHS file (fitted on the whole dev period), so they are partly in-sample | It is exactly what the app and the final bar use; the final test period is the clean test. |
-
-## Parking list (not now)
-
-- Any new recorder streams. The recorder stays as is.
-
-- Direct feeds from X or Truth Social. RSS covers it for now; X's API costs about $200/month.
-- `/forecast?horizon_hours=24` is rejected (422): FastAPI does not turn the query text "24" into the `Literal[1, 24]` number. The app calls it without the parameter (24 h is the default). Fix when the forecaster lands (Phase 5).
-- Pin the API image's Python packages like the recorder's (`requirements-api.txt`), so a redeploy never picks up a surprise upgrade.
-- Risk Check explanation repeats brackets ("(PLACEHOLDER (volatility model not trained yet))"); tidy the wording in the API.
-- Live HAR-S + LightGBM combination in the app: needs live funding, open interest, basis, long/short ratios and DVOL inputs (1-5% lower QLIKE than HAR-S).
-- Crash scenario line in the risk check when stress is elevated or high (e.g. how much higher long-side liquidation rates were in past crash windows at this leverage).
-- Minute-level stress model with order-book inputs (the book collapsed within 5 minutes of the 10 Oct post), once more order-book history exists.
-- 10 Oct whale wallet fill history: needs the address from HypurrScan or Arkham.
-- Download BTC from Sep 2019 (perpetual launch), so the COVID crash has more than two months of history before the first regime fit.
-- Move all three Railway services to Infrastructure as Code (`.railway/railway.ts`) before 2026-12-01, when Railway stops reading the recorder's `railway.json`.
-- Fine-tune a sentiment model on our own crypto headlines (needs ~1,000 labels, not 100).
-- Weight headlines by how many outlets ran them (`copies`) and use GDELT's tone as an extra feature (M7).
-- Fill GDELT's 15 Jun - 1 Jul 2025 outage from the news sites' own archives or sitemaps.
-- Second parser test set from real user messages (logged with consent), since the AI-written set is likely too clean.
-- Read take-profit and horizon from the typed trade too.
-- Accounts: "forgot password" e-mail, account deletion, and changing the e-mail or password.
-- Full order-book depth on the dashboard (diff stream + local book) instead of the top 20 levels.
-- Agent: a stress cut that does not churn (exit only after the probability stays high for some hours, or a wider band for stress exits); try only on the dev period, never after the final test.
-- Agent: lower target volatility / wider band than the grid's edge (30%, 20 points), as a dev-period sensitivity only; the frozen settings stay.
+| 2026-10-30 | Reversed: dev-period grade tables now use FHS rebuilt every 90 days from past outcomes only (`evaluate.walk_forward_fhs`); the app and the final run keep the app's FHS file | A grade scored with a model that saw the trade's own outcome overstates how well grades separate. Walk-forward F/A is still 13-26x. |
+| 2026-10-30 | Crowd warning reads 14-day percentile ranks of funding, top traders' ratio and open-interest growth, not fixed per-coin levels | On the real dev data the fixed levels fired only 54-248 hours per coin in 2022-24, and on ETH and SOL the check-year ratio fell below 1 (0.75, 0.64): the levels drift. With ranks: BTC 3.05x, ETH 1.93x on the dev period. |
+| 2026-10-30 | Live crowd ranks from Binance's public 1-hour open-interest and long/short history (about 20 days), fetched in the background refresh with the stress gauge | Reverses "no new Binance call" for this one input: the gauge's 5-minute data covers only about 41 hours, not 14 days. Skipped when tests inject inputs; without it the crowd check is skipped, never wrong. |
+| 2026-10-30 | Similar moments' up chance pulled toward the frozen dev-period up share instead of the library's past up share; shrinkage 10 added to the candidates | On the real dev data the old version was worse than the base rate on all 3 coins (the bar's baseline is the dev-period share). Now ETH and SOL are no worse; BTC 0.2497 vs 0.2495. |
+| 2026-10-30 | Frozen (rules as written): knock-out bands 5/15/30/50%, market steps for stress, crowding and timing (regime off); crowd extremes 10%, open interest 25%; similar moments k = 400, unscaled, shrinkage 10 | Chosen on 2022-01 to 2024-09 (48 / 8 / 32 candidates in `data/reports/phase12_*_grid.csv`), checked on 2024-10 to 2025-09. |
