@@ -116,8 +116,8 @@ MODELS = {
 }
 
 
-def compare(X, y, test_start="2022-01-01", refit_every_hours: int = 24 * 90) -> pd.DataFrame:
-    out = pd.DataFrame({n: harness.walk_forward(X, y, f, test_start, 1, refit_every_hours=refit_every_hours)
+def compare(X, y, test_start="2022-01-01", refit_every_hours: int = 24 * 90, final: bool = False) -> pd.DataFrame:
+    out = pd.DataFrame({n: harness.walk_forward(X, y, f, test_start, 1, refit_every_hours=refit_every_hours, final=final)
                         for n, f in MODELS.items()})
     out["gbm_cal"] = calibrate(out["gbm"], y)
     out["y"] = y.reindex(out.index)

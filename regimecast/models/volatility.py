@@ -112,9 +112,10 @@ class Combo:
 
 
 def compare(X: pd.DataFrame, y: pd.Series, horizon: int, test_start="2023-01-01",
-            refit_every_hours: int = 24 * 90) -> dict[str, pd.Series]:
-    """Out-of-sample forecasts of every model, same folds, final test period closed."""
+            refit_every_hours: int = 24 * 90, final: bool = False) -> dict[str, pd.Series]:
+    """Out-of-sample forecasts of every model, same folds, final test period closed (unless final=True)."""
     makers = {**{n: harness.BASELINES[n] for n in ("har", "har_s", "no_change", "hist_vol")},
               "gbm": lambda: GBMVol(horizon), "combo": lambda: Combo(horizon)}
-    return {n: harness.walk_forward(X, y, f, test_start, horizon, refit_every_hours=refit_every_hours).rename(n)
+    return {n: harness.walk_forward(X, y, f, test_start, horizon, refit_every_hours=refit_every_hours,
+                                    final=final).rename(n)
             for n, f in makers.items()}

@@ -107,7 +107,7 @@ class QuantileGBM:
 
 def evaluate(symbol: str, horizon: int, X: pd.DataFrame, sigma: pd.Series, targets: pd.DataFrame,
              eval_start="2022-01-01", refit_every_hours: int = 24 * 90, features: list[str] | None = None,
-             with_qgbm: bool = True) -> pd.DataFrame:
+             with_qgbm: bool = True, final: bool = False) -> pd.DataFrame:
     """Out-of-sample P(liquidation) of every model for every origin, side and leverage.
 
     sigma: out-of-sample volatility forecasts (variance over the horizon) from earlier folds,
@@ -123,7 +123,8 @@ def evaluate(symbol: str, horizon: int, X: pd.DataFrame, sigma: pd.Series, targe
     feats = [*feats, "log_sigma"]
     dist = distances(symbol)
     rows = []
-    for f in harness.folds(s.index, eval_start, horizon, refit_every_hours=refit_every_hours, min_train_hours=24 * 180):
+    for f in harness.folds(s.index, eval_start, horizon, refit_every_hours=refit_every_hours, min_train_hours=24 * 180,
+                           final=final):
         train = (s.index <= f.fit_end)
         test = (s.index >= f.block_start) & (s.index < f.block_end) & mae.notna().all(axis=1)
         if not test.any():

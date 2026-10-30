@@ -47,14 +47,17 @@ def regime_inputs(h: pd.DataFrame) -> pd.DataFrame:
 
 
 def fit_walk_forward(x: pd.DataFrame, cols: list[str], test_start=None, refit_every_hours: int = 24 * 30,
-                     min_train_hours: int = 24 * 45, freeze_after_holdout: bool = True, seed: int = 0) -> pd.DataFrame:
-    """Filtered regime probabilities for every hour from test_start on."""
+                     min_train_hours: int = 24 * 45, freeze_after_holdout: bool = True, seed: int = 0, final: bool = False) -> pd.DataFrame:
+    """Filtered regime probabilities for every hour from test_start on.
+
+    final=True (the final evaluation only): the quarterly refits continue through the final test period, on past
+    data only, instead of freezing the last dev-period model."""
     X = x[cols]
     valid = X.dropna()
     if test_start is None:
         test_start = valid.index[0] + pd.Timedelta(hours=min_train_hours)
     folds = harness.folds(X.index, test_start, horizon_hours=0, refit_every_hours=refit_every_hours,
-                          min_train_hours=min_train_hours)
+                          min_train_hours=min_train_hours, final=final)
     ilv = cols.index("log_rv")
     out, model, warm = [], None, None
 
@@ -74,8 +77,9 @@ def fit_walk_forward(x: pd.DataFrame, cols: list[str], test_start=None, refit_ev
         model = GaussianHMM(3, n_init=5 if warm is None else 2, seed=seed).fit(((tr - mu) / sd).to_numpy(), warm=warm)
         model.order_by(ilv)
         warm, fit_end = model, f.fit_end
-        out.append(block(model, mu, sd, f.block_start, min(f.block_end, harness.holdout_start()), False))
-    if freeze_after_holdout and model is not None and X.index[-1] >= harness.holdout_start():
+        out.append(block(model, mu, sd, f.block_start, f.block_end if final else min(f.block_end, harness.holdout_start()),
+                          False))
+    if not final and freeze_after_holdout and model is not None and X.index[-1] >= harness.holdout_start():
         out.append(block(model, mu, sd, harness.holdout_start(), X.index[-1] + pd.Timedelta(seconds=1), True))
     res = pd.concat(out)
     res = res[~res.index.duplicated(keep="first")]

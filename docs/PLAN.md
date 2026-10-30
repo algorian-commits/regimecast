@@ -405,6 +405,21 @@ ETH and SOL. Same targets, labels and scoring code as in development.
 | App (M2, M5, M6, M8, M9) | Its own spec | A one-time check on the live URL passes (Saeed clicks through a short checklist, since Claude does not create accounts on the live site): sign up, set balance and limit, type a trade, confirm, get a result, see it saved on the account, see the dashboard price update within 10 s, log out; the risk check answers in under 2 s for 95% of 50 requests. |
 | Trade parser (M8) | The 95% target in the proposal | Every field at least 95% correct on the 200-message set. **Runs only once the Anthropic key is set**; until then it is reported as not run (the rule reader's 76% is the fallback, not the result). |
 
+How each bar is scored (written 31 Oct 2026, before opening; it only names what "the app's model" etc. means)
+- Origins scored: 2025-10-01 00:00 to 2026-09-30 23:00 UTC. Everything runs through `scripts/final_eval.py`, whose
+  walk-forwards continue the development fold schedules (regimes, volatility, liquidation, stress: refit every 90
+  days on past data only) instead of freezing.
+- Volatility: the combination's QLIKE against HAR-RV on the same hours; "significantly lower" = lower and the
+  two-sided Diebold-Mariano p < 0.05 (Newey-West, as in Phase 5).
+- Liquidation: "FHS, the app's model" = FHS on the HAR-S forecast (what the app runs), uncalibrated, against the
+  random walk on the same HAR-S forecast, pooled over long and short and the 2x-100x leverage grid, as in Phase 5's
+  table. FHS and the random walk on the combination are reported alongside.
+- Stress: "the classifier" = the walk-forward LightGBM probability (`gbm`), as in Phase 6's table; the calibrated
+  probability is reported alongside. The best rule is taken separately for AUC and for average precision.
+- Regimes: next-day volatility by regime (forward-filtered, argmax), as in Phase 4's summary.
+- Reproducibility check: the rerun walk-forwards also cover the dev period, and must match what Phases 4 and 6
+  saved; the difference is reported.
+
 Rules for the run
 - One run. If the evaluation code has a bug (a crash, a wrong file, a wrong date range), it is fixed and rerun, and
   both runs and the fix are logged. A model or setting is never changed after the period is opened.
