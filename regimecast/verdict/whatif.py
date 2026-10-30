@@ -83,7 +83,7 @@ def strip(coin_symbol: str, side: str, entry: float, qty: float, fees: float, st
         if t:
             m = t[name]
             basis = (f"{int(100 * QUANTILES[name])}th percentile 24 h move "
-                     f"{'in a ' + regime + ' market' if regime and regime in (table or {}) else 'on any day'}, 2022-2025")
+                     f"{'in ' + ('an ' if regime[:1] in 'aeiou' else 'a ') + regime + ' market' if regime and regime in (table or {}) else 'on any day'}, 2022-2025")
         else:
             m = FALLBACK_MOVES[name] * sigma_24h
             basis = "from today's volatility forecast (the dev-period table is not fixed yet)"
