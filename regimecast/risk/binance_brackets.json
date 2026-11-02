@@ -288,6 +288,451 @@
           "cum": 66731475.0
         }
       ]
+    },
+    {
+      "symbol": "ADAUSDT",
+      "brackets": [
+        {
+          "bracket": 1,
+          "initialLeverage": 75,
+          "notionalCap": 10000,
+          "notionalFloor": 0,
+          "maintMarginRatio": 0.005,
+          "cum": 0.0
+        },
+        {
+          "bracket": 2,
+          "initialLeverage": 50,
+          "notionalCap": 50000,
+          "notionalFloor": 10000,
+          "maintMarginRatio": 0.01,
+          "cum": 50.0
+        },
+        {
+          "bracket": 3,
+          "initialLeverage": 40,
+          "notionalCap": 200000,
+          "notionalFloor": 50000,
+          "maintMarginRatio": 0.015,
+          "cum": 300.0
+        },
+        {
+          "bracket": 4,
+          "initialLeverage": 25,
+          "notionalCap": 1000000,
+          "notionalFloor": 200000,
+          "maintMarginRatio": 0.02,
+          "cum": 1300.0
+        },
+        {
+          "bracket": 5,
+          "initialLeverage": 20,
+          "notionalCap": 2000000,
+          "notionalFloor": 1000000,
+          "maintMarginRatio": 0.025,
+          "cum": 6300.0
+        },
+        {
+          "bracket": 6,
+          "initialLeverage": 10,
+          "notionalCap": 10000000,
+          "notionalFloor": 2000000,
+          "maintMarginRatio": 0.05,
+          "cum": 56300.0
+        },
+        {
+          "bracket": 7,
+          "initialLeverage": 5,
+          "notionalCap": 20000000,
+          "notionalFloor": 10000000,
+          "maintMarginRatio": 0.1,
+          "cum": 556300.0
+        },
+        {
+          "bracket": 8,
+          "initialLeverage": 4,
+          "notionalCap": 25000000,
+          "notionalFloor": 20000000,
+          "maintMarginRatio": 0.125,
+          "cum": 1056300.0
+        },
+        {
+          "bracket": 9,
+          "initialLeverage": 2,
+          "notionalCap": 50000000,
+          "notionalFloor": 25000000,
+          "maintMarginRatio": 0.25,
+          "cum": 4181300.0
+        },
+        {
+          "bracket": 10,
+          "initialLeverage": 1,
+          "notionalCap": 100000000,
+          "notionalFloor": 50000000,
+          "maintMarginRatio": 0.5,
+          "cum": 16681300.0
+        }
+      ]
+    },
+    {
+      "symbol": "BNBUSDT",
+      "brackets": [
+        {
+          "bracket": 1,
+          "initialLeverage": 75,
+          "notionalCap": 10000,
+          "notionalFloor": 0,
+          "maintMarginRatio": 0.005,
+          "cum": 0.0
+        },
+        {
+          "bracket": 2,
+          "initialLeverage": 50,
+          "notionalCap": 200000,
+          "notionalFloor": 10000,
+          "maintMarginRatio": 0.006,
+          "cum": 10.0
+        },
+        {
+          "bracket": 3,
+          "initialLeverage": 40,
+          "notionalCap": 400000,
+          "notionalFloor": 200000,
+          "maintMarginRatio": 0.01,
+          "cum": 810.0
+        },
+        {
+          "bracket": 4,
+          "initialLeverage": 25,
+          "notionalCap": 1500000,
+          "notionalFloor": 400000,
+          "maintMarginRatio": 0.02,
+          "cum": 4810.0
+        },
+        {
+          "bracket": 5,
+          "initialLeverage": 20,
+          "notionalCap": 3000000,
+          "notionalFloor": 1500000,
+          "maintMarginRatio": 0.025,
+          "cum": 12310.0
+        },
+        {
+          "bracket": 6,
+          "initialLeverage": 10,
+          "notionalCap": 15000000,
+          "notionalFloor": 3000000,
+          "maintMarginRatio": 0.05,
+          "cum": 87310.0
+        },
+        {
+          "bracket": 7,
+          "initialLeverage": 5,
+          "notionalCap": 30000000,
+          "notionalFloor": 15000000,
+          "maintMarginRatio": 0.1,
+          "cum": 837310.0
+        },
+        {
+          "bracket": 8,
+          "initialLeverage": 4,
+          "notionalCap": 37500000,
+          "notionalFloor": 30000000,
+          "maintMarginRatio": 0.125,
+          "cum": 1587310.0
+        },
+        {
+          "bracket": 9,
+          "initialLeverage": 2,
+          "notionalCap": 75000000,
+          "notionalFloor": 37500000,
+          "maintMarginRatio": 0.25,
+          "cum": 6274810.0
+        },
+        {
+          "bracket": 10,
+          "initialLeverage": 1,
+          "notionalCap": 150000000,
+          "notionalFloor": 75000000,
+          "maintMarginRatio": 0.5,
+          "cum": 25024810.0
+        }
+      ]
+    },
+    {
+      "symbol": "XRPUSDT",
+      "brackets": [
+        {
+          "bracket": 1,
+          "initialLeverage": 100,
+          "notionalCap": 40000,
+          "notionalFloor": 0,
+          "maintMarginRatio": 0.005,
+          "cum": 0.0
+        },
+        {
+          "bracket": 2,
+          "initialLeverage": 75,
+          "notionalCap": 80000,
+          "notionalFloor": 40000,
+          "maintMarginRatio": 0.006,
+          "cum": 40.0
+        },
+        {
+          "bracket": 3,
+          "initialLeverage": 50,
+          "notionalCap": 150000,
+          "notionalFloor": 80000,
+          "maintMarginRatio": 0.01,
+          "cum": 360.0
+        },
+        {
+          "bracket": 4,
+          "initialLeverage": 40,
+          "notionalCap": 400000,
+          "notionalFloor": 150000,
+          "maintMarginRatio": 0.0125,
+          "cum": 735.0
+        },
+        {
+          "bracket": 5,
+          "initialLeverage": 25,
+          "notionalCap": 1000000,
+          "notionalFloor": 400000,
+          "maintMarginRatio": 0.02,
+          "cum": 3735.0
+        },
+        {
+          "bracket": 6,
+          "initialLeverage": 20,
+          "notionalCap": 2000000,
+          "notionalFloor": 1000000,
+          "maintMarginRatio": 0.025,
+          "cum": 8735.0
+        },
+        {
+          "bracket": 7,
+          "initialLeverage": 10,
+          "notionalCap": 10000000,
+          "notionalFloor": 2000000,
+          "maintMarginRatio": 0.05,
+          "cum": 58735.0
+        },
+        {
+          "bracket": 8,
+          "initialLeverage": 5,
+          "notionalCap": 20000000,
+          "notionalFloor": 10000000,
+          "maintMarginRatio": 0.1,
+          "cum": 558735.0
+        },
+        {
+          "bracket": 9,
+          "initialLeverage": 4,
+          "notionalCap": 25000000,
+          "notionalFloor": 20000000,
+          "maintMarginRatio": 0.125,
+          "cum": 1058735.0
+        },
+        {
+          "bracket": 10,
+          "initialLeverage": 2,
+          "notionalCap": 50000000,
+          "notionalFloor": 25000000,
+          "maintMarginRatio": 0.25,
+          "cum": 4183735.0
+        },
+        {
+          "bracket": 11,
+          "initialLeverage": 1,
+          "notionalCap": 100000000,
+          "notionalFloor": 50000000,
+          "maintMarginRatio": 0.5,
+          "cum": 16683735.0
+        }
+      ]
+    },
+    {
+      "symbol": "AVAXUSDT",
+      "brackets": [
+        {
+          "bracket": 1,
+          "initialLeverage": 75,
+          "notionalCap": 25000,
+          "notionalFloor": 0,
+          "maintMarginRatio": 0.005,
+          "cum": 0.0
+        },
+        {
+          "bracket": 2,
+          "initialLeverage": 50,
+          "notionalCap": 80000,
+          "notionalFloor": 25000,
+          "maintMarginRatio": 0.01,
+          "cum": 125.0
+        },
+        {
+          "bracket": 3,
+          "initialLeverage": 40,
+          "notionalCap": 160000,
+          "notionalFloor": 80000,
+          "maintMarginRatio": 0.015,
+          "cum": 525.0
+        },
+        {
+          "bracket": 4,
+          "initialLeverage": 25,
+          "notionalCap": 800000,
+          "notionalFloor": 160000,
+          "maintMarginRatio": 0.02,
+          "cum": 1325.0
+        },
+        {
+          "bracket": 5,
+          "initialLeverage": 20,
+          "notionalCap": 1600000,
+          "notionalFloor": 800000,
+          "maintMarginRatio": 0.025,
+          "cum": 5325.0
+        },
+        {
+          "bracket": 6,
+          "initialLeverage": 10,
+          "notionalCap": 8000000,
+          "notionalFloor": 1600000,
+          "maintMarginRatio": 0.05,
+          "cum": 45325.0
+        },
+        {
+          "bracket": 7,
+          "initialLeverage": 5,
+          "notionalCap": 16000000,
+          "notionalFloor": 8000000,
+          "maintMarginRatio": 0.1,
+          "cum": 445325.0
+        },
+        {
+          "bracket": 8,
+          "initialLeverage": 4,
+          "notionalCap": 20000000,
+          "notionalFloor": 16000000,
+          "maintMarginRatio": 0.125,
+          "cum": 845325.0
+        },
+        {
+          "bracket": 9,
+          "initialLeverage": 2,
+          "notionalCap": 40000000,
+          "notionalFloor": 20000000,
+          "maintMarginRatio": 0.25,
+          "cum": 3345325.0
+        },
+        {
+          "bracket": 10,
+          "initialLeverage": 1,
+          "notionalCap": 80000000,
+          "notionalFloor": 40000000,
+          "maintMarginRatio": 0.5,
+          "cum": 13345325.0
+        }
+      ]
+    },
+    {
+      "symbol": "DOGEUSDT",
+      "brackets": [
+        {
+          "bracket": 1,
+          "initialLeverage": 75,
+          "notionalCap": 80000,
+          "notionalFloor": 0,
+          "maintMarginRatio": 0.0065,
+          "cum": 0.0
+        },
+        {
+          "bracket": 2,
+          "initialLeverage": 50,
+          "notionalCap": 150000,
+          "notionalFloor": 80000,
+          "maintMarginRatio": 0.01,
+          "cum": 280.0
+        },
+        {
+          "bracket": 3,
+          "initialLeverage": 40,
+          "notionalCap": 750000,
+          "notionalFloor": 150000,
+          "maintMarginRatio": 0.0125,
+          "cum": 655.0
+        },
+        {
+          "bracket": 4,
+          "initialLeverage": 25,
+          "notionalCap": 2000000,
+          "notionalFloor": 750000,
+          "maintMarginRatio": 0.02,
+          "cum": 6280.0
+        },
+        {
+          "bracket": 5,
+          "initialLeverage": 20,
+          "notionalCap": 4000000,
+          "notionalFloor": 2000000,
+          "maintMarginRatio": 0.025,
+          "cum": 16280.0
+        },
+        {
+          "bracket": 6,
+          "initialLeverage": 10,
+          "notionalCap": 20000000,
+          "notionalFloor": 4000000,
+          "maintMarginRatio": 0.05,
+          "cum": 116280.0
+        },
+        {
+          "bracket": 7,
+          "initialLeverage": 5,
+          "notionalCap": 40000000,
+          "notionalFloor": 20000000,
+          "maintMarginRatio": 0.1,
+          "cum": 1116280.0
+        },
+        {
+          "bracket": 8,
+          "initialLeverage": 4,
+          "notionalCap": 50000000,
+          "notionalFloor": 40000000,
+          "maintMarginRatio": 0.125,
+          "cum": 2116280.0
+        },
+        {
+          "bracket": 9,
+          "initialLeverage": 2,
+          "notionalCap": 100000000,
+          "notionalFloor": 50000000,
+          "maintMarginRatio": 0.25,
+          "cum": 8366280.0
+        },
+        {
+          "bracket": 10,
+          "initialLeverage": 1,
+          "notionalCap": 200000000,
+          "notionalFloor": 100000000,
+          "maintMarginRatio": 0.5,
+          "cum": 33366280.0
+        }
+      ]
+    }
+  ],
+  "added": [
+    {
+      "fetched_at": "2026-11-02",
+      "symbols": [
+        "XRPUSDT",
+        "DOGEUSDT",
+        "BNBUSDT",
+        "ADAUSDT",
+        "AVAXUSDT"
+      ]
     }
   ]
 }
