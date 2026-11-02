@@ -16,6 +16,7 @@ const KIND_LABEL: Record<string, string> = {
   regime_stressed: "regime",
   position_risk: "your position",
   whale_watch: "whale watch",
+  trader_watch: "traders",
 };
 
 export function InboxBell() {

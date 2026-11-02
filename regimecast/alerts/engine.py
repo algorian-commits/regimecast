@@ -8,6 +8,7 @@
   user's inbox (GET /me/inbox, the bell in the app).
 * ``whale_watch`` alerts copy new Whale Watch events (whales/) for their coin into the
   inbox; each event is delivered once (the alert remembers the last event id it delivered).
+  ``trader_watch`` alerts do the same for the trader tracker's events (traders/rules.py).
 
 One API process runs the loop (Railway runs one replica). ALERT_ENGINE=0 switches it off.
 """
@@ -29,6 +30,8 @@ from regimecast.db.schema import alert_events, alerts, profiles, risk_checks, wh
 log = logging.getLogger("alerts.engine")
 
 EVERY_SECONDS = 60.0
+EVENT_KINDS = {"whale_watch": ("whale_move", "fresh_wallet", "suspicious_timing"),
+               "trader_watch": ("skilled_trader", "liq_cluster")}
 
 
 class MarketView:
@@ -97,14 +100,15 @@ def evaluate(a, view: MarketView, trade: dict | None, limit: float | None) -> ru
 
 
 def _deliver_whales(conn: sa.Connection, a, now: datetime) -> int:
-    """New Whale Watch events for this alert's coin since the last one delivered."""
+    """New events of this alert's kinds for its coin since the last one delivered."""
     last = int(a["last_value"] or 0)
     q = sa.select(whale_events).where(whale_events.c.symbol == a["symbol"], whale_events.c.id > last,
+                                      whale_events.c.kind.in_(EVENT_KINDS[a["kind"]]),
                                       whale_events.c.created_at >= a["created_at"]).order_by(whale_events.c.id)
     evs = conn.execute(q.limit(50)).mappings().all()
     for e in evs:
         conn.execute(sa.insert(alert_events).values(
-            user_id=a["user_id"], alert_id=a["id"], symbol=a["symbol"], kind="whale_watch",
+            user_id=a["user_id"], alert_id=a["id"], symbol=a["symbol"], kind=a["kind"],
             title=e["title"], message=e["reason"], value=None,
             detail={"whale_event_id": e["id"], "whale_kind": e["kind"], "address": e["address"]}, fired_at=now))
     upd = {"last_checked_at": now}
@@ -124,7 +128,7 @@ def run_once(conn: sa.Connection, view: MarketView, now: datetime | None = None)
         .where(alerts.c.active.is_(True)).order_by(alerts.c.id)).mappings().all()
     fired = 0
     for a in rows:
-        if a["kind"] == "whale_watch":
+        if a["kind"] in EVENT_KINDS:
             fired += _deliver_whales(conn, a, now)
             continue
         limit = a["threshold"] if a["kind"] == "position_risk" and a["threshold"] else a["risk_limit"]

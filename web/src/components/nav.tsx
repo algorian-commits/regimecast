@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/agent", label: "Agent" },
   { href: "/replay", label: "Replay" },
   { href: "/whales", label: "Whale Watch" },
+  { href: "/traders", label: "Traders" },
   { href: "/data-health", label: "Data Health" },
   { href: "/status", label: "Live Status" },
 ];

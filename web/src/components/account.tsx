@@ -182,11 +182,12 @@ const KINDS: { v: Schemas["AlertIn"]["kind"]; label: string }[] = [
   { v: "regime_stressed", label: "Regime turns stressed" },
   { v: "position_risk", label: "Saved position's liquidation risk goes above" },
   { v: "whale_watch", label: "Whale Watch event" },
+  { v: "trader_watch", label: "Skilled trader move or liquidation cluster" },
 ];
 
 function alertState(a: Alert) {
   if (!a.active) return <Badge>paused</Badge>;
-  if (a.kind === "whale_watch") return <Badge tone="good">on</Badge>;
+  if (a.kind === "whale_watch" || a.kind === "trader_watch") return <Badge tone="good">on</Badge>;
   if (a.armed == null) return <Badge>first check soon</Badge>;
   return a.armed ? <Badge tone="good">waiting</Badge> : <Badge tone="warn">fired, waits to clear</Badge>;
 }

@@ -7,6 +7,8 @@ fills have coin names like ``@107`` or ``PURR/USDC`` and are left out).
   day from the first available fill to the download (days without fills count as 0).
   Funding payments and the open positions' unrealised PnL are not in the fills, so they
   are not counted: a known limit, written on the page.
+* **Average leverage** = the average peak size of a finished trade / today's account value.
+  Fills do not carry leverage or past account values, so this is an estimate.
 * **Trades** are round trips per coin: from flat (or the first fill seen) to flat again; a
   flip from long to short closes one trade and opens the next. Win rate, profit factor and
   holding time are over finished round trips that started inside the history.
@@ -82,7 +84,7 @@ def round_trips(df: pd.DataFrame) -> pd.DataFrame:
                 cur = {"coin": coin, "opened": t[i], "pnl": 0.0, "notional": 0.0,
                        "inside": abs(before) <= tol}   # started inside the history?
             cur["pnl"] += pnl[i]
-            if abs(after) > abs(before) or before * after < 0:
+            if abs(after) > abs(before) and before * after >= 0:
                 cur["notional"] = max(cur["notional"], abs(after) * px[i])
             flat = abs(after) <= tol
             flipped = before * after < 0 and not flat
@@ -152,11 +154,12 @@ def max_drawdown(cum: np.ndarray) -> float:
 
 
 def track_record(df: pd.DataFrame, end: pd.Timestamp, account_value: float | None = None,
-                 n_boot: int = N_BOOT, seed: int = 0) -> dict:
-    """Scorecard numbers for one account (fills already filtered to perps); no label yet."""
+                 n_boot: int = N_BOOT, seed: int = 0, start: pd.Timestamp | None = None) -> dict:
+    """Scorecard numbers for one account (fills already filtered to perps); no label yet.
+    Days run from ``start`` (default: the first fill) to ``end``."""
     if not len(df):
         return {"n_fills": 0, "n_trades": 0, "n_days": 0, "p": math.nan, "score": math.nan}
-    d = daily_pnl(df, df["time"].min(), end)
+    d = daily_pnl(df, df["time"].min() if start is None else start, end)
     rt = round_trips(df)
     done = rt[rt["inside"]]
     wins, losses = done.loc[done["pnl"] > 0, "pnl"].sum(), -done.loc[done["pnl"] < 0, "pnl"].sum()
@@ -178,6 +181,7 @@ def track_record(df: pd.DataFrame, end: pd.Timestamp, account_value: float | Non
         "max_drawdown": max_drawdown(np.cumsum(x)),
         "max_drawdown_of_account": max_drawdown(np.cumsum(x)) / av if math.isfinite(av) else math.nan,
         "median_hold_hours": float(done["hours"].median()) if len(done) else math.nan,
+        "avg_leverage": float(done["notional"].mean() / av) if len(done) and math.isfinite(av) else math.nan,
         "fees": float(df["fee"].sum()),
         "coins": [{"coin": c, "share": float(v / by_coin.sum())} for c, v in by_coin.head(5).items()],
         "tested": enough, "p": test["p"], "score": test["score"], "block_days": test["block"],

@@ -29,8 +29,9 @@ from regimecast.traders.hl import FILLS_AVAILABLE, FILLS_PAGE, Budget, Info, fet
 
 log = logging.getLogger("traders.fills")
 
+DEEP_DAYS = 30   # scorecard.MIN_DAYS: an account with less history cannot pass the skill test
 COLUMNS = ["time", "coin", "px", "sz", "side", "dir", "start_position", "closed_pnl", "fee", "fee_token",
-           "crossed", "hash", "oid", "tid", "twap_id", "liquidated"]
+           "crossed", "tid", "twap_id", "liquidated"]
 
 
 def root() -> Path:
@@ -41,7 +42,7 @@ def to_frame(fills: list[dict]) -> pd.DataFrame:
     """Raw fills -> typed table (time in UTC, numbers as floats)."""
     if not fills:
         return pd.DataFrame({c: pd.Series(dtype="float64") for c in COLUMNS}).astype(
-            {"time": "datetime64[ms, UTC]", "coin": str, "side": str, "dir": str, "fee_token": str, "hash": str})
+            {"time": "datetime64[ms, UTC]", "coin": str, "side": str, "dir": str, "fee_token": str})
     df = pd.DataFrame({
         "time": pd.to_datetime([int(f["time"]) for f in fills], unit="ms", utc=True),
         "coin": [f["coin"] for f in fills],
@@ -54,8 +55,6 @@ def to_frame(fills: list[dict]) -> pd.DataFrame:
         "fee": [float(f.get("fee") or 0.0) for f in fills],
         "fee_token": [f.get("feeToken") or "" for f in fills],
         "crossed": [bool(f.get("crossed")) for f in fills],
-        "hash": [f.get("hash") or "" for f in fills],
-        "oid": [int(f.get("oid") or 0) for f in fills],
         "tid": [int(f.get("tid") or 0) for f in fills],
         "twap_id": [str(f["twapId"]) if f.get("twapId") is not None else "" for f in fills],
         "liquidated": [bool(f.get("liquidation")) and (f["liquidation"].get("liquidatedUser") or "").lower()
@@ -64,12 +63,21 @@ def to_frame(fills: list[dict]) -> pd.DataFrame:
     return df.drop_duplicates("tid", keep="first").sort_values(["time", "tid"]).reset_index(drop=True)
 
 
-def download_account(info: Info, address: str, start_ms: int = 0) -> list[dict]:
-    """Every available fill of one account, oldest first (pages forward from ``start_ms``)."""
+def download_account(info: Info, address: str, older_than_ms: int | None = None) -> list[dict] | None:
+    """Every available fill of one account, oldest first (pages forward from the oldest).
+
+    With ``older_than_ms`` the first call asks only for fills before that time, and an empty
+    answer returns None: the account has no history that old (a cheap check, weight 20)."""
     out: dict[int, dict] = {}
-    t = start_ms
+    t = 0
+    first = older_than_ms is not None
     while True:
-        page = info.post({"type": "userFillsByTime", "user": address, "startTime": t, "aggregateByTime": False})
+        body = {"type": "userFillsByTime", "user": address, "startTime": t, "aggregateByTime": False}
+        if first:
+            body["endTime"] = older_than_ms
+        page = info.post(body)
+        if first and not page:
+            return None
         new = 0
         for f in page:
             tid = int(f.get("tid") or 0)
@@ -77,9 +85,13 @@ def download_account(info: Info, address: str, start_ms: int = 0) -> list[dict]:
                 f["_user"] = address
                 out[tid] = f
                 new += 1
-        if len(page) < FILLS_PAGE or new == 0:
+        if first and len(page) < FILLS_PAGE:
+            t = older_than_ms   # everything older is in hand; carry on from the cutoff
+        elif len(page) < FILLS_PAGE or new == 0:
             break
-        t = max(int(f["time"]) for f in page)   # fills sharing the last millisecond are de-duplicated by tid
+        else:
+            t = max(int(f["time"]) for f in page)   # fills sharing the last millisecond are de-duplicated by tid
+        first = False
     return sorted(out.values(), key=lambda f: (int(f["time"]), int(f.get("tid") or 0)))
 
 
@@ -102,11 +114,27 @@ def load_depth() -> pd.DataFrame:
     return pd.DataFrame(rows).drop_duplicates("address", keep="last").reset_index(drop=True)
 
 
+def perp_depth() -> pd.DataFrame:
+    """Per downloaded account: first and last perp fill, and how many (the copy test's history check)."""
+    from regimecast.traders.scorecard import perp_fills
+
+    rows = []
+    for r in load_depth().itertuples():
+        p = perp_fills(pd.read_parquet(root() / "fills" / f"{r.address}.parquet", columns=["time", "coin"]))
+        n = len(p)
+        rows.append({"address": r.address, "n_fills": n, "first_fill": p["time"].min().isoformat() if n else None,
+                     "last_fill": p["time"].max().isoformat() if n else None, "downloaded_at": r.downloaded_at,
+                     "truncated": bool(r.truncated), "n_all_fills": r.n_fills})
+    return pd.DataFrame(rows)
+
+
 def load_fills(address: str) -> pd.DataFrame:
     return pd.read_parquet(root() / "fills" / f"{address}.parquet")
 
 
-def download(limit: int | None = None, per_minute: float = 900.0) -> pd.DataFrame:
+def download(limit: int | None = None, per_minute: float = 900.0, checkpoint=None) -> pd.DataFrame:
+    """Accounts with fills older than ``DEEP_DAYS`` first (only those can pass the skill test or the copy
+    test's history check), then the rest. ``checkpoint()`` runs every 25 accounts (Modal: commit the Volume)."""
     r = root()
     (r / "fills").mkdir(parents=True, exist_ok=True)
     pool_file = r / "pool.parquet"
@@ -121,19 +149,42 @@ def download(limit: int | None = None, per_minute: float = 900.0) -> pd.DataFram
     todo = [a for a in pool["address"] if a not in done][:limit]
     info = Info(Budget(per_minute))
     t0 = time.time()
-    with open(r / "depth.jsonl", "a") as out:
-        for i, a in enumerate(todo, 1):
-            try:
-                fills = download_account(info, a)
-            except Exception as e:
-                log.warning("%s: %r (skipped, rerun to retry)", a, e)
-                continue
-            df = to_frame(fills)
-            df.to_parquet(r / "fills" / f"{a}.parquet", index=False)
+    n = 0
+    cutoff = int((pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=DEEP_DAYS)).timestamp() * 1000)
+
+    def save(a: str, fills: list[dict]) -> None:
+        nonlocal n
+        df = to_frame(fills)
+        df.to_parquet(r / "fills" / f"{a}.parquet", index=False)
+        with open(r / "depth.jsonl", "a") as out:   # closed each time: a Volume commit skips open files
             out.write(json.dumps(depth_row(a, df, pd.Timestamp.now(tz="UTC"))) + "\n")
-            out.flush()
-            if i % 25 == 0 or i == len(todo):
-                log.info("%d/%d accounts, %.0f min", i, len(todo), (time.time() - t0) / 60)
+        n += 1
+        if n % 25 == 0:
+            log.info("%d/%d accounts saved, %.0f min", n, len(todo), (time.time() - t0) / 60)
+            if checkpoint:
+                checkpoint()
+
+    later = []
+    for a in todo:
+        try:
+            fills = download_account(info, a, older_than_ms=cutoff)
+        except Exception as e:
+            log.warning("%s: %r (skipped, rerun to retry)", a, e)
+            continue
+        if fills is None:
+            later.append(a)
+        else:
+            save(a, fills)
+    log.info("deep accounts done (%d saved, %d left, %.0f min)", n, len(later), (time.time() - t0) / 60)
+    if checkpoint:
+        checkpoint()
+    for a in later:
+        try:
+            save(a, download_account(info, a))
+        except Exception as e:
+            log.warning("%s: %r (skipped, rerun to retry)", a, e)
+    if checkpoint:
+        checkpoint()
     return load_depth()
 
 

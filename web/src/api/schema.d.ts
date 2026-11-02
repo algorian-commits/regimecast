@@ -372,6 +372,123 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/traders/scorecards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Scorecards
+         * @description Each account's track record and skill label, best skill score first. Descriptive: no pass mark.
+         */
+        get: operations["scorecards_traders_scorecards_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/traders/skilled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Skilled
+         * @description What the skilled traders hold now, their recent trades, and their net long or short per coin.
+         */
+        get: operations["skilled_traders_skilled_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/traders/liquidation-map/{symbol}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Liquidation Map
+         * @description Dollars of tracked longs and shorts that would be liquidated per price band near the current price.
+         */
+        get: operations["liquidation_map_traders_liquidation_map__symbol__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/traders/copy-test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Copy Test
+         * @description Would copying the skilled traders have made money? Pre-registered; see docs/PLAN.md, 13D.
+         */
+        get: operations["copy_test_traders_copy_test_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/traders/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Events
+         * @description Latest alerts: a skilled trader opened or closed a large position; price near a liquidation cluster.
+         */
+        get: operations["events_traders_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/traders/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_traders_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -618,7 +735,8 @@ export interface components {
          * @description price_above / price_below: the mark price crosses ``threshold``. stress_elevated / stress_high: the
          *     stress gauge reaches that level. regime_stressed: the regime turns stressed. position_risk: the saved
          *     check ``check_id``'s chance of liquidation goes above ``threshold`` (default: the profile's risk limit).
-         *     whale_watch: every new Whale Watch event for the coin. Each alert fires once, then waits until its
+         *     whale_watch: every new Whale Watch event for the coin. trader_watch: a skilled trader opens or closes a
+         *     large position in the coin, or its price nears a liquidation cluster. Each alert fires once, then waits until its
          *     condition has cleared (Phase 11 alert engine, checked once a minute).
          */
         AlertIn: {
@@ -631,7 +749,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "price_above" | "price_below" | "stress_elevated" | "stress_high" | "regime_stressed" | "position_risk" | "whale_watch";
+            kind: "price_above" | "price_below" | "stress_elevated" | "stress_high" | "regime_stressed" | "position_risk" | "whale_watch" | "trader_watch";
             /**
              * Threshold
              * @description Price in USDT (price alerts) or probability (position_risk, e.g. 0.02 = 2%)
@@ -655,7 +773,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "price_above" | "price_below" | "stress_elevated" | "stress_high" | "regime_stressed" | "position_risk" | "whale_watch";
+            kind: "price_above" | "price_below" | "stress_elevated" | "stress_high" | "regime_stressed" | "position_risk" | "whale_watch" | "trader_watch";
             /** Threshold */
             threshold: number | null;
             /** Note */
@@ -720,6 +838,34 @@ export interface components {
             funding_paid: number;
             /** Avg Exposure */
             avg_exposure: number;
+        };
+        /** Band */
+        Band: {
+            /**
+             * From Pct
+             * @description Band start, % from the current price
+             */
+            from_pct: number;
+            /** To Pct */
+            to_pct: number;
+            /** Price Low */
+            price_low: number;
+            /** Price High */
+            price_high: number;
+            /**
+             * Long Usd
+             * @description Longs liquidated in this band, USD
+             */
+            long_usd: number;
+            /**
+             * Short Usd
+             * @description Shorts liquidated in this band, USD
+             */
+            short_usd: number;
+            /** N Long */
+            n_long: number;
+            /** N Short */
+            n_short: number;
         };
         /** Candle */
         Candle: {
@@ -859,6 +1005,57 @@ export interface components {
             traded: number;
             /** Reasons */
             reasons: string[];
+        };
+        /** CoinShare */
+        CoinShare: {
+            /** Coin */
+            coin: string;
+            /**
+             * Share
+             * @description Share of the account's traded value in this coin (0..1)
+             */
+            share: number;
+        };
+        /** CopyTestOut */
+        CopyTestOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_run" | "pending_forward" | "passed" | "failed";
+            /**
+             * Worked
+             * @description True only when the test ran and passed; the page may then say it has worked
+             */
+            worked: boolean;
+            /** Headline */
+            headline: string;
+            /**
+             * Plain
+             * @description The status in plain words
+             */
+            plain: string;
+            /**
+             * Gate
+             * @description The history check that chose the kind of test
+             */
+            gate?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Result
+             * @description Sharpe ratios, interval and the pass or fail of each part
+             */
+            result?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Forward
+             * @description Forward test: start, end and where its log is
+             */
+            forward?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** CrowdOut */
         CrowdOut: {
@@ -1022,6 +1219,52 @@ export interface components {
             /** Unread */
             unread: number;
         };
+        /** LiquidationMap */
+        LiquidationMap: {
+            /** Symbol */
+            symbol: string;
+            /** Coin */
+            coin: string;
+            /** Mark */
+            mark: number;
+            /** Band Pct */
+            band_pct: number;
+            /** Span Pct */
+            span_pct: number;
+            /**
+             * Bands
+             * @description Lowest price first; empty bands are left out
+             */
+            bands: components["schemas"]["Band"][];
+            /** N Positions */
+            n_positions: number;
+            /** N Accounts */
+            n_accounts: number;
+            /**
+             * Outside Span Usd
+             * @description Positions liquidated further away than the span, USD
+             */
+            outside_span_usd: number;
+            /** No Liquidation Price Usd */
+            no_liquidation_price_usd: number;
+            /** N No Liquidation Price */
+            n_no_liquidation_price: number;
+            /**
+             * Accounts Read
+             * @description Tracked accounts read so far
+             */
+            accounts_read: number;
+            /** Accounts Followed */
+            accounts_followed: number;
+            /** Oldest Read At */
+            oldest_read_at: string | null;
+            /** Newest Read At */
+            newest_read_at: string | null;
+            /** Marks At */
+            marks_at: string | null;
+            /** Label */
+            label: string;
+        };
         /** MarketOut */
         MarketOut: {
             /** Symbol */
@@ -1099,6 +1342,28 @@ export interface components {
              */
             policy_shock_count: number;
         };
+        /** NetCoin */
+        NetCoin: {
+            /** Coin */
+            coin: string;
+            /** Long Usd */
+            long_usd: number;
+            /** Short Usd */
+            short_usd: number;
+            /** Net Usd */
+            net_usd: number;
+            /** N Long */
+            n_long: number;
+            /** N Short */
+            n_short: number;
+            /** N Flat */
+            n_flat: number;
+            /**
+             * N Read
+             * @description Skilled accounts read so far: the sample size of this line
+             */
+            n_read: number;
+        };
         /** NewsMoodOut */
         NewsMoodOut: {
             /** Symbol */
@@ -1110,6 +1375,16 @@ export interface components {
         };
         /** NotReady */
         NotReady: {
+            /**
+             * Status
+             * @default not_ready
+             */
+            status: string;
+            /** Detail */
+            detail: string;
+        };
+        /** NotReadyOut */
+        NotReadyOut: {
             /**
              * Status
              * @default not_ready
@@ -1223,6 +1498,38 @@ export interface components {
              * @description Cross margin: the whole wallet balance
              */
             wallet_usdt?: number | null;
+        };
+        /** Position */
+        Position: {
+            /** Coin */
+            coin: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "long" | "short";
+            /**
+             * Size
+             * @description Size in coins (negative = short)
+             */
+            size: number;
+            /** Position Usd */
+            position_usd: number;
+            /** Leverage */
+            leverage: number | null;
+            /** Leverage Type */
+            leverage_type: string;
+            /** Entry */
+            entry: number | null;
+            /**
+             * Liquidation
+             * @description Hyperliquid's liquidation price; null when it has none
+             */
+            liquidation: number | null;
+            /** Unrealized Pnl */
+            unrealized_pnl: number | null;
+            /** Read At */
+            read_at: string | null;
         };
         /**
          * ProfileIn
@@ -1457,6 +1764,153 @@ export interface components {
              */
             what_if: components["schemas"]["WhatIfOut"][];
         };
+        /** Scorecard */
+        Scorecard: {
+            /** Address */
+            address: string;
+            /**
+             * Display Name
+             * @default
+             */
+            display_name: string;
+            /**
+             * Account Value
+             * @description Account value in USD when the pool was selected
+             */
+            account_value: number | null;
+            /**
+             * Label
+             * @enum {string}
+             */
+            label: "skilled" | "unproven" | "losing";
+            /**
+             * Tested
+             * @description False: too little history for the skill test (needs 30+ days and 10+ trades)
+             */
+            tested: boolean;
+            /**
+             * P Value
+             * @description Skill test p-value before the correction across the pool
+             */
+            p_value: number | null;
+            /**
+             * Skill Score
+             * @description Mean daily PnL / its bootstrap standard error
+             */
+            skill_score: number | null;
+            /** N Fills */
+            n_fills: number;
+            /**
+             * N Trades
+             * @description Finished round trips that started inside the history
+             */
+            n_trades: number;
+            /**
+             * N Days
+             * @description Days in the daily PnL series
+             */
+            n_days: number;
+            /** First Day */
+            first_day: string | null;
+            /** Last Fill */
+            last_fill: string | null;
+            /**
+             * Net Pnl
+             * @description Realised PnL minus fees over the history, USD
+             */
+            net_pnl: number | null;
+            /**
+             * Win Rate
+             * @description Share of finished trades with a profit after fees (0..1)
+             */
+            win_rate: number | null;
+            /**
+             * Profit Factor
+             * @description Total won / total lost; null if nothing was lost or won
+             */
+            profit_factor: number | null;
+            /**
+             * Return On Account
+             * @description Net PnL / today's account value (0.5 = 50%)
+             */
+            return_on_account: number | null;
+            /**
+             * Sharpe
+             * @description Mean / standard deviation of daily PnL, annualised by sqrt(365)
+             */
+            sharpe: number | null;
+            /**
+             * Max Drawdown
+             * @description Largest fall of cumulative PnL from a peak, USD
+             */
+            max_drawdown: number | null;
+            /**
+             * Max Drawdown Of Account
+             * @description max_drawdown / today's account value
+             */
+            max_drawdown_of_account: number | null;
+            /**
+             * Avg Leverage
+             * @description Estimate: average peak trade size / today's account value
+             */
+            avg_leverage: number | null;
+            /** Median Hold Hours */
+            median_hold_hours: number | null;
+            /** Coins */
+            coins: components["schemas"]["CoinShare"][];
+            /**
+             * History Cut Short
+             * @description True: Hyperliquid no longer serves this account's older fills
+             */
+            history_cut_short: boolean;
+        };
+        /** ScorecardSummary */
+        ScorecardSummary: {
+            /** Generated At */
+            generated_at: string;
+            /**
+             * Pool Size
+             * @description Accounts in the pool (Whale Watch's plus every account above $1M)
+             */
+            pool_size: number;
+            /**
+             * Downloaded
+             * @description Accounts whose fills were downloaded
+             */
+            downloaded: number;
+            /**
+             * Accounts With Perp Fills
+             * @description The number of tests the correction runs over
+             */
+            accounts_with_perp_fills: number;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /**
+             * Fdr
+             * @description False discovery rate of the Benjamini-Hochberg correction
+             */
+            fdr: number;
+            /** Limits */
+            limits: string[];
+        };
+        /** ScorecardsOut */
+        ScorecardsOut: {
+            summary: components["schemas"]["ScorecardSummary"];
+            /**
+             * Total
+             * @description Cards matching the filter, before limit and offset
+             */
+            total: number;
+            /** Cards */
+            cards: components["schemas"]["Scorecard"][];
+            /**
+             * Headline
+             * @description What the page may say about following them
+             */
+            headline: string;
+        };
         /** SimilarOut */
         SimilarOut: {
             /**
@@ -1488,6 +1942,46 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** SkilledOut */
+        SkilledOut: {
+            /** Traders */
+            traders: components["schemas"]["SkilledTrader"][];
+            /** Net */
+            net: components["schemas"]["NetCoin"][];
+            /**
+             * Trades
+             * @description Recent BTC, ETH and SOL trades, newest first
+             */
+            trades: components["schemas"]["Trade"][];
+            /** N Skilled */
+            n_skilled: number;
+            /**
+             * Bh Family
+             * @description Accounts the skill correction ran over
+             */
+            bh_family: number;
+            /** Headline */
+            headline: string;
+            /**
+             * Live
+             * @description False: the live position feed is not running on this server
+             */
+            live: boolean;
+        };
+        /** SkilledTrader */
+        SkilledTrader: {
+            card: components["schemas"]["Scorecard"];
+            /**
+             * Positions
+             * @description Open BTC, ETH and SOL positions
+             */
+            positions: components["schemas"]["Position"][];
+            /**
+             * Read At
+             * @description When this account was last read; null if not yet
+             */
+            read_at: string | null;
+        };
         /** StopInfo */
         StopInfo: {
             /** Stop */
@@ -1501,6 +1995,38 @@ export interface components {
             p_stop_hit: number;
             /** Loss At Stop Usdt */
             loss_at_stop_usdt: number;
+        };
+        /** Trade */
+        Trade: {
+            /** Address */
+            address: string;
+            /** Ts */
+            ts: string;
+            /** Coin */
+            coin: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "buy" | "sell";
+            /**
+             * Action
+             * @description Hyperliquid's own words, e.g. 'Open Long'
+             */
+            action: string;
+            /** Qty */
+            qty: number;
+            /** Price */
+            price: number | null;
+            /** Usd */
+            usd: number;
+            /**
+             * Closed Pnl
+             * @description Realised PnL of this trade minus fees, USD
+             */
+            closed_pnl: number;
+            /** N Fills */
+            n_fills: number;
         };
         /** TradeIn */
         TradeIn: {
@@ -1596,6 +2122,74 @@ export interface components {
              * @enum {string}
              */
             grade: "A" | "B" | "C" | "D" | "F";
+        };
+        /** TraderEvent */
+        TraderEvent: {
+            /** Id */
+            id: number | null;
+            /** Ts */
+            ts: string;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "skilled_trader" | "liq_cluster";
+            /**
+             * Address
+             * @description Empty for a liquidation cluster, which is many accounts
+             */
+            address: string;
+            /** Title */
+            title: string;
+            /**
+             * Reason
+             * @description Why it fired, in plain words
+             */
+            reason: string;
+            /** Detail */
+            detail: {
+                [key: string]: unknown;
+            } | null;
+            /** Explorer Url */
+            explorer_url: string | null;
+        };
+        /** TraderEventsOut */
+        TraderEventsOut: {
+            /**
+             * Events
+             * @description Newest first
+             */
+            events: components["schemas"]["TraderEvent"][];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "database" | "memory";
+            /** Thresholds */
+            thresholds: {
+                [key: string]: number;
+            };
+        };
+        /** TraderStatus */
+        TraderStatus: {
+            /** Running */
+            running: boolean;
+            /** Accounts Followed */
+            accounts_followed: number;
+            /** Skilled */
+            skilled: number;
+            /** Accounts Read */
+            accounts_read: number;
+            /** Sweeps Done */
+            sweeps_done: number;
+            /** Sweep Seconds */
+            sweep_seconds: number | null;
+            /** Marks At */
+            marks_at: string | null;
+            /** Recent Errors */
+            recent_errors: string[];
         };
         /** ValidationError */
         ValidationError: {
@@ -2609,6 +3203,192 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WhaleStatus"];
+                };
+            };
+        };
+    };
+    scorecards_traders_scorecards_get: {
+        parameters: {
+            query?: {
+                label?: ("skilled" | "unproven" | "losing") | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScorecardsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotReadyOut"];
+                };
+            };
+        };
+    };
+    skilled_traders_skilled_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkilledOut"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotReadyOut"];
+                };
+            };
+        };
+    };
+    liquidation_map_traders_liquidation_map__symbol__get: {
+        parameters: {
+            query?: {
+                band_pct?: number;
+            };
+            header?: never;
+            path: {
+                symbol: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiquidationMap"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotReadyOut"];
+                };
+            };
+        };
+    };
+    copy_test_traders_copy_test_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CopyTestOut"];
+                };
+            };
+        };
+    };
+    events_traders_events_get: {
+        parameters: {
+            query?: {
+                symbol?: ("BTCUSDT" | "ETHUSDT" | "SOLUSDT") | null;
+                kind?: ("skilled_trader" | "liq_cluster") | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraderEventsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    status_traders_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraderStatus"];
                 };
             };
         };

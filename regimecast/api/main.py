@@ -21,9 +21,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from regimecast import config
-from regimecast.api import accounts, agent, inbox, live_ws, market, parser, replay, whales
+from regimecast.api import accounts, agent, inbox, live_ws, market, parser, replay, traders, whales
 from regimecast.api import verdict as verdict_api
 from regimecast.alerts.engine import engine as alert_engine
+from regimecast.traders.live import watch as trader_watch
 from regimecast.whales.live import watch as whale_watch
 from regimecast.risk import fhs_live
 from regimecast.risk import liquidation as liq
@@ -35,6 +36,7 @@ async def lifespan(app):
     vol_live.cache.start()   # HAR-S forecasts refresh in the background (vol/live.py)
     alert_engine.start()     # Phase 11: alert rules checked once a minute (alerts/engine.py)
     whale_watch.start()      # Phase 11: Whale Watch on Hyperliquid's public data (whales/live.py)
+    trader_watch.start()     # Phase 13D: the trader pool's open positions (traders/live.py)
     yield
 
 
@@ -48,6 +50,7 @@ app.include_router(agent.router)  # Phase 9: GET /agent, the paper-trading risk 
 replay.install(app)     # Phase 11: crash replay (replay.py)
 inbox.install(app)      # Phase 11: alert inbox (inbox.py)
 whales.install(app)     # Phase 11: Whale Watch events (whales.py)
+traders.install(app)    # Phase 13D: scorecards, liquidation map, copy test (traders.py)
 
 Symbol = Literal["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 

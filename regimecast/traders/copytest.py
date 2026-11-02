@@ -3,7 +3,7 @@
 Question: would copying the skilled traders have made money?
 
 1. **History check first** (``history_gate``): an account "has 6+ months of fills" when its
-   first and last available fills are at least ``MIN_SPAN_DAYS`` apart. At least
+   first and last available perp fills are at least ``MIN_SPAN_DAYS`` apart. At least
    ``MIN_ACCOUNTS`` such accounts are needed for the period-A / period-B test; otherwise the
    test becomes the 8-week forward test (forward.py).
 2. **Periods**: the common history of those accounts runs from the latest of their first
@@ -47,6 +47,7 @@ SEED = 13
 
 # ------------------------------------------------------------------ 1-2. history check and periods
 def history_gate(depth: pd.DataFrame, min_span_days: float = MIN_SPAN_DAYS, min_accounts: int = MIN_ACCOUNTS) -> dict:
+    """``depth``: one row per account with its first and last perp fill (fills.perp_depth)."""
     d = depth[depth["n_fills"] > 0].copy()
     first, last = pd.to_datetime(d["first_fill"], utc=True), pd.to_datetime(d["last_fill"], utc=True)
     d["span_days"] = (last - first).dt.total_seconds() / 86400
@@ -72,18 +73,20 @@ def copy_fills(fills: pd.DataFrame) -> pd.DataFrame:
     return fills[fills["coin"].isin(COPY_COINS)]
 
 
-def select(fills_a: dict[str, pd.DataFrame], b_start: pd.Timestamp, top_share: float = TOP_SHARE,
-           n_boot: int = sc.N_BOOT) -> pd.DataFrame:
-    """Skill scores on period A and the chosen accounts. Every fill passed in must be before ``b_start``."""
+def select(fills_a: dict[str, pd.DataFrame], a_start: pd.Timestamp, b_start: pd.Timestamp,
+           top_share: float = TOP_SHARE, n_boot: int = sc.N_BOOT, can_size: set[str] | None = None) -> pd.DataFrame:
+    """Skill scores on period A and the chosen accounts. Every fill passed in must be before ``b_start``.
+    ``can_size``: accounts whose copied daily PnL moved in A (a flat one has no risk to scale to)."""
     rows = []
     for a, f in fills_a.items():
         if len(f) and f["time"].max() >= b_start:
             raise ValueError("selection was given a fill from period B")
         p = sc.perp_fills(f)
-        tr = sc.track_record(p, b_start - pd.Timedelta(days=1), n_boot=n_boot)
+        p = p[p["time"] >= a_start] if len(p) else p
+        tr = sc.track_record(p, b_start - pd.Timedelta(days=1), n_boot=n_boot, start=a_start)
         rows.append({"address": a, "score": tr.get("score", math.nan), "p": tr.get("p", math.nan),
                      "n_days": tr.get("n_days", 0), "n_trades": tr.get("n_trades", 0),
-                     "copyable": bool(len(copy_fills(p)))})
+                     "copyable": bool(len(copy_fills(p))) and (can_size is None or a in can_size)})
     s = pd.DataFrame(rows)
     uni = s[s["copyable"]].sort_values(["score", "address"], ascending=[False, True])
     k = max(1, math.ceil(top_share * len(uni))) if len(uni) else 0
@@ -193,3 +196,25 @@ def compare(daily_b: dict[str, pd.Series], scale: dict[str, float], selected: li
             "beats_random": s_copy > med, "beats_buy_and_hold": s_copy > s_bh, "ci_above_zero": bool(lo > 0),
             "passed": bool(s_copy > med and s_copy > s_bh and lo > 0),
             "copy_total_pnl_units": float(copy.sum())}
+
+
+# ------------------------------------------------------------------ the whole test, once
+def run(fills: dict[str, pd.DataFrame], depth: pd.DataFrame, prices: dict[str, pd.Series],
+        funding: dict[str, pd.Series], n_random: int = N_RANDOM, n_boot: int = N_BOOT,
+        score_boot: int = sc.N_BOOT, seed: int = SEED) -> dict:
+    """Period-A selection, then the comparison on period B. ``fills``: the eligible accounts' perp fills."""
+    per = periods(depth, list(fills))
+    a0, b0, end = per["a_start"], per["b_start"], per["end"]
+    before = {a: f[f["time"] < b0] for a, f in fills.items()}
+    daily_a = {a: simulate_trader(f, prices, funding, a0, b0) for a, f in before.items() if len(copy_fills(f))}
+    sd = {a: float(d.std(ddof=1)) for a, d in daily_a.items()}
+    chosen = select(before, a0, b0, n_boot=score_boot, can_size={a for a, v in sd.items() if v > 0})
+    # selection is fixed from here on; only now is period B read
+    universe = sorted(chosen.loc[chosen["in_universe"], "address"])
+    selected = sorted(chosen.loc[chosen["selected"], "address"])
+    daily_b = {a: simulate_trader(fills[a], prices, funding, b0, end) for a in universe}
+    scale = {a: 1 / sd[a] for a in universe}
+    bh = buy_and_hold(prices, funding, b0, end)
+    res = compare(daily_b, scale, selected, universe, bh, n_random, n_boot, seed)
+    return {"a_start": a0.isoformat(), "b_start": b0.isoformat(), "end": end.isoformat(), "eligible": len(fills),
+            "universe": len(universe), "selected": selected, "result": res, "selection": chosen}

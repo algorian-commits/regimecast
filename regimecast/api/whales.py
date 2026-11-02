@@ -8,7 +8,7 @@ who wants them in the inbox adds a ``whale_watch`` alert for the coin.
 """
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 import sqlalchemy as sa
 from fastapi import APIRouter, FastAPI, Query
@@ -72,7 +72,7 @@ def whale_events_list(symbol: Symbol | None = None, kind: Kind | None = None,
         pass
     if eng is not None:
         source = "database"
-        q = sa.select(whale_events)
+        q = sa.select(whale_events).where(whale_events.c.kind.in_(get_args(Kind)))
         if symbol:
             q = q.where(whale_events.c.symbol == symbol)
         if kind:
@@ -84,7 +84,7 @@ def whale_events_list(symbol: Symbol | None = None, kind: Kind | None = None,
                                       symbol=r["symbol"], kind=r["kind"], address=r["address"], title=r["title"],
                                       reason=r["reason"], detail=r["detail"], explorer_url=_url(r["address"])))
     else:
-        for e in watch.recent:
+        for e in watch.recent:   # this deque only ever holds Whale Watch's own kinds
             if (symbol and e["symbol"] != symbol) or (kind and e["kind"] != kind):
                 continue
             out.append(WhaleEvent(id=None, ts=e["ts"].isoformat(), symbol=e["symbol"], kind=e["kind"],

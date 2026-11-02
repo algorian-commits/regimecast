@@ -185,14 +185,15 @@ class ChecksOut(BaseModel):
 
 
 AlertKind = Literal["price_above", "price_below", "stress_elevated", "stress_high", "regime_stressed",
-                    "position_risk", "whale_watch"]
+                    "position_risk", "whale_watch", "trader_watch"]
 
 
 class AlertIn(BaseModel):
     """price_above / price_below: the mark price crosses ``threshold``. stress_elevated / stress_high: the
     stress gauge reaches that level. regime_stressed: the regime turns stressed. position_risk: the saved
     check ``check_id``'s chance of liquidation goes above ``threshold`` (default: the profile's risk limit).
-    whale_watch: every new Whale Watch event for the coin. Each alert fires once, then waits until its
+    whale_watch: every new Whale Watch event for the coin. trader_watch: a skilled trader opens or closes a
+    large position in the coin, or its price nears a liquidation cluster. Each alert fires once, then waits until its
     condition has cleared (Phase 11 alert engine, checked once a minute)."""
     symbol: Symbol
     kind: AlertKind
@@ -296,7 +297,7 @@ def _check_out(r) -> CheckOut:
 def _alert_out(r) -> AlertOut:
     return AlertOut(id=r["id"], symbol=r["symbol"], kind=r["kind"], threshold=r["threshold"], note=r["note"],
                     active=r["active"], created_at=_iso(r["created_at"]), check_id=r["check_id"], armed=r["armed"],
-                    last_value=r["last_value"] if r["kind"] != "whale_watch" else None,
+                    last_value=r["last_value"] if r["kind"] not in ("whale_watch", "trader_watch") else None,
                     last_checked_at=_iso(r["last_checked_at"]) if r["last_checked_at"] else None,
                     last_fired_at=_iso(r["last_fired_at"]) if r["last_fired_at"] else None,
                     fired_count=r["fired_count"] or 0)

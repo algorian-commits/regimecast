@@ -15,6 +15,8 @@
   --good: #15803d;
   --warn: #b45309;
   --bad: #b91c1c;
+  --chart-long: #2563eb;
+  --chart-short: #c2570c;
   --chart-1: #2563eb;
   --chart-2: #94a3b8;
 }
@@ -31,6 +33,8 @@
   --good: #4ade80;
   --warn: #fbbf24;
   --bad: #f87171;
+  --chart-long: #4f8cff;
+  --chart-short: #d96c1a;
   --chart-1: #4f8cff;
   --chart-2: #475569;
 }

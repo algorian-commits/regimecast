@@ -1091,6 +1091,326 @@
         }
       }
     },
+    "/traders/scorecards": {
+      "get": {
+        "tags": [
+          "traders"
+        ],
+        "summary": "Scorecards",
+        "description": "Each account's track record and skill label, best skill score first. Descriptive: no pass mark.",
+        "operationId": "scorecards_traders_scorecards_get",
+        "parameters": [
+          {
+            "name": "label",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "skilled",
+                    "unproven",
+                    "losing"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Label"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScorecardsOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReadyOut"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/traders/skilled": {
+      "get": {
+        "tags": [
+          "traders"
+        ],
+        "summary": "Skilled",
+        "description": "What the skilled traders hold now, their recent trades, and their net long or short per coin.",
+        "operationId": "skilled_traders_skilled_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkilledOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReadyOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/traders/liquidation-map/{symbol}": {
+      "get": {
+        "tags": [
+          "traders"
+        ],
+        "summary": "Liquidation Map",
+        "description": "Dollars of tracked longs and shorts that would be liquidated per price band near the current price.",
+        "operationId": "liquidation_map_traders_liquidation_map__symbol__get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "band_pct",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 5,
+              "minimum": 0.25,
+              "default": 1.0,
+              "title": "Band Pct"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiquidationMap"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotReadyOut"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/traders/copy-test": {
+      "get": {
+        "tags": [
+          "traders"
+        ],
+        "summary": "Copy Test",
+        "description": "Would copying the skilled traders have made money? Pre-registered; see docs/PLAN.md, 13D.",
+        "operationId": "copy_test_traders_copy_test_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CopyTestOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/traders/events": {
+      "get": {
+        "tags": [
+          "traders"
+        ],
+        "summary": "Events",
+        "description": "Latest alerts: a skilled trader opened or closed a large position; price near a liquidation cluster.",
+        "operationId": "events_traders_events_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "BTCUSDT",
+                    "ETHUSDT",
+                    "SOLUSDT"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "skilled_trader",
+                    "liq_cluster"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraderEventsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/traders/status": {
+      "get": {
+        "tags": [
+          "traders"
+        ],
+        "summary": "Status",
+        "operationId": "status_traders_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraderStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -1759,7 +2079,8 @@
               "stress_high",
               "regime_stressed",
               "position_risk",
-              "whale_watch"
+              "whale_watch",
+              "trader_watch"
             ],
             "title": "Kind"
           },
@@ -1807,7 +2128,7 @@
           "kind"
         ],
         "title": "AlertIn",
-        "description": "price_above / price_below: the mark price crosses ``threshold``. stress_elevated / stress_high: the\nstress gauge reaches that level. regime_stressed: the regime turns stressed. position_risk: the saved\ncheck ``check_id``'s chance of liquidation goes above ``threshold`` (default: the profile's risk limit).\nwhale_watch: every new Whale Watch event for the coin. Each alert fires once, then waits until its\ncondition has cleared (Phase 11 alert engine, checked once a minute)."
+        "description": "price_above / price_below: the mark price crosses ``threshold``. stress_elevated / stress_high: the\nstress gauge reaches that level. regime_stressed: the regime turns stressed. position_risk: the saved\ncheck ``check_id``'s chance of liquidation goes above ``threshold`` (default: the profile's risk limit).\nwhale_watch: every new Whale Watch event for the coin. trader_watch: a skilled trader opens or closes a\nlarge position in the coin, or its price nears a liquidation cluster. Each alert fires once, then waits until its\ncondition has cleared (Phase 11 alert engine, checked once a minute)."
       },
       "AlertOut": {
         "properties": {
@@ -1828,7 +2149,8 @@
               "stress_high",
               "regime_stressed",
               "position_risk",
-              "whale_watch"
+              "whale_watch",
+              "trader_watch"
             ],
             "title": "Kind"
           },
@@ -2028,6 +2350,57 @@
           "avg_exposure"
         ],
         "title": "BacktestRow"
+      },
+      "Band": {
+        "properties": {
+          "from_pct": {
+            "type": "number",
+            "title": "From Pct",
+            "description": "Band start, % from the current price"
+          },
+          "to_pct": {
+            "type": "number",
+            "title": "To Pct"
+          },
+          "price_low": {
+            "type": "number",
+            "title": "Price Low"
+          },
+          "price_high": {
+            "type": "number",
+            "title": "Price High"
+          },
+          "long_usd": {
+            "type": "number",
+            "title": "Long Usd",
+            "description": "Longs liquidated in this band, USD"
+          },
+          "short_usd": {
+            "type": "number",
+            "title": "Short Usd",
+            "description": "Shorts liquidated in this band, USD"
+          },
+          "n_long": {
+            "type": "integer",
+            "title": "N Long"
+          },
+          "n_short": {
+            "type": "integer",
+            "title": "N Short"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from_pct",
+          "to_pct",
+          "price_low",
+          "price_high",
+          "long_usd",
+          "short_usd",
+          "n_long",
+          "n_short"
+        ],
+        "title": "Band"
       },
       "Candle": {
         "properties": {
@@ -2344,6 +2717,100 @@
           "reasons"
         ],
         "title": "CoinDecision"
+      },
+      "CoinShare": {
+        "properties": {
+          "coin": {
+            "type": "string",
+            "title": "Coin"
+          },
+          "share": {
+            "type": "number",
+            "title": "Share",
+            "description": "Share of the account's traded value in this coin (0..1)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "coin",
+          "share"
+        ],
+        "title": "CoinShare"
+      },
+      "CopyTestOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_run",
+              "pending_forward",
+              "passed",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "worked": {
+            "type": "boolean",
+            "title": "Worked",
+            "description": "True only when the test ran and passed; the page may then say it has worked"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline"
+          },
+          "plain": {
+            "type": "string",
+            "title": "Plain",
+            "description": "The status in plain words"
+          },
+          "gate": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate",
+            "description": "The history check that chose the kind of test"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result",
+            "description": "Sharpe ratios, interval and the pass or fail of each part"
+          },
+          "forward": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forward",
+            "description": "Forward test: start, end and where its log is"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "worked",
+          "headline",
+          "plain"
+        ],
+        "title": "CopyTestOut"
       },
       "CrowdOut": {
         "properties": {
@@ -2755,6 +3222,126 @@
         ],
         "title": "InboxOut"
       },
+      "LiquidationMap": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "coin": {
+            "type": "string",
+            "title": "Coin"
+          },
+          "mark": {
+            "type": "number",
+            "title": "Mark"
+          },
+          "band_pct": {
+            "type": "number",
+            "title": "Band Pct"
+          },
+          "span_pct": {
+            "type": "number",
+            "title": "Span Pct"
+          },
+          "bands": {
+            "items": {
+              "$ref": "#/components/schemas/Band"
+            },
+            "type": "array",
+            "title": "Bands",
+            "description": "Lowest price first; empty bands are left out"
+          },
+          "n_positions": {
+            "type": "integer",
+            "title": "N Positions"
+          },
+          "n_accounts": {
+            "type": "integer",
+            "title": "N Accounts"
+          },
+          "outside_span_usd": {
+            "type": "number",
+            "title": "Outside Span Usd",
+            "description": "Positions liquidated further away than the span, USD"
+          },
+          "no_liquidation_price_usd": {
+            "type": "number",
+            "title": "No Liquidation Price Usd"
+          },
+          "n_no_liquidation_price": {
+            "type": "integer",
+            "title": "N No Liquidation Price"
+          },
+          "accounts_read": {
+            "type": "integer",
+            "title": "Accounts Read",
+            "description": "Tracked accounts read so far"
+          },
+          "accounts_followed": {
+            "type": "integer",
+            "title": "Accounts Followed"
+          },
+          "oldest_read_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Read At"
+          },
+          "newest_read_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Newest Read At"
+          },
+          "marks_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marks At"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "coin",
+          "mark",
+          "band_pct",
+          "span_pct",
+          "bands",
+          "n_positions",
+          "n_accounts",
+          "outside_span_usd",
+          "no_liquidation_price_usd",
+          "n_no_liquidation_price",
+          "accounts_read",
+          "accounts_followed",
+          "oldest_read_at",
+          "newest_read_at",
+          "marks_at",
+          "label"
+        ],
+        "title": "LiquidationMap"
+      },
       "MarketOut": {
         "properties": {
           "symbol": {
@@ -2882,6 +3469,55 @@
         ],
         "title": "MoodHour"
       },
+      "NetCoin": {
+        "properties": {
+          "coin": {
+            "type": "string",
+            "title": "Coin"
+          },
+          "long_usd": {
+            "type": "number",
+            "title": "Long Usd"
+          },
+          "short_usd": {
+            "type": "number",
+            "title": "Short Usd"
+          },
+          "net_usd": {
+            "type": "number",
+            "title": "Net Usd"
+          },
+          "n_long": {
+            "type": "integer",
+            "title": "N Long"
+          },
+          "n_short": {
+            "type": "integer",
+            "title": "N Short"
+          },
+          "n_flat": {
+            "type": "integer",
+            "title": "N Flat"
+          },
+          "n_read": {
+            "type": "integer",
+            "title": "N Read",
+            "description": "Skilled accounts read so far: the sample size of this line"
+          }
+        },
+        "type": "object",
+        "required": [
+          "coin",
+          "long_usd",
+          "short_usd",
+          "net_usd",
+          "n_long",
+          "n_short",
+          "n_flat",
+          "n_read"
+        ],
+        "title": "NetCoin"
+      },
       "NewsMoodOut": {
         "properties": {
           "symbol": {
@@ -2925,6 +3561,24 @@
           "detail"
         ],
         "title": "NotReady"
+      },
+      "NotReadyOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "not_ready"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "NotReadyOut"
       },
       "Ok": {
         "properties": {
@@ -3180,6 +3834,105 @@
         ],
         "title": "ParsedTrade",
         "description": "What the user typed, field by field. null = not stated (never guessed)."
+      },
+      "Position": {
+        "properties": {
+          "coin": {
+            "type": "string",
+            "title": "Coin"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "long",
+              "short"
+            ],
+            "title": "Side"
+          },
+          "size": {
+            "type": "number",
+            "title": "Size",
+            "description": "Size in coins (negative = short)"
+          },
+          "position_usd": {
+            "type": "number",
+            "title": "Position Usd"
+          },
+          "leverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leverage"
+          },
+          "leverage_type": {
+            "type": "string",
+            "title": "Leverage Type"
+          },
+          "entry": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry"
+          },
+          "liquidation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidation",
+            "description": "Hyperliquid's liquidation price; null when it has none"
+          },
+          "unrealized_pnl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Pnl"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "coin",
+          "side",
+          "size",
+          "position_usd",
+          "leverage",
+          "leverage_type",
+          "entry",
+          "liquidation",
+          "unrealized_pnl",
+          "read_at"
+        ],
+        "title": "Position"
       },
       "ProfileIn": {
         "properties": {
@@ -3877,6 +4630,335 @@
         ],
         "title": "RiskOut"
       },
+      "Scorecard": {
+        "properties": {
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name",
+            "default": ""
+          },
+          "account_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Value",
+            "description": "Account value in USD when the pool was selected"
+          },
+          "label": {
+            "type": "string",
+            "enum": [
+              "skilled",
+              "unproven",
+              "losing"
+            ],
+            "title": "Label"
+          },
+          "tested": {
+            "type": "boolean",
+            "title": "Tested",
+            "description": "False: too little history for the skill test (needs 30+ days and 10+ trades)"
+          },
+          "p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Value",
+            "description": "Skill test p-value before the correction across the pool"
+          },
+          "skill_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skill Score",
+            "description": "Mean daily PnL / its bootstrap standard error"
+          },
+          "n_fills": {
+            "type": "integer",
+            "title": "N Fills"
+          },
+          "n_trades": {
+            "type": "integer",
+            "title": "N Trades",
+            "description": "Finished round trips that started inside the history"
+          },
+          "n_days": {
+            "type": "integer",
+            "title": "N Days",
+            "description": "Days in the daily PnL series"
+          },
+          "first_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Day"
+          },
+          "last_fill": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fill"
+          },
+          "net_pnl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Net Pnl",
+            "description": "Realised PnL minus fees over the history, USD"
+          },
+          "win_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Win Rate",
+            "description": "Share of finished trades with a profit after fees (0..1)"
+          },
+          "profit_factor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profit Factor",
+            "description": "Total won / total lost; null if nothing was lost or won"
+          },
+          "return_on_account": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return On Account",
+            "description": "Net PnL / today's account value (0.5 = 50%)"
+          },
+          "sharpe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharpe",
+            "description": "Mean / standard deviation of daily PnL, annualised by sqrt(365)"
+          },
+          "max_drawdown": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Drawdown",
+            "description": "Largest fall of cumulative PnL from a peak, USD"
+          },
+          "max_drawdown_of_account": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Drawdown Of Account",
+            "description": "max_drawdown / today's account value"
+          },
+          "avg_leverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Leverage",
+            "description": "Estimate: average peak trade size / today's account value"
+          },
+          "median_hold_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median Hold Hours"
+          },
+          "coins": {
+            "items": {
+              "$ref": "#/components/schemas/CoinShare"
+            },
+            "type": "array",
+            "title": "Coins"
+          },
+          "history_cut_short": {
+            "type": "boolean",
+            "title": "History Cut Short",
+            "description": "True: Hyperliquid no longer serves this account's older fills"
+          }
+        },
+        "type": "object",
+        "required": [
+          "address",
+          "account_value",
+          "label",
+          "tested",
+          "p_value",
+          "skill_score",
+          "n_fills",
+          "n_trades",
+          "n_days",
+          "first_day",
+          "last_fill",
+          "net_pnl",
+          "win_rate",
+          "profit_factor",
+          "return_on_account",
+          "sharpe",
+          "max_drawdown",
+          "max_drawdown_of_account",
+          "avg_leverage",
+          "median_hold_hours",
+          "coins",
+          "history_cut_short"
+        ],
+        "title": "Scorecard"
+      },
+      "ScorecardSummary": {
+        "properties": {
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "pool_size": {
+            "type": "integer",
+            "title": "Pool Size",
+            "description": "Accounts in the pool (Whale Watch's plus every account above $1M)"
+          },
+          "downloaded": {
+            "type": "integer",
+            "title": "Downloaded",
+            "description": "Accounts whose fills were downloaded"
+          },
+          "accounts_with_perp_fills": {
+            "type": "integer",
+            "title": "Accounts With Perp Fills",
+            "description": "The number of tests the correction runs over"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "fdr": {
+            "type": "number",
+            "title": "Fdr",
+            "description": "False discovery rate of the Benjamini-Hochberg correction"
+          },
+          "limits": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Limits"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generated_at",
+          "pool_size",
+          "downloaded",
+          "accounts_with_perp_fills",
+          "counts",
+          "fdr",
+          "limits"
+        ],
+        "title": "ScorecardSummary"
+      },
+      "ScorecardsOut": {
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/ScorecardSummary"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Cards matching the filter, before limit and offset"
+          },
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/Scorecard"
+            },
+            "type": "array",
+            "title": "Cards"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline",
+            "description": "What the page may say about following them"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "total",
+          "cards",
+          "headline"
+        ],
+        "title": "ScorecardsOut"
+      },
       "SimilarOut": {
         "properties": {
           "n": {
@@ -3929,6 +5011,95 @@
         ],
         "title": "SimilarOut"
       },
+      "SkilledOut": {
+        "properties": {
+          "traders": {
+            "items": {
+              "$ref": "#/components/schemas/SkilledTrader"
+            },
+            "type": "array",
+            "title": "Traders"
+          },
+          "net": {
+            "items": {
+              "$ref": "#/components/schemas/NetCoin"
+            },
+            "type": "array",
+            "title": "Net"
+          },
+          "trades": {
+            "items": {
+              "$ref": "#/components/schemas/Trade"
+            },
+            "type": "array",
+            "title": "Trades",
+            "description": "Recent BTC, ETH and SOL trades, newest first"
+          },
+          "n_skilled": {
+            "type": "integer",
+            "title": "N Skilled"
+          },
+          "bh_family": {
+            "type": "integer",
+            "title": "Bh Family",
+            "description": "Accounts the skill correction ran over"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline"
+          },
+          "live": {
+            "type": "boolean",
+            "title": "Live",
+            "description": "False: the live position feed is not running on this server"
+          }
+        },
+        "type": "object",
+        "required": [
+          "traders",
+          "net",
+          "trades",
+          "n_skilled",
+          "bh_family",
+          "headline",
+          "live"
+        ],
+        "title": "SkilledOut"
+      },
+      "SkilledTrader": {
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/Scorecard"
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/Position"
+            },
+            "type": "array",
+            "title": "Positions",
+            "description": "Open BTC, ETH and SOL positions"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At",
+            "description": "When this account was last read; null if not yet"
+          }
+        },
+        "type": "object",
+        "required": [
+          "card",
+          "positions",
+          "read_at"
+        ],
+        "title": "SkilledTrader"
+      },
       "StopInfo": {
         "properties": {
           "stop": {
@@ -3957,6 +5128,77 @@
           "loss_at_stop_usdt"
         ],
         "title": "StopInfo"
+      },
+      "Trade": {
+        "properties": {
+          "address": {
+            "type": "string",
+            "title": "Address"
+          },
+          "ts": {
+            "type": "string",
+            "title": "Ts"
+          },
+          "coin": {
+            "type": "string",
+            "title": "Coin"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "sell"
+            ],
+            "title": "Side"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "description": "Hyperliquid's own words, e.g. 'Open Long'"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "usd": {
+            "type": "number",
+            "title": "Usd"
+          },
+          "closed_pnl": {
+            "type": "number",
+            "title": "Closed Pnl",
+            "description": "Realised PnL of this trade minus fees, USD"
+          },
+          "n_fills": {
+            "type": "integer",
+            "title": "N Fills"
+          }
+        },
+        "type": "object",
+        "required": [
+          "address",
+          "ts",
+          "coin",
+          "side",
+          "action",
+          "qty",
+          "price",
+          "usd",
+          "closed_pnl",
+          "n_fills"
+        ],
+        "title": "Trade"
       },
       "TradeIn": {
         "properties": {
@@ -4184,6 +5426,186 @@
           "grade"
         ],
         "title": "TradeVersion"
+      },
+      "TraderEvent": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "ts": {
+            "type": "string",
+            "title": "Ts"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "skilled_trader",
+              "liq_cluster"
+            ],
+            "title": "Kind"
+          },
+          "address": {
+            "type": "string",
+            "title": "Address",
+            "description": "Empty for a liquidation cluster, which is many accounts"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why it fired, in plain words"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "explorer_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explorer Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ts",
+          "symbol",
+          "kind",
+          "address",
+          "title",
+          "reason",
+          "detail",
+          "explorer_url"
+        ],
+        "title": "TraderEvent"
+      },
+      "TraderEventsOut": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/TraderEvent"
+            },
+            "type": "array",
+            "title": "Events",
+            "description": "Newest first"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "database",
+              "memory"
+            ],
+            "title": "Source"
+          },
+          "thresholds": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Thresholds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "events",
+          "source",
+          "thresholds"
+        ],
+        "title": "TraderEventsOut"
+      },
+      "TraderStatus": {
+        "properties": {
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          },
+          "accounts_followed": {
+            "type": "integer",
+            "title": "Accounts Followed"
+          },
+          "skilled": {
+            "type": "integer",
+            "title": "Skilled"
+          },
+          "accounts_read": {
+            "type": "integer",
+            "title": "Accounts Read"
+          },
+          "sweeps_done": {
+            "type": "integer",
+            "title": "Sweeps Done"
+          },
+          "sweep_seconds": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sweep Seconds"
+          },
+          "marks_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marks At"
+          },
+          "recent_errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Recent Errors"
+          }
+        },
+        "type": "object",
+        "required": [
+          "running",
+          "accounts_followed",
+          "skilled",
+          "accounts_read",
+          "sweeps_done",
+          "sweep_seconds",
+          "marks_at",
+          "recent_errors"
+        ],
+        "title": "TraderStatus"
       },
       "ValidationError": {
         "properties": {
