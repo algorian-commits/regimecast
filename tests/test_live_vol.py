@@ -1,4 +1,4 @@
-"""Live HAR-S forecasts (vol/live.py) and how the API uses them."""
+"""Live HAR-S forecasts (vol/live.py) and how the API uses them. The combination: tests/test_combo_live.py."""
 import numpy as np
 import pandas as pd
 import pytest
@@ -129,7 +129,7 @@ def test_risk_check_uses_fhs_with_live_har_s():
     assert r["model"] == "fhs_har_s"
     pos = liq.Position("BTCUSDT", "long", entry=80000, qty=100 * 50 / 80000, leverage=50)
     d = liq.adverse_log_distance(pos, liq.liquidation_price(pos))
-    expected = fhs_live.survival(fhs_live.load()["BTCUSDT"]["24h"]["long"], d, r["sigma_horizon_pct"] / 100)
+    expected = fhs_live.survival(fhs_live.load()["BTCUSDT"]["24h"]["long"], d, r["liquidation_sigma_pct"] / 100)
     assert r["p_liquidation"] == pytest.approx(expected, abs=2e-4)
     assert 0 < r["p_liquidation"] < 1
 

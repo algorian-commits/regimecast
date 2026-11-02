@@ -435,7 +435,8 @@ export interface paths {
         };
         /**
          * Forecast
-         * @description Volatility forecast over the next 1 or 24 hours (HAR-S on live Binance data until Phase 5).
+         * @description Volatility forecast over the next 1 or 24 hours: the HAR-S + LightGBM combination on live Binance data,
+         *     with what moves each part (drivers, drivers_gbm).
          */
         get: operations["forecast_forecast_get"];
         put?: never;
@@ -860,37 +861,6 @@ export interface components {
             /** Reasons */
             reasons: string[];
         };
-        /** CrowdOut */
-        CrowdOut: {
-            /** Warning */
-            warning: boolean;
-            /**
-             * Side
-             * @description Where the crowd is piled in, when warning
-             */
-            side?: ("long" | "short") | null;
-            /** Message */
-            message: string;
-            /** Funding Rate */
-            funding_rate: number | null;
-            /**
-             * Ls Top
-             * @description Top traders' long/short position ratio
-             */
-            ls_top?: number | null;
-            /**
-             * Oi Chg 24H
-             * @description Open-interest growth over 24 h (log)
-             */
-            oi_chg_24h?: number | null;
-            /**
-             * P After Warning
-             * @description Dev period: share of warnings followed by a 5% move against the crowd within 24 h
-             */
-            p_after_warning?: number | null;
-            /** P Other */
-            p_other?: number | null;
-        };
         /** CurvePoint */
         CurvePoint: {
             /** Hour */
@@ -984,6 +954,12 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * Horizon
+         * @description Forecast horizon in hours (a query parameter: FastAPI reads it as text, which Literal[1, 24] always refuses).
+         * @enum {integer}
+         */
+        Horizon: 1 | 24;
         /** InboxItem */
         InboxItem: {
             /** Id */
@@ -1412,10 +1388,18 @@ export interface components {
             p_liquidation: number;
             /** Model */
             model: string;
-            /** Sigma Horizon Pct */
+            /**
+             * Sigma Horizon Pct
+             * @description Volatility forecast over the horizon (std of the log return, %): the HAR-S + LightGBM combination
+             */
             sigma_horizon_pct: number;
             /** Volatility Source */
             volatility_source: string;
+            /**
+             * Liquidation Sigma Pct
+             * @description Volatility the liquidation and stop chances use (%): HAR-S, the forecast FHS was fitted and tested on in the final evaluation
+             */
+            liquidation_sigma_pct: number;
             /** Max Safe Leverage */
             max_safe_leverage: number;
             /** Max Position Usdt */
@@ -1429,10 +1413,16 @@ export interface components {
             regime?: string | null;
             /**
              * Drivers
-             * @description What moves the volatility forecast (exact SHAP values of HAR-S)
+             * @description What moves the HAR-S part of the forecast (exact SHAP values)
              * @default []
              */
             drivers: components["schemas"]["Driver"][];
+            /**
+             * Drivers Gbm
+             * @description What moves the LightGBM part of the forecast (TreeSHAP values)
+             * @default []
+             */
+            drivers_gbm: components["schemas"]["Driver"][];
             /**
              * Stress Level
              * @description Market stress in the next hour: low, elevated or high
@@ -1446,7 +1436,7 @@ export interface components {
             warnings: string[];
             /** Generated At */
             generated_at: string;
-            /** @description Phase 12: Trade Grade A-F, reasons, crowd, similar moments, timing */
+            /** @description Phase 12: Trade Grade A-F, reasons, similar moments' range, timing */
             verdict?: components["schemas"]["VerdictOut"] | null;
             /** @description Phase 12: the closest safer version of the same trade */
             fix?: components["schemas"]["FixOut"] | null;
@@ -1476,13 +1466,6 @@ export interface components {
              * @description Median size of the next 24 h move (%)
              */
             typical_move_pct: number;
-            /** P Up */
-            p_up: number;
-            /**
-             * Coin Flip
-             * @description True when the up-chance is between 40% and 60%
-             */
-            coin_flip: boolean;
             /** Same Regime */
             same_regime: boolean;
             /** Message */
@@ -1614,7 +1597,7 @@ export interface components {
         VerdictFactor: {
             /**
              * Key
-             * @description knockout, liquidation, stop, costs, regime, stress, crowd, timing or calm
+             * @description knockout, liquidation, stop, costs, regime, stress, timing or calm
              */
             key: string;
             /**
@@ -1653,7 +1636,7 @@ export interface components {
             break_even_win_rate?: number | null;
             /** Break Even Note */
             break_even_note: string;
-            crowd?: components["schemas"]["CrowdOut"] | null;
+            /** @description How big the next 24 h move was after similar past hours (80% range); no up/down chance (it failed the final evaluation) */
             similar?: components["schemas"]["SimilarOut"] | null;
             /** Timing */
             timing: string[];
@@ -2710,7 +2693,7 @@ export interface operations {
         parameters: {
             query?: {
                 symbol?: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
-                horizon_hours?: 1 | 24;
+                horizon_hours?: components["schemas"]["Horizon"];
             };
             header?: never;
             path?: never;

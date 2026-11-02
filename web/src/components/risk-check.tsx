@@ -540,9 +540,25 @@ function RiskDetails({ r, limit }: { r: Risk; limit: number }) {
 
       <Card title="What drives the volatility forecast">
         {r.drivers.length ? (
-          <DriversChart drivers={r.drivers} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">HAR-S part</h3>
+              <DriversChart drivers={r.drivers} />
+            </div>
+            {r.drivers_gbm.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">LightGBM part</h3>
+                <DriversChart drivers={r.drivers_gbm} />
+              </div>
+            )}
+          </div>
         ) : (
-          <p className="text-sm text-muted">Drivers are shown when the live HAR-S forecast is in use; it is not available right now.</p>
+          <p className="text-sm text-muted">Drivers are shown when a live forecast is in use; it is not available right now.</p>
+        )}
+        {r.liquidation_sigma_pct !== r.sigma_horizon_pct && (
+          <p className="mt-3 text-xs text-muted">
+            The forecast is the average of these two models. Liquidation and stop chances use the HAR-S forecast ({r.liquidation_sigma_pct.toFixed(2)}%), the pairing the final evaluation tested.
+          </p>
         )}
       </Card>
 
