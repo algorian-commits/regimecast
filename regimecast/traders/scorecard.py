@@ -161,7 +161,7 @@ def track_record(df: pd.DataFrame, end: pd.Timestamp, account_value: float | Non
         return {"n_fills": 0, "n_trades": 0, "n_days": 0, "p": math.nan, "score": math.nan}
     d = daily_pnl(df, df["time"].min() if start is None else start, end)
     rt = round_trips(df)
-    done = rt[rt["inside"]]
+    done = rt[rt["inside"].astype(bool)]
     wins, losses = done.loc[done["pnl"] > 0, "pnl"].sum(), -done.loc[done["pnl"] < 0, "pnl"].sum()
     by_coin = (df["px"] * df["sz"]).groupby(df["coin"]).sum().sort_values(ascending=False)
     total = float(d.sum())
@@ -177,7 +177,7 @@ def track_record(df: pd.DataFrame, end: pd.Timestamp, account_value: float | Non
         "win_rate": float((done["pnl"] > 0).mean()) if len(done) else math.nan,
         "profit_factor": float(wins / losses) if losses > 0 else (math.inf if wins > 0 else math.nan),
         "return_on_account": total / av if math.isfinite(av) else math.nan,
-        "sharpe": float(x.mean() / sd * math.sqrt(365)) if sd and sd > 0 else math.nan,
+        "sharpe": float(x.mean() / sd * math.sqrt(365)) if sd and sd > 0 and len(x) >= MIN_DAYS else math.nan,
         "max_drawdown": max_drawdown(np.cumsum(x)),
         "max_drawdown_of_account": max_drawdown(np.cumsum(x)) / av if math.isfinite(av) else math.nan,
         "median_hold_hours": float(done["hours"].median()) if len(done) else math.nan,

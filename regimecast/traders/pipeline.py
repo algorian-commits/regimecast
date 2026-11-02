@@ -18,7 +18,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from regimecast import config
 from regimecast.traders import copytest as ct
 from regimecast.traders import fills as fl
 from regimecast.traders import scorecard as sc
@@ -99,6 +98,13 @@ def score(n_boot: int = sc.N_BOOT) -> dict:
 
 
 # ------------------------------------------------------------------ prices and funding for the copy test
+def refresh_prices(start: pd.Timestamp, end: pd.Timestamp) -> None:
+    """Fetch any Binance 1-minute files the archive on the Volume does not have yet."""
+    from regimecast.data import binance_archive
+
+    binance_archive.run([f"{c}USDT" for c in ct.COPY_COINS], ["klines"], start.date(), end.date())
+
+
 def minute_closes(start: pd.Timestamp, end: pd.Timestamp) -> dict[str, pd.Series]:
     """Binance USD-M 1-minute closes from the archive on the Volume, indexed by the minute's open time."""
     from regimecast.data import store
@@ -133,6 +139,11 @@ def funding_history(start: pd.Timestamp, end: pd.Timestamp, info: Info | None = 
     return out
 
 
+def last_full_price_day(prices: dict[str, pd.Series]) -> pd.Timestamp:
+    """Midnight after the last day every coin has prices through."""
+    return min(s.index.max() for s in prices.values()).floor("D")
+
+
 def price_coverage(prices: dict[str, pd.Series], a0: pd.Timestamp, end: pd.Timestamp) -> dict:
     """Share of the period's minutes each coin has a price for (reported with the result)."""
     want = (end - a0) / pd.Timedelta(minutes=1)
@@ -164,9 +175,12 @@ def copy_test(rerun_reason: str | None = None, commit: str | None = None) -> dic
     depth = fl.perp_depth()
     fills = {a: sc.perp_fills(fl.load_fills(a)) for a in g["eligible"]}
     per = ct.periods(depth, g["eligible"])
+    refresh_prices(per["a_start"], per["end"])
     prices = minute_closes(per["a_start"], per["end"])
+    cap = last_full_price_day(prices)
+    per = ct.periods(depth, g["eligible"], cap)
     funding = funding_history(per["a_start"], per["end"])
-    res = ct.run(fills, depth, prices, funding)
+    res = ct.run(fills, depth, prices, funding, end_cap=cap)
     selection = res.pop("selection")
     selection.to_csv(out_dir() / "traders_copy_selection.csv", index=False)
     r = res["result"]
@@ -186,7 +200,3 @@ def copy_test(rerun_reason: str | None = None, commit: str | None = None) -> dic
 def _gate_public(g: dict) -> dict:
     return {k: g[k] for k in ("accounts_with_fills", "accounts_6m", "needed", "min_span_days", "historical_test",
                               "pool_size", "downloaded", "cut_short", "span_days_quantiles")}
-
-
-def data_dir_note() -> str:
-    return str(config.DATA_DIR)

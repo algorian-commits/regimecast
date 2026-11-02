@@ -660,3 +660,8 @@ def test_download_resumes_and_takes_accounts_with_old_fills_first(tmp_path, monk
     assert order == ["0xold", "0xyoung"] and set(d["address"]) == {"0xold", "0xyoung"} and commits
     order.clear()
     assert len(fl.download()) == 2 and order == []      # a rerun has nothing left to do
+
+
+def test_account_with_no_finished_trade_still_gets_a_card():
+    tr = sc.track_record(frame([fill(0)]), T0 + pd.Timedelta(days=40), n_boot=50)   # opened and never closed
+    assert tr["n_trades"] == 0 and tr["tested"] is False and tr["p"] == 1.0 and math.isnan(tr["win_rate"])

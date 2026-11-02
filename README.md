@@ -251,6 +251,35 @@ python scripts/run_phase12.py              :: choose, check, freeze -> data/repo
 python scripts/run_phase12.py --dry-run out :: the same steps on made-up data into .\out (real files untouched)
 ```
 
+## Popular trader tracker (Phase 13D)
+
+Shows what skilled traders on Hyperliquid are doing, where big tracked positions would be liquidated, and tests honestly whether following them pays. Lists of top traders are mostly survivors of luck, so skill is corrected for testing thousands of accounts, and the copy test measures skill on one period and copies on a later one. Plain-words guide: [`docs/TRADERS_WALKTHROUGH.md`](docs/TRADERS_WALKTHROUGH.md).
+
+| Part | File | What it does |
+|---|---|---|
+| Pool and fills | `regimecast/traders/hl.py`, `fills.py` | Every leaderboard account above $1M (Whale Watch's are among them). Downloads each account's fills with `userFillsByTime` as Parquet, staying inside Hyperliquid's rate limit, and records how far back each history goes. Resumes where it stopped. |
+| Scorecards | `regimecast/traders/scorecard.py` | Trades, win rate, profit factor, return, Sharpe, drawdown, estimated leverage, holding time and coins. Skill test: block bootstrap of mean daily PnL, then Benjamini-Hochberg across the pool. Labels: skilled, unproven, losing. |
+| Copy test | `regimecast/traders/copytest.py`, `pipeline.py`, `published.py` | The pre-registered test (PLAN 13D): 5-minute delay, 0.045% taker fee, funding, equal risk per trader, against 200 random groups and buy-and-hold. `published.headline` is the one place that decides whether the page may say following them "has worked". |
+| Liquidation map | `regimecast/traders/liqmap.py` | Dollars of tracked longs and shorts liquidated per price band near the current price. Labelled "tracked Hyperliquid accounts only, not the whole market". |
+| Live feed | `regimecast/traders/live.py` | Reads the pool's positions from Hyperliquid's public data within a weight budget (`TRADER_WEIGHT_PER_MIN`, default 500), skilled accounts every 2 minutes. `TRADER_WATCH=0` switches it off. |
+| Alerts | `regimecast/traders/rules.py`, `alerts/engine.py` | "A skilled trader opened or closed a large position" and "price is near a liquidation cluster", in the inbox through a `trader_watch` alert. Stored in `whale_events`, so no new migration. Thresholds: `TRADER_MOVE_USD`, `TRADER_CLUSTER_USD`, `TRADER_NEAR_PCT`. |
+| API and page | `regimecast/api/traders.py`, `web/src/components/traders.tsx` | `GET /traders/scorecards`, `/traders/skilled`, `/traders/liquidation-map/{symbol}`, `/traders/copy-test`, `/traders/events`, `/traders/status`; the Traders page. |
+
+```bash
+modal run --detach regimecast/jobs/modal_app.py::trader_fills
+```
+```bash
+python scripts/traders_run.py gate
+```
+```bash
+python scripts/traders_run.py score
+```
+```bash
+python scripts/traders_run.py copytest
+```
+
+Set `MODAL_PROFILE=saeed355ahmed` and `PYTHONUTF8=1` first. The results ship with the code as `regimecast/traders/scorecards.json.gz` and `copy_test.json`, because the deployed API has no `data/` folder. The copy test runs once: a rerun refuses to start unless it names the bug it fixes.
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.

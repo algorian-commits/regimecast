@@ -59,10 +59,13 @@ def history_gate(depth: pd.DataFrame, min_span_days: float = MIN_SPAN_DAYS, min_
             if len(d) else {}}
 
 
-def periods(depth: pd.DataFrame, eligible: list[str]) -> dict:
+def periods(depth: pd.DataFrame, eligible: list[str], end_cap: pd.Timestamp | None = None) -> dict:
+    """``end_cap``: the last day there are prices for, if earlier than the downloads."""
     d = depth.set_index("address").loc[eligible]
     start = pd.to_datetime(d["first_fill"], utc=True).max().ceil("D")
     end = pd.to_datetime(d["downloaded_at"], utc=True).min().floor("D")
+    if end_cap is not None:
+        end = min(end, end_cap)
     b_start = start + (end - start) * 2 / 3
     b_start = b_start.floor("D")
     return {"a_start": start, "b_start": b_start, "end": end}
@@ -201,9 +204,9 @@ def compare(daily_b: dict[str, pd.Series], scale: dict[str, float], selected: li
 # ------------------------------------------------------------------ the whole test, once
 def run(fills: dict[str, pd.DataFrame], depth: pd.DataFrame, prices: dict[str, pd.Series],
         funding: dict[str, pd.Series], n_random: int = N_RANDOM, n_boot: int = N_BOOT,
-        score_boot: int = sc.N_BOOT, seed: int = SEED) -> dict:
+        score_boot: int = sc.N_BOOT, seed: int = SEED, end_cap: pd.Timestamp | None = None) -> dict:
     """Period-A selection, then the comparison on period B. ``fills``: the eligible accounts' perp fills."""
-    per = periods(depth, list(fills))
+    per = periods(depth, list(fills), end_cap)
     a0, b0, end = per["a_start"], per["b_start"], per["end"]
     before = {a: f[f["time"] < b0] for a, f in fills.items()}
     daily_a = {a: simulate_trader(f, prices, funding, a0, b0) for a, f in before.items() if len(copy_fills(f))}
@@ -212,7 +215,7 @@ def run(fills: dict[str, pd.DataFrame], depth: pd.DataFrame, prices: dict[str, p
     # selection is fixed from here on; only now is period B read
     universe = sorted(chosen.loc[chosen["in_universe"], "address"])
     selected = sorted(chosen.loc[chosen["selected"], "address"])
-    daily_b = {a: simulate_trader(fills[a], prices, funding, b0, end) for a in universe}
+    daily_b = {a: simulate_trader(fills[a][fills[a]["time"] < end], prices, funding, b0, end) for a in universe}
     scale = {a: 1 / sd[a] for a in universe}
     bh = buy_and_hold(prices, funding, b0, end)
     res = compare(daily_b, scale, selected, universe, bh, n_random, n_boot, seed)

@@ -29,7 +29,8 @@ from regimecast.traders.hl import FILLS_AVAILABLE, FILLS_PAGE, Budget, Info, fet
 
 log = logging.getLogger("traders.fills")
 
-DEEP_DAYS = 30   # scorecard.MIN_DAYS: an account with less history cannot pass the skill test
+# Download order: only accounts with fills this old can enter the copy test (182 days) or pass the skill test (30)
+DEEP_DAYS = (182, 30)
 COLUMNS = ["time", "coin", "px", "sz", "side", "dir", "start_position", "closed_pnl", "fee", "fee_token",
            "crossed", "tid", "twap_id", "liquidated"]
 
@@ -133,8 +134,7 @@ def load_fills(address: str) -> pd.DataFrame:
 
 
 def download(limit: int | None = None, per_minute: float = 900.0, checkpoint=None) -> pd.DataFrame:
-    """Accounts with fills older than ``DEEP_DAYS`` first (only those can pass the skill test or the copy
-    test's history check), then the rest. ``checkpoint()`` runs every 25 accounts (Modal: commit the Volume)."""
+    """Accounts with the oldest fills first (``DEEP_DAYS``), then the rest. ``checkpoint()`` runs every 25 accounts (Modal: commit the Volume)."""
     r = root()
     (r / "fills").mkdir(parents=True, exist_ok=True)
     pool_file = r / "pool.parquet"
@@ -150,7 +150,6 @@ def download(limit: int | None = None, per_minute: float = 900.0, checkpoint=Non
     info = Info(Budget(per_minute))
     t0 = time.time()
     n = 0
-    cutoff = int((pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=DEEP_DAYS)).timestamp() * 1000)
 
     def save(a: str, fills: list[dict]) -> None:
         nonlocal n
@@ -164,20 +163,24 @@ def download(limit: int | None = None, per_minute: float = 900.0, checkpoint=Non
             if checkpoint:
                 checkpoint()
 
-    later = []
-    for a in todo:
-        try:
-            fills = download_account(info, a, older_than_ms=cutoff)
-        except Exception as e:
-            log.warning("%s: %r (skipped, rerun to retry)", a, e)
-            continue
-        if fills is None:
-            later.append(a)
-        else:
-            save(a, fills)
-    log.info("deep accounts done (%d saved, %d left, %.0f min)", n, len(later), (time.time() - t0) / 60)
-    if checkpoint:
-        checkpoint()
+    later = todo
+    for days in DEEP_DAYS:   # one cheap question per account per step; only those with so old a fill are fetched
+        cutoff = int((pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=days)).timestamp() * 1000)
+        left = []
+        for a in later:
+            try:
+                fills = download_account(info, a, older_than_ms=cutoff)
+            except Exception as e:
+                log.warning("%s: %r (skipped, rerun to retry)", a, e)
+                continue
+            if fills is None:
+                left.append(a)
+            else:
+                save(a, fills)
+        later = left
+        log.info("older than %d days done (%d saved, %d left, %.0f min)", days, n, len(later), (time.time() - t0) / 60)
+        if checkpoint:
+            checkpoint()
     for a in later:
         try:
             save(a, download_account(info, a))

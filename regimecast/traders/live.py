@@ -27,6 +27,7 @@ log = logging.getLogger("traders.live")
 
 WEIGHT_PER_MIN = float(os.environ.get("TRADER_WEIGHT_PER_MIN", "500"))
 SKILLED_EVERY_S = 120.0
+MIN_SWEEP_S = 180.0
 MARK_EVERY_S = 60.0
 TRADES_EVERY_S = 900.0
 TRADES_DAYS = 7
@@ -198,6 +199,9 @@ class TraderWatch:
                     self.read(card)
             self.sweep_seconds = time.monotonic() - t0
             self.sweeps += 1
+            while time.monotonic() - t0 < MIN_SWEEP_S:   # a short pool must not read Hyperliquid in a tight loop
+                self._housekeeping(last)
+                time.sleep(5.0)
 
     def start(self) -> None:
         if self._thread is not None or os.environ.get("TRADER_WATCH", "1") == "0" or not self.cards:
