@@ -204,6 +204,27 @@ The 95% field-accuracy bar for the Claude parser is still to do. It needs the An
 (`scripts/set_anthropic_key.ps1`, then `python scripts/m8_parser_eval.py`). The rule reader, the fallback the live
 site uses now, scored 76% all-fields-right in development.
 
+## After the final test
+
+Tried after opening, so it never replaces anything above.
+
+**The app runs the combination without the order book (Phase 13A), so this reruns the final year's folds both ways**
+(`scripts/p13a_no_orderbook_check.py`, `data/reports/p13a_no_orderbook.csv`). Error against HAR (QLIKE, negative is better):
+
+| | BTC 1 h | BTC 24 h | ETH 1 h | ETH 24 h | SOL 1 h | SOL 24 h |
+|---|---|---|---|---|---|---|
+| As evaluated | -15.15% | -26.95% | -13.42% | -20.28% | -12.07% | -5.82% |
+| Without the order book | -15.15% | -26.95% | -13.42% | -20.28% | -12.08% | -5.75% |
+
+Still lower than HAR in 6 of 6, and significant in 5 of 6 (SOL 24 h again just misses, p = 0.059).
+
+**This also corrects what the table in section 1 can be read to say.** The BTC and ETH forecasts are *identical* with
+and without the order book, because the evaluated model effectively never used it. Early stopping keeps the latest 20%
+of each training window aside, so the trees are fitted on the older 80%. The order book only starts in May 2025, which
+left BTC and ETH at most 43 usable rows in the last refit, far below the 200 a leaf needs. SOL's shorter history gave it
+about 1,250 rows, hence the small difference. The result stands as a test of what ran; it says nothing about whether
+order-book data helps forecast volatility, which has not really been tested.
+
 ## Files
 
 `data/reports/` holds the results:

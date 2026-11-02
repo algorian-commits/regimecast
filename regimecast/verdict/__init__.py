@@ -1,6 +1,6 @@
 """Trade verdict for beginners (Phase 12, M9 extended): is this trade well built, and how to make it safer.
 
-It judges the setup (size, leverage, stop, costs, timing, crowding), never which way the price will go:
+It judges the setup (size, leverage, stop, costs, timing), never which way the price will go:
 Phase 6b found that the direction of the next day's move is not predictable from our data.
 
 grade.py     Trade Grade A-F with three plain-English reasons, and the break-even win rate

@@ -3,6 +3,27 @@
 Presenter: Saeed Ahmad Jan. Plain English. Dev-period numbers come from `data/reports/phase12_*.csv`
 (`python scripts/run_phase12.py`); the settings it fixes are in `regimecast/verdict/frozen.json`.
 
+## Removed after the final evaluation (Phase 13A, 2 Nov 2026)
+
+The sealed year (`docs/FINAL_EVALUATION.md`) showed two parts of this verdict don't carry reliable information, so
+the app no longer shows them. This is a product change made after the test; the results themselves stand as reported.
+
+| Removed | Its bar | Final-year result |
+|---|---|---|
+| **Crowd warning, and the grade's crowd step** | A sudden 5% move against the crowd at least 1.5 times as often after a warning, 90% interval above 1, on 2 of 3 coins | BTC 0.95 times, ETH 1.32, SOL 1.46; no interval stayed above 1. On BTC, warnings made no difference at all. |
+| **Similar moments' up/down chance** | Brier score no worse than always saying the long-run up share | Slightly worse on BTC (0.2503 vs 0.2501) and SOL (0.2504 vs 0.2500). In plain words: a coin flip. |
+
+The ratio asks how much more often the move came after a warning than in other hours (1 means no difference). The
+**Brier score** is the average squared mistake of a yes/no chance: lower is better, and 0.25 is what a coin flip earns.
+
+**What stays, because it passed:**
+- The grade. Share of 262,800 example trades knocked out within 24 h, A to F, in strict order on every coin: about 2% for A, about 40% for F (17-21 times). Its frozen bands are unchanged, minus the crowd step.
+- The similar moments' 80% range of the next day's move, which held the actual move 79-83% of the time.
+- "Fix my trade", the what-if strip and the timing warnings.
+
+The sections below describe Phase 12 as built and tested, including the removed parts. The code and settings behind
+them stay in `regimecast/verdict/` because the evaluation reads them; only the app stopped showing them.
+
 ## The question
 
 **Is this trade well built, and how do I make it safer?** The main user is a complete beginner who types a trade
@@ -10,7 +31,8 @@ Presenter: Saeed Ahmad Jan. Plain English. Dev-period numbers come from `data/re
 
 What it does **not** do: say which way the price will go. Phase 6b tried hard (funding, open interest, crowding,
 stress, recent returns) and the direction of the next day's move was not predictable from our data. So the verdict
-judges only the setup: size, leverage, stop, costs, timing and crowding. Every result screen says so.
+judges only the setup: size, leverage, stop, costs and timing (and crowding, until Phase 13A removed it). Every result
+screen says so.
 
 ## The Trade Grade (A to F)
 
@@ -46,7 +68,7 @@ In dollars, one day from now: a **normal day** and a **bad day** (the 90th and 9
 mark price fell 13.0% for BTC, 14.8% for ETH and 30.7% for SOL in about 30 minutes). A stop exits first if it sits
 before the liquidation price; otherwise the position is liquidated and the margin is gone.
 
-## Crowd warning
+## Crowd warning (removed from the app in Phase 13A)
 
 When funding, top traders' long/short ratio and open-interest growth are all at extremes on the same side, traders
 are piled in, and a sudden move against them is more common. The app shows the historical odds: "after warnings like
@@ -57,7 +79,7 @@ level drifts a lot (ETH's top-trader ratio ranged from 1.1 to 3.5 in 2022-25), a
 firing, or fired the wrong way, later on. Frozen: funding and the ratio in their top (or bottom) 10% of the last two
 weeks, and open-interest growth in its top 25%. The app reads the same 14 days from Binance's public 1-hour history.
 
-## Similar moments
+## Similar moments (the app shows only the 80% range since Phase 13A)
 
 The past hours that looked most like now: same regime, similar volatility forecast, last day's and week's trend,
 funding, top traders' ratio and open-interest growth. Only hours whose next 24 h had **fully played out before now**

@@ -181,6 +181,15 @@ def test_risk_check_shows_the_combination_and_keeps_fhs_on_har_s(cache, monkeypa
     assert any("LightGBM part" in e for e in r["explanation"]) or not [x for x in r["drivers_gbm"] if abs(x["effect_pct"]) >= 3]
 
 
+def test_position_alerts_keep_fhs_on_har_s(cache, monkeypatch):
+    from regimecast.alerts import engine
+
+    monkeypatch.setattr(live, "cache", cache)
+    view = engine.live_view()
+    assert view.sigma("BTCUSDT", 24) == pytest.approx(np.sqrt(cache.get_har_s("BTCUSDT", 24)["variance"]))
+    assert cache.get("BTCUSDT", 24)["variance"] != cache.get_har_s("BTCUSDT", 24)["variance"]
+
+
 def test_har_s_serves_while_the_combination_has_no_fresh_inputs(monkeypatch):
     from regimecast.api import main
 
