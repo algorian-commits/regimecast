@@ -1,6 +1,6 @@
 """From downloaded fills to the files the app ships: history check, scorecards, copy test.
 
-Runs where the fills are (the Modal Volume, regimecast/jobs/modal_app.py) and writes small
+Runs where the fills are (the Modal Volume, regimecast/jobs/modal_traders.py) and writes small
 result files under ``DATA_DIR/traders/out``; scripts/traders_run.py copies them into the repo.
 
 The copy test runs **once** (``copy_test``): each run is logged, and a second run refuses to

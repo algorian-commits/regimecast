@@ -266,7 +266,7 @@ Shows what skilled traders on Hyperliquid are doing, where big tracked positions
 | API and page | `regimecast/api/traders.py`, `web/src/components/traders.tsx` | `GET /traders/scorecards`, `/traders/skilled`, `/traders/liquidation-map/{symbol}`, `/traders/copy-test`, `/traders/events`, `/traders/status`; the Traders page. |
 
 ```bash
-modal run --detach regimecast/jobs/modal_app.py::trader_fills
+modal run --detach regimecast/jobs/modal_traders.py::trader_fills
 ```
 ```bash
 python scripts/traders_run.py gate

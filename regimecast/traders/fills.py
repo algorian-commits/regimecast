@@ -115,6 +115,12 @@ def load_depth() -> pd.DataFrame:
     return pd.DataFrame(rows).drop_duplicates("address", keep="last").reset_index(drop=True)
 
 
+def load_checked(days: int) -> set[str]:
+    """Accounts already found to have no fill older than ``days`` days."""
+    f = root() / f"no_fills_older_than_{days}d.txt"
+    return set(f.read_text().split()) if f.exists() else set()
+
+
 def perp_depth() -> pd.DataFrame:
     """Per downloaded account: first and last perp fill, and how many (the copy test's history check)."""
     from regimecast.traders.scorecard import perp_fills
@@ -166,8 +172,12 @@ def download(limit: int | None = None, per_minute: float = 900.0, checkpoint=Non
     later = todo
     for days in DEEP_DAYS:   # one cheap question per account per step; only those with so old a fill are fetched
         cutoff = int((pd.Timestamp.now(tz="UTC") - pd.Timedelta(days=days)).timestamp() * 1000)
+        checked = load_checked(days)   # answers from before a restart: a Modal container can be replaced at any time
         left = []
-        for a in later:
+        for i, a in enumerate(later, 1):
+            if a in checked:
+                left.append(a)
+                continue
             try:
                 fills = download_account(info, a, older_than_ms=cutoff)
             except Exception as e:
@@ -175,6 +185,10 @@ def download(limit: int | None = None, per_minute: float = 900.0, checkpoint=Non
                 continue
             if fills is None:
                 left.append(a)
+                with open(r / f"no_fills_older_than_{days}d.txt", "a") as out:
+                    out.write(a + "\n")
+                if i % 100 == 0 and checkpoint:
+                    checkpoint()
             else:
                 save(a, fills)
         later = left

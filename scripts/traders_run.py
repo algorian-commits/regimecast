@@ -2,7 +2,7 @@
 
 Run from the repo root, with MODAL_PROFILE=saeed355ahmed and PYTHONUTF8=1 set::
 
-    modal run --detach regimecast/jobs/modal_app.py::trader_fills     # the fill download, many hours, resumes
+    modal run --detach regimecast/jobs/modal_traders.py::trader_fills     # the fill download, many hours, resumes
     python scripts/traders_run.py gate       # how many accounts have 6+ months of perp fills
     python scripts/traders_run.py score      # scorecards -> regimecast/traders/scorecards.json.gz
     python scripts/traders_run.py copytest   # the pre-registered test, ONCE -> regimecast/traders/copy_test.json
@@ -35,7 +35,7 @@ def fetch() -> None:
 
 
 def modal_call(fn: str, *args: str) -> None:
-    subprocess.run(["modal", "run", f"regimecast/jobs/modal_app.py::{fn}", *args], cwd=ROOT, check=True)
+    subprocess.run(["modal", "run", f"regimecast/jobs/modal_traders.py::{fn}", *args], cwd=ROOT, check=True)
 
 
 def main() -> None:

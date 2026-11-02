@@ -665,3 +665,31 @@ def test_download_resumes_and_takes_accounts_with_old_fills_first(tmp_path, monk
 def test_account_with_no_finished_trade_still_gets_a_card():
     tr = sc.track_record(frame([fill(0)]), T0 + pd.Timedelta(days=40), n_boot=50)   # opened and never closed
     assert tr["n_trades"] == 0 and tr["tested"] is False and tr["p"] == 1.0 and math.isnan(tr["win_rate"])
+
+
+def test_restart_does_not_ask_again_about_accounts_already_checked(tmp_path, monkeypatch):
+    monkeypatch.setattr(fl.config, "DATA_DIR", tmp_path)
+    r = fl.root()
+    r.mkdir(parents=True)
+    pd.DataFrame([{"address": "0xa", "whale_watch": True}]).to_parquet(r / "pool.parquet")
+    (r / "no_fills_older_than_182d.txt").write_text("0xa\n")
+    asked = []
+
+    class Fake:
+        def __init__(self, *a):
+            pass
+
+        def post(self, body):
+            asked.append(body.get("endTime") is not None)
+            return []
+
+    monkeypatch.setattr(fl, "Info", Fake)
+    fl.download()
+    assert len(asked) == 2 and "0xa" in fl.load_checked(30)    # only the 30-day question and the final download
+
+
+def test_trader_modal_jobs_have_no_schedule():
+    from pathlib import Path
+
+    text = (Path(__file__).parents[1] / "regimecast" / "jobs" / "modal_traders.py").read_text(encoding="utf-8")
+    assert "modal.Cron" not in text and "modal.Period" not in text
