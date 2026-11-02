@@ -1,9 +1,12 @@
-"""Live volatility forecasts for the app: HAR-S on the latest Binance candles.
+"""Live volatility forecasts for the app: the HAR-S + LightGBM combination, and HAR-S on the latest Binance candles.
 
-HAR-S (HAR with hour-of-day and day-of-week effects, vol/har.py) is our best tested
-baseline: on real BTC data it beat plain HAR by 9.7% (1 h) and 19.3% (24 h) in QLIKE,
-walk-forward, 2024-01 to 2025-09. It stands in for the placeholder volatility until
-the Phase 5 model replaces it.
+Since Phase 13A the forecast the app shows (/forecast, the risk check, the dashboard) is the combination that
+passed the final evaluation (vol/combo_live.py), built from the stress gauge's live feature rows. HAR-S (below)
+still runs next to it: the liquidation and stop chances use FHS on HAR-S, the pairing the final evaluation tested,
+and it is the fallback when the live feature rows are not available.
+
+HAR-S (HAR with hour-of-day and day-of-week effects, vol/har.py) beat plain HAR by 9.7% (1 h) and 19.3% (24 h)
+in QLIKE on real BTC data, walk-forward, 2024-01 to 2025-09.
 
 * Coefficients are fitted once per coin and horizon on the development period (up to
   config.HOLDOUT_START) by ``scripts/fit_live_har.py`` and shipped in
@@ -180,20 +183,34 @@ def hourly_candles(bars: pd.DataFrame, now: pd.Timestamp, hist: pd.DataFrame | N
     return out
 
 
-def stress_from_bars(bars: pd.DataFrame, symbol: str, stress_model, regime_model: dict, now: pd.Timestamp,
-                     fetch_inputs=None) -> dict | None:
-    """Stress gauge for the last complete hour: the live inputs go through the same feature
-    code as training (features/build.py), then the saved classifier (models/stress.py)."""
+def live_rows(bars: pd.DataFrame, symbol: str, now: pd.Timestamp,
+              fetch_inputs=None) -> tuple[pd.DataFrame, pd.DataFrame] | None:
+    """Hourly feature rows up to the last complete hour, built from live inputs by the training feature code
+    (features/build.py), and the latest DVOL; None until the last complete hour is there. They feed both the
+    stress gauge and the combination forecast."""
     from regimecast.features import build, live as flive
-    from regimecast.models import regimes, stress
 
     inp = (fetch_inputs or flive.fetch_inputs)(symbol, last=bars)
     h = build.hourly_features(inp)
     h = h[h["ts"] <= now.floor("1h")]
     if h.empty or h["ts"].iloc[-1] != now.floor("1h"):
         return None
-    reg = regimes.live_probabilities(regimes.regime_inputs(h).iloc[24:], regime_model)
     dv = flive.fetch_dvol(symbol) if fetch_inputs is None else pd.DataFrame()
+    return h, dv
+
+
+def stress_from_bars(bars: pd.DataFrame, symbol: str, stress_model, regime_model: dict, now: pd.Timestamp,
+                     fetch_inputs=None) -> dict | None:
+    """Stress gauge for the last complete hour: the live inputs go through the same feature
+    code as training (features/build.py), then the saved classifier (models/stress.py)."""
+    rows = live_rows(bars, symbol, now, fetch_inputs)
+    return stress_from_rows(*rows, stress_model, regime_model) if rows else None
+
+
+def stress_from_rows(h: pd.DataFrame, dv: pd.DataFrame, stress_model, regime_model: dict) -> dict:
+    from regimecast.models import regimes, stress
+
+    reg = regimes.live_probabilities(regimes.regime_inputs(h).iloc[24:], regime_model)
     t = pd.DataFrame({"ts": h["ts"], "y_1h": np.nan, "y_24h": np.nan})
     X, _ = stress.dataset(h, t, reg, dv if not dv.empty else None)
     booster, meta = stress_model
@@ -201,8 +218,8 @@ def stress_from_bars(bars: pd.DataFrame, symbol: str, stress_model, regime_model
 
 
 def market_state(h: pd.DataFrame, X: pd.DataFrame, booster, meta: dict) -> dict:
-    """The last hour's crowding and trend inputs for Phase 12 (crowd warning, similar moments), from the same
-    feature rows as the stress gauge, and the stress probability three hours earlier (stress rising)."""
+    """The last hour's funding, crowding and trend inputs for Phase 12 (funding cost, similar moments), from the
+    same feature rows as the stress gauge, and the stress probability three hours earlier (stress rising)."""
     num = lambda v: float(v) if pd.notna(v) else None                    # noqa: E731
     last = h.iloc[-1]
     before = X.index[-1] - pd.Timedelta(hours=3)
@@ -247,12 +264,14 @@ def fetch_bars(symbol: str, minutes: int = HISTORY_MINUTES, client=None) -> pd.D
 
 # ------------------------------------------------------------------ background cache
 class ForecastCache:
-    def __init__(self, symbols=None, fetch=fetch_bars, models=None):
+    def __init__(self, symbols=None, fetch=fetch_bars, models=None, combo_models=None):
         self.symbols = symbols or config.SYMBOLS
         self.fetch = fetch
         self.models = load_models() if models is None else models
+        self.combo_models = combo_models   # None -> loaded on first refresh (vol/combo_live/)
         self.regime_models = None   # loaded on first refresh (models/regimes_live.json)
-        self.data: dict[str, dict] = {}
+        self.data: dict[str, dict] = {}      # the combination: the forecast the app shows
+        self.har_s: dict[str, dict] = {}     # HAR-S: the liquidation model's volatility (FHS was fitted on it)
         self.regimes: dict[str, dict] = {}
         self.candles: dict[str, dict] = {}   # hourly candles + regime, for the dashboard chart
         self.stress: dict[str, dict] = {}
@@ -274,7 +293,7 @@ class ForecastCache:
         if symbol in self.models:
             fc = forecast_from_bars(bars, self.models[symbol], now)
             with self._lock:
-                self.data[symbol] = {k: {**v, "made_at": made} for k, v in fc.items()}
+                self.har_s[symbol] = {k: {**v, "made_at": made} for k, v in fc.items()}
         hist = None
         if symbol in self.regime_models:
             rg = regime_from_bars(bars, self.regime_models[symbol], now)
@@ -288,20 +307,26 @@ class ForecastCache:
         if self.stress_models is None:
             from regimecast.models import stress
             self.stress_models = {s: m for s in self.symbols if (m := stress.load_live(s)) is not None}
-        if symbol in self.stress_models and symbol in self.regime_models:
-            g = stress_from_bars(bars, symbol, self.stress_models[symbol], self.regime_models[symbol], now,
-                                 self.fetch_inputs)
-            if g:
-                state = g.pop("state")
-                if self.fetch_inputs is None:   # live only (tests inject fake inputs): the crowd rule's 14-day ranks
-                    try:
-                        from regimecast.verdict import crowd
-                        state.update(crowd.fetch_live_ranks(symbol))
-                    except Exception as e:   # no ranks: the verdict skips the crowd check
-                        log.warning("crowd ranks %s failed: %r", symbol, e)
-                with self._lock:
-                    self.stress[symbol] = {**g, "made_at": made}
-                    self.state[symbol] = {**state, "made_at": made}
+        if self.combo_models is None:
+            from regimecast.vol import combo_live
+            self.combo_models = {s: m for s in self.symbols if (m := combo_live.load(s)) is not None}
+        has_stress = symbol in self.stress_models and symbol in self.regime_models
+        if not (has_stress or symbol in self.combo_models):
+            return
+        rows = live_rows(bars, symbol, now, self.fetch_inputs)
+        if rows is None:
+            return
+        if symbol in self.combo_models:
+            from regimecast.vol import combo_live
+            fc = combo_live.forecasts(*rows, self.combo_models[symbol])
+            with self._lock:
+                self.data[symbol] = {k: {**v, "made_at": made} for k, v in fc.items()}
+        if has_stress:
+            g = stress_from_rows(*rows, self.stress_models[symbol], self.regime_models[symbol])
+            state = g.pop("state")
+            with self._lock:
+                self.stress[symbol] = {**g, "made_at": made}
+                self.state[symbol] = {**state, "made_at": made}
 
     def refresh_all(self) -> None:
         for s in self.symbols:
@@ -311,8 +336,16 @@ class ForecastCache:
                 log.warning("forecast refresh %s failed: %r", s, e)
 
     def get(self, symbol: str, horizon: int, max_age_s: float = 3 * 3600) -> dict | None:
+        """The forecast the app shows: the combination, or HAR-S while the combination has no fresh rows."""
+        return self._fresh(self.data, symbol, horizon, max_age_s) or self.get_har_s(symbol, horizon, max_age_s)
+
+    def get_har_s(self, symbol: str, horizon: int, max_age_s: float = 3 * 3600) -> dict | None:
+        """HAR-S alone: the volatility the liquidation model (FHS) was fitted and tested on."""
+        return self._fresh(self.har_s, symbol, horizon, max_age_s)
+
+    def _fresh(self, store: dict, symbol: str, horizon: int, max_age_s: float) -> dict | None:
         with self._lock:
-            fc = self.data.get(symbol, {}).get(f"{horizon}h")
+            fc = store.get(symbol, {}).get(f"{horizon}h")
         if not fc:
             return None
         age = (datetime.now(timezone.utc) - datetime.fromisoformat(fc["made_at"])).total_seconds()

@@ -11,6 +11,8 @@ already computes, in two parts:
    * costs: fees and funding over the horizon as a share of a typical move, at most 10%, 25%, 50%, or above.
 2. The market, each adding grade steps when its weight (fixed on the dev period) is 1: a stressed regime (1),
    stress elevated (1) or high (2), a crowd warning on the trade's side (1), bad timing (1). At most 2 steps.
+   Since Phase 13A the app passes no crowd warning (it failed the final evaluation), so the crowd step never
+   counts there; the frozen bands and the other steps are unchanged.
 
 Grade = A, B, C, D, F for setup score + market steps = 0, 1, 2, 3, 4 or more. The same ``scores`` and
 ``grade_index`` grade one live trade and the evaluation grid (evaluate.py), so the app and the pass bar

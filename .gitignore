@@ -9,6 +9,8 @@ data/reports/*
 # final evaluation results (small tables; per-hour predictions stay local)
 !data/reports/final_*.csv
 !data/reports/final_*.json
+# Phase 13A pass-mark evidence
+!data/reports/p13a_*
 __pycache__/
 *.pyc
 .venv/

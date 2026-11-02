@@ -15,8 +15,8 @@ is committed and pushed straight away, so the decision for hour H is on GitHub b
 it is about plays out; git history shows when each line was written.
 
 Inputs come from RegimeCast's own API on Railway (GitHub's servers are in the US, where Binance's
-futures API is blocked): /market (mark price, funding rate), /forecast (24 h volatility, HAR-S:
-the live app has no live combination yet), /stress and /regime. A coin whose inputs are missing
+futures API is blocked): /market (mark price, funding rate), /forecast (24 h volatility: since
+Phase 13A the HAR-S + LightGBM combination, the forecast the agent was tested with), /stress and /regime. A coin whose inputs are missing
 or more than 3 hours old keeps its position for that hour, and the log says so.
 Paper fills are at the mark price when the step runs, with the 0.05% taker fee. Funding at a
 settlement uses the last funding rate seen before it (Binance's estimate for that settlement).

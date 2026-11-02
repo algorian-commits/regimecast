@@ -69,9 +69,11 @@ against FHS's 0.49-0.65%), equal at 1 h, and mixed in the crash windows. So FHS 
 
 ## In the app now
 
-* Volatility: HAR-S on live Binance data (its out-of-sample calibration with FHS is as good as the combination's).
-* Liquidation probability, safe leverage and stop-hit probability: FHS fitted on 2021-2025 worst moves.
-* "What moves the volatility forecast": exact SHAP values of HAR-S, e.g. *volatility in the last week (-16%),
-  last day (-15%), day of week (+13%)*.
-* Next step for the app: the HAR-S + LightGBM combination needs live funding, open interest, basis and DVOL
-  inputs (parking list).
+* Volatility (since Phase 13A): the HAR-S + LightGBM combination, without the order book, one model per coin and
+  horizon fitted through 2026-09-30 (`regimecast/vol/combo_live.py`). Its inputs come from the stress gauge's live
+  data through the training feature code.
+* Liquidation probability, safe leverage and stop-hit probability: FHS on the **HAR-S** forecast, fitted on 2021-2025
+  worst moves. HAR-S keeps running for this: it is the pairing the final evaluation's bar was passed with.
+* "What moves the volatility forecast": one chart per part. Exact SHAP values of HAR-S, e.g. *volatility in the last
+  week (-16%), last day (-15%), day of week (+13%)*, and TreeSHAP values of LightGBM. Both read as "% more or less
+  volatility than a typical hour".
