@@ -79,7 +79,7 @@ export function ProbabilityBar({ p, limit }: { p: number; limit: number }) {
 }
 
 /**
- * What moves the volatility forecast (exact SHAP values of HAR-S): one diverging bar per input, from a zero line.
+ * What moves a volatility forecast (SHAP values of HAR-S or LightGBM): one diverging bar per input, from a zero line.
  * Warm = pushes the forecast (and so the risk) up, blue = pulls it down; the signed value is printed too, so the
  * meaning never rests on colour alone.
  */

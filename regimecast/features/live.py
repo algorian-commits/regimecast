@@ -25,8 +25,8 @@ def _ms(t) -> int:
     return int(pd.Timestamp(t).timestamp() * 1000)
 
 
-def _klines(client, path: str, params: dict, minutes: int) -> pd.DataFrame:
-    rows, end = [], None
+def _klines(client, path: str, params: dict, minutes: int, end: int | None = None) -> pd.DataFrame:
+    rows = []
     while len(rows) < minutes:
         p = {**params, "interval": "1m", "limit": 1500}
         if end is not None:
@@ -46,37 +46,56 @@ def _klines(client, path: str, params: dict, minutes: int) -> pd.DataFrame:
     return out.drop_duplicates("ts").sort_values("ts").reset_index(drop=True)
 
 
-def _stats(client, path: str, symbol: str, limit: int = 500) -> pd.DataFrame:
-    r = client.get(path, params={"symbol": symbol, "period": "5m", "limit": limit})
-    r.raise_for_status()
-    df = pd.DataFrame(r.json())
+def _stats(client, path: str, symbol: str, limit: int = 500, end: int | None = None, pages: int = 1) -> pd.DataFrame:
+    rows: list[dict] = []
+    for _ in range(pages):
+        params = {"symbol": symbol, "period": "5m", "limit": limit}
+        if end is not None:
+            params["endTime"] = end
+        r = client.get(path, params=params)
+        r.raise_for_status()
+        batch = r.json()
+        if not batch:
+            break
+        rows = batch + rows
+        end = int(batch[0]["timestamp"]) - 1
+    df = pd.DataFrame(rows)
     df["available_at"] = pd.to_datetime(df["timestamp"].astype("int64"), unit="ms", utc=True)
     return df
 
 
 def fetch_inputs(symbol: str, minutes: int = 31 * 24 * 60, detail_minutes: int = 180, client=None,
-                 last: pd.DataFrame | None = None) -> dict[str, pd.DataFrame]:
+                 last: pd.DataFrame | None = None, until: pd.Timestamp | None = None,
+                 stat_pages: int = 1) -> dict[str, pd.DataFrame]:
     """minutes of traded-price candles (for volatility history and stress thresholds);
-    detail_minutes of mark/index/premium candles (only the latest hours are needed)."""
+    detail_minutes of mark/index/premium candles (only the latest hours are needed).
+
+    ``until`` asks the same endpoints for what they say up to a past time, and ``stat_pages`` for more than the
+    latest 500 rows of the 5-minute statistics (kept about 30 days): the archive check (scripts/p13a_live_check.py)
+    needs both. The app uses neither."""
     import httpx
+
+    end = _ms(until) - 1 if until is not None else None
 
     own = client is None
     client = client or httpx.Client(base_url=config.BINANCE_FAPI_URL, timeout=15.0)
     try:
-        last = last if last is not None else _klines(client, "/fapi/v1/klines", {"symbol": symbol}, minutes)
+        last = last if last is not None else _klines(client, "/fapi/v1/klines", {"symbol": symbol}, minutes, end)
         bars = lambda df: df[["ts", "open", "high", "low", "close"]]  # noqa: E731
-        mark = bars(_klines(client, "/fapi/v1/markPriceKlines", {"symbol": symbol}, detail_minutes))
-        index = bars(_klines(client, "/fapi/v1/indexPriceKlines", {"pair": symbol}, detail_minutes))
-        premium = bars(_klines(client, "/fapi/v1/premiumIndexKlines", {"symbol": symbol}, detail_minutes))
-        fr = client.get("/fapi/v1/fundingRate", params={"symbol": symbol, "limit": 100})
+        mark = bars(_klines(client, "/fapi/v1/markPriceKlines", {"symbol": symbol}, detail_minutes, end))
+        index = bars(_klines(client, "/fapi/v1/indexPriceKlines", {"pair": symbol}, detail_minutes, end))
+        premium = bars(_klines(client, "/fapi/v1/premiumIndexKlines", {"symbol": symbol}, detail_minutes, end))
+        fr = client.get("/fapi/v1/fundingRate", params={"symbol": symbol, "limit": 100,
+                                                        **({"endTime": end + 1} if end is not None else {})})
         fr.raise_for_status()
         f = pd.DataFrame(fr.json())
         funding = pd.DataFrame({"ts": pd.to_datetime(f["fundingTime"].astype("int64"), unit="ms", utc=True),
                                 "funding_rate": f["fundingRate"].astype(float), "interval_hours": 8})
-        oi = _stats(client, "/futures/data/openInterestHist", symbol)
-        top = _stats(client, "/futures/data/topLongShortPositionRatio", symbol)
-        glob = _stats(client, "/futures/data/globalLongShortAccountRatio", symbol)
-        taker = _stats(client, "/futures/data/takerlongshortRatio", symbol)
+        stat_end = end + 1 if end is not None else None     # a row stamped exactly at ``until`` is known by then
+        oi = _stats(client, "/futures/data/openInterestHist", symbol, end=stat_end, pages=stat_pages)
+        top = _stats(client, "/futures/data/topLongShortPositionRatio", symbol, end=stat_end, pages=stat_pages)
+        glob = _stats(client, "/futures/data/globalLongShortAccountRatio", symbol, end=stat_end, pages=stat_pages)
+        taker = _stats(client, "/futures/data/takerlongshortRatio", symbol, end=stat_end, pages=stat_pages)
         taker["available_at"] += pd.Timedelta(minutes=5)   # this one is stamped at the period START
     finally:
         if own:
@@ -90,6 +109,8 @@ def fetch_inputs(symbol: str, minutes: int = 31 * 24 * 60, detail_minutes: int =
         m = m.merge(df[["available_at", src]].astype({src: float}).rename(columns={src: dst}),
                     on="available_at", how="outer")
     m = m.sort_values("available_at").reset_index(drop=True)
+    if until is not None:
+        m = m[m["available_at"] <= until].reset_index(drop=True)
     m["period_start"] = m["available_at"] - pd.Timedelta(minutes=5)
     m["ts"] = m["period_start"]
     return {"last": last, "mark": mark, "index": index, "premium": premium, "funding": funding,
