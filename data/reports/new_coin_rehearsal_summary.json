@@ -1,0 +1,64 @@
+{
+  "windows": {
+    "BTCUSDT": {
+      "first_hour": "2020-01-01 01:00:00+00:00",
+      "warmup_end": "2020-07-01 01:00:00+00:00",
+      "scored_from": "2022-01-01",
+      "scored_to_exclusive": "2026-10-01"
+    },
+    "ETHUSDT": {
+      "first_hour": "2020-01-01 01:00:00+00:00",
+      "warmup_end": "2020-07-01 01:00:00+00:00",
+      "scored_from": "2022-01-01",
+      "scored_to_exclusive": "2026-10-01"
+    },
+    "SOLUSDT": {
+      "first_hour": "2020-09-14 08:00:00+00:00",
+      "warmup_end": "2021-03-14 08:00:00+00:00",
+      "scored_from": "2022-04-01",
+      "scored_to_exclusive": "2026-10-01"
+    }
+  },
+  "crash_mode": "crash_cut10_replace_nofloor",
+  "bars": {
+    "volatility": {
+      "lower": 6,
+      "significant": 6,
+      "of": 6,
+      "need_lower": 5,
+      "need_significant": 3,
+      "pass": true
+    },
+    "liquidation": {
+      "ece_lower": 6,
+      "brier_lower": 6,
+      "ece_within_limit": 6,
+      "of": 6,
+      "need_ece_lower": 6,
+      "need_brier_lower": 5,
+      "need_within": 5,
+      "pass": true
+    },
+    "stress": {
+      "auc_ok": 3,
+      "ap_above": 3,
+      "of": 3,
+      "need": 3,
+      "pass": true
+    },
+    "regimes": {
+      "ordered": 3,
+      "of": 3,
+      "need": 3,
+      "pass": true
+    },
+    "crash_mode": {
+      "gap_smaller": 3,
+      "ece_ok": 3,
+      "of": 3,
+      "need_gap_smaller": 3,
+      "need_ece_ok": 3,
+      "pass": true
+    }
+  }
+}
