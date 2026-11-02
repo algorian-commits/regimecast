@@ -76,12 +76,13 @@ def features_symbol(symbol: str) -> dict:
 
 
 @app.function(**common, cpu=1, memory=1024, timeout=12 * 3600)
-def run_all(symbols: list[str] = COINS) -> dict:
+def run_all(coins: str = ",".join(COINS)) -> dict:
     """Archive, then features, per coin. Writes reports/new_coins_status.json when done."""
     import json
 
     from regimecast import config
 
+    symbols = coins.split(",")
     arch = [o if isinstance(o, dict) else {"error": repr(o)} for o in archive_symbol.map(symbols, return_exceptions=True)]
     feats = [o if isinstance(o, dict) else {"error": repr(o)} for o in features_symbol.map(symbols, return_exceptions=True)]
     status = {"finished": datetime.now(timezone.utc).isoformat(), "symbols": symbols, "archive": arch, "features": feats}
