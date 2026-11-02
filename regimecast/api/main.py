@@ -13,6 +13,7 @@ import json
 import math
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from enum import IntEnum
 from typing import Literal
 
 from fastapi import FastAPI, Query
@@ -50,6 +51,13 @@ inbox.install(app)      # Phase 11: alert inbox (inbox.py)
 whales.install(app)     # Phase 11: Whale Watch events (whales.py)
 
 Symbol = Literal["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+
+class Horizon(IntEnum):
+    """Forecast horizon in hours (a query parameter: FastAPI reads it as text, which Literal[1, 24] always refuses)."""
+    one_hour = 1
+    one_day = 24
+
 
 # Used only if no forecast is available (e.g. the first minutes after a restart). Flagged in responses.
 PLACEHOLDER_ANNUAL_VOL = {"BTCUSDT": 0.55, "ETHUSDT": 0.70, "SOLUSDT": 0.90}
@@ -297,13 +305,13 @@ def risk_check(t: TradeIn) -> RiskOut:
 
 
 @app.get("/forecast", responses={503: {"model": NotReady}})
-def forecast(symbol: Symbol = "BTCUSDT", horizon_hours: Literal[1, 24] = 24):
+def forecast(symbol: Symbol = "BTCUSDT", horizon_hours: Horizon = Horizon.one_day):
     """Volatility forecast over the next 1 or 24 hours: the HAR-S + LightGBM combination on live Binance data,
     with what moves each part (drivers, drivers_gbm)."""
-    fc = _forecast(symbol, horizon_hours)
+    fc = _forecast(symbol, int(horizon_hours))
     if not fc:
         return not_ready("no volatility forecast yet (the API refreshes every 10 minutes)")
-    return {"symbol": symbol, "horizon_hours": horizon_hours, **fc}
+    return {"symbol": symbol, "horizon_hours": int(horizon_hours), **fc}
 
 
 @app.get("/stress", responses={503: {"model": NotReady}})

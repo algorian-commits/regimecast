@@ -161,6 +161,11 @@ def test_risk_check_shows_the_combination_and_keeps_fhs_on_har_s(cache, monkeypa
     c = TestClient(main.app)
     f = c.get("/forecast", params={"symbol": "BTCUSDT"}).json()
     assert f["model"].startswith("HAR-S + LightGBM") and f["drivers_gbm"]
+    for H in (1, 24):       # both horizons, asked for by name in the query
+        got = c.get("/forecast", params={"symbol": "BTCUSDT", "horizon_hours": H})
+        assert got.status_code == 200 and got.json()["horizon_hours"] == H
+        assert got.json()["variance"] == pytest.approx(cache.get("BTCUSDT", H)["variance"])
+    assert c.get("/forecast", params={"horizon_hours": 6}).status_code == 422
     r = c.post("/risk-check", json={"symbol": "BTCUSDT", "side": "long", "entry": 80000, "leverage": 50,
                                     "margin": 100, "horizon_hours": 24}).json()
     assert r["sigma_horizon_pct"] == pytest.approx(f["sigma_pct"], abs=1e-3)
