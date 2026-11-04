@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/", label: "Overview" },
   { href: "/risk-check", label: "Risk Check" },
   { href: "/agent", label: "Agent" },
+  { href: "/track-record", label: "Track Record" },
   { href: "/replay", label: "Replay" },
   { href: "/whales", label: "Whale Watch" },
   { href: "/data-health", label: "Data Health" },
