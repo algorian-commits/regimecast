@@ -22,9 +22,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from regimecast import config
-from regimecast.api import accounts, agent, inbox, live_ws, market, parser, replay, whales
+from regimecast.api import accounts, agent, inbox, live_ws, market, parser, replay, track, whales
 from regimecast.api import verdict as verdict_api
 from regimecast.alerts.engine import engine as alert_engine
+from regimecast.track.engine import recorder as track_recorder
 from regimecast.whales.live import watch as whale_watch
 from regimecast.risk import fhs_live
 from regimecast.risk import liquidation as liq
@@ -36,6 +37,7 @@ async def lifespan(app):
     vol_live.cache.start()   # volatility forecasts refresh in the background (vol/live.py)
     alert_engine.start()     # Phase 11: alert rules checked once a minute (alerts/engine.py)
     whale_watch.start()      # Phase 11: Whale Watch on Hyperliquid's public data (whales/live.py)
+    track_recorder.start()   # Track Record: forecasts logged live, scored after their window (track/engine.py)
     yield
 
 
@@ -49,6 +51,7 @@ app.include_router(agent.router)  # Phase 9: GET /agent, the paper-trading risk 
 replay.install(app)     # Phase 11: crash replay (replay.py)
 inbox.install(app)      # Phase 11: alert inbox (inbox.py)
 whales.install(app)     # Phase 11: Whale Watch events (whales.py)
+track.install(app)      # Track Record: GET /track-record, /track-record/summary (track.py)
 
 Symbol = Literal["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 
@@ -355,15 +358,6 @@ def news_mood(symbol: Symbol = "BTCUSDT", hours: int = Query(168, ge=1, le=24 * 
     if not data:
         return not_ready("news mood not built yet: python -m regimecast.sentiment.pipeline collect")
     return data
-
-
-@app.get("/track-record")
-def track_record(symbol: Symbol = "BTCUSDT", limit: int = Query(500, ge=1, le=5000)):
-    f = config.DATA_DIR / "track_record" / f"{symbol}.jsonl"
-    if not f.exists():
-        return {"symbol": symbol, "records": []}
-    lines = f.read_text().strip().splitlines()[-limit:]
-    return {"symbol": symbol, "records": [json.loads(x) for x in lines]}
 
 
 @app.get("/data-health/{symbol}", responses={503: {"model": NotReady}})

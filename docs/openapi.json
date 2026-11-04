@@ -1091,6 +1091,115 @@
         }
       }
     },
+    "/track-record": {
+      "get": {
+        "tags": [
+          "track record"
+        ],
+        "summary": "Track Record",
+        "description": "Forecasts as logged live, before their outcome was known, with the scores added once each window closed.",
+        "operationId": "track_record_track_record_get",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "BTCUSDT",
+                "ETHUSDT",
+                "SOLUSDT"
+              ],
+              "type": "string",
+              "default": "BTCUSDT",
+              "title": "Symbol"
+            }
+          },
+          {
+            "name": "horizon_hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "1",
+                    "24"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Horizon Hours"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 1,
+              "default": 500,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackRecordOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No database"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/track-record/summary": {
+      "get": {
+        "tags": [
+          "track record"
+        ],
+        "summary": "Track Record Summary",
+        "description": "Live scores per coin and horizon, each with its sample size, and the missing hours. Kept for 30 seconds.",
+        "operationId": "track_record_summary_track_record_summary_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackSummaryOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No database"
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -1425,61 +1534,6 @@
               }
             },
             "description": "Service Unavailable"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/track-record": {
-      "get": {
-        "summary": "Track Record",
-        "operationId": "track_record_track_record_get",
-        "parameters": [
-          {
-            "name": "symbol",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "enum": [
-                "BTCUSDT",
-                "ETHUSDT",
-                "SOLUSDT"
-              ],
-              "type": "string",
-              "default": "BTCUSDT",
-              "title": "Symbol"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 5000,
-              "minimum": 1,
-              "default": 500,
-              "title": "Limit"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
           },
           "422": {
             "description": "Validation Error",
@@ -2339,6 +2393,58 @@
           "reasons"
         ],
         "title": "CoinDecision"
+      },
+      "Comparison": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N",
+            "description": "Scored rows both errors are averaged over"
+          },
+          "forecast": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast"
+          },
+          "rival": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rival"
+          },
+          "vs_rival_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vs Rival Pct",
+            "description": "Forecast's error versus the rival's, in %. Negative: forecast better"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "forecast",
+          "rival",
+          "vs_rival_pct"
+        ],
+        "title": "Comparison",
+        "description": "Two mean errors on exactly the same rows."
       },
       "CurvePoint": {
         "properties": {
@@ -3804,6 +3910,126 @@
         ],
         "title": "RiskOut"
       },
+      "SeriesSummary": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "horizon_hours": {
+            "type": "integer",
+            "title": "Horizon Hours"
+          },
+          "hours_expected": {
+            "type": "integer",
+            "title": "Hours Expected",
+            "description": "Hours since logging began, up to the last one whose deadline has passed"
+          },
+          "rows_logged": {
+            "type": "integer",
+            "title": "Rows Logged"
+          },
+          "hours_missing": {
+            "type": "integer",
+            "title": "Hours Missing"
+          },
+          "missing_recent": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Recent",
+            "description": "Latest missing hours, newest first (at most 48)"
+          },
+          "rows_pending": {
+            "type": "integer",
+            "title": "Rows Pending"
+          },
+          "rows_scored": {
+            "type": "integer",
+            "title": "Rows Scored"
+          },
+          "rows_no_data": {
+            "type": "integer",
+            "title": "Rows No Data"
+          },
+          "separate_windows": {
+            "type": "integer",
+            "title": "Separate Windows",
+            "description": "Scored rows divided by the horizon: 24 h windows logged hourly overlap"
+          },
+          "small_sample": {
+            "type": "boolean",
+            "title": "Small Sample",
+            "description": "True until 720 rows (30 days) are scored for this coin and horizon"
+          },
+          "n_qlike": {
+            "type": "integer",
+            "title": "N Qlike",
+            "description": "Scored rows with a QLIKE for the forecast"
+          },
+          "qlike_forecast": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qlike Forecast"
+          },
+          "vs_benchmark": {
+            "$ref": "#/components/schemas/Comparison"
+          },
+          "vs_har_s": {
+            "$ref": "#/components/schemas/Comparison"
+          },
+          "stress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StressScore"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 h only: the stress chance is for the next hour"
+          },
+          "latest_regime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Regime"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "horizon_hours",
+          "hours_expected",
+          "rows_logged",
+          "hours_missing",
+          "missing_recent",
+          "rows_pending",
+          "rows_scored",
+          "rows_no_data",
+          "separate_windows",
+          "small_sample",
+          "n_qlike",
+          "qlike_forecast",
+          "vs_benchmark",
+          "vs_har_s",
+          "stress",
+          "latest_regime"
+        ],
+        "title": "SeriesSummary"
+      },
       "SimilarOut": {
         "properties": {
           "n": {
@@ -3873,6 +4099,422 @@
           "loss_at_stop_usdt"
         ],
         "title": "StopInfo"
+      },
+      "StressScore": {
+        "properties": {
+          "n": {
+            "type": "integer",
+            "title": "N",
+            "description": "Scored hours with a stress chance and a label"
+          },
+          "events": {
+            "type": "integer",
+            "title": "Events",
+            "description": "Hours among them that held a stress event"
+          },
+          "mean_p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean P",
+            "description": "Average chance the model gave"
+          },
+          "actual_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Rate",
+            "description": "Share of hours that held a stress event"
+          },
+          "brier": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier",
+            "description": "Average squared gap between the chance given and what happened (lower is better)"
+          },
+          "brier_base_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brier Base Rate",
+            "description": "The same score for always saying the usual rate"
+          },
+          "small_sample": {
+            "type": "boolean",
+            "title": "Small Sample"
+          }
+        },
+        "type": "object",
+        "required": [
+          "n",
+          "events",
+          "mean_p",
+          "actual_rate",
+          "brier",
+          "brier_base_rate",
+          "small_sample"
+        ],
+        "title": "StressScore"
+      },
+      "TrackRecordOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "horizon_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon Hours"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/TrackRow"
+            },
+            "type": "array",
+            "title": "Records",
+            "description": "Newest first"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "horizon_hours",
+          "records"
+        ],
+        "title": "TrackRecordOut"
+      },
+      "TrackRow": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "horizon_hours": {
+            "type": "integer",
+            "title": "Horizon Hours"
+          },
+          "origin": {
+            "type": "string",
+            "title": "Origin",
+            "description": "Hour the forecast is for: its inputs end here and its window starts here (UTC)"
+          },
+          "window_end": {
+            "type": "string",
+            "title": "Window End",
+            "description": "When the outcome window ends (UTC)"
+          },
+          "logged_at": {
+            "type": "string",
+            "title": "Logged At",
+            "description": "When this row was written, always before window_end"
+          },
+          "made_at": {
+            "type": "string",
+            "title": "Made At",
+            "description": "When the model cache produced the forecast"
+          },
+          "forecast_variance": {
+            "type": "number",
+            "title": "Forecast Variance",
+            "description": "The forecast the app showed, as variance of the log return"
+          },
+          "forecast_model": {
+            "type": "string",
+            "title": "Forecast Model"
+          },
+          "har_s_variance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Har S Variance"
+          },
+          "har_s_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Har S Model"
+          },
+          "benchmark_variance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Variance",
+            "description": "Realised variance of the window just before this one"
+          },
+          "p_stress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Stress",
+            "description": "Chance of a stress event in the hour after origin"
+          },
+          "stress_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress Level"
+          },
+          "regime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regime"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "scored",
+              "no_data"
+            ],
+            "title": "Status",
+            "description": "pending: the window has not closed or not been scored yet; no_data: too few prices to score it"
+          },
+          "scored_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scored At"
+          },
+          "realised_variance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Realised Variance",
+            "description": "What happened, by the same definition as the models' target"
+          },
+          "qlike_forecast": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qlike Forecast"
+          },
+          "qlike_har_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qlike Har S"
+          },
+          "qlike_benchmark": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qlike Benchmark"
+          },
+          "stress_event": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress Event",
+            "description": "1 h rows: did the hour hold a stress event?"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol",
+          "horizon_hours",
+          "origin",
+          "window_end",
+          "logged_at",
+          "made_at",
+          "forecast_variance",
+          "forecast_model",
+          "har_s_variance",
+          "har_s_model",
+          "benchmark_variance",
+          "p_stress",
+          "stress_level",
+          "regime",
+          "status",
+          "scored_at",
+          "realised_variance",
+          "qlike_forecast",
+          "qlike_har_s",
+          "qlike_benchmark",
+          "stress_event"
+        ],
+        "title": "TrackRow"
+      },
+      "TrackRules": {
+        "properties": {
+          "log_deadline_minutes": {
+            "type": "integer",
+            "title": "Log Deadline Minutes"
+          },
+          "settle_minutes": {
+            "type": "integer",
+            "title": "Settle Minutes"
+          },
+          "small_sample_rows": {
+            "type": "integer",
+            "title": "Small Sample Rows"
+          },
+          "small_sample_events": {
+            "type": "integer",
+            "title": "Small Sample Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "log_deadline_minutes",
+          "settle_minutes",
+          "small_sample_rows",
+          "small_sample_events"
+        ],
+        "title": "TrackRules"
+      },
+      "TrackSummaryOut": {
+        "properties": {
+          "logging_started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logging Started At",
+            "description": "When the first live row was written; null until then"
+          },
+          "last_logged_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Logged At"
+          },
+          "logger_running": {
+            "type": "boolean",
+            "title": "Logger Running"
+          },
+          "rows_logged": {
+            "type": "integer",
+            "title": "Rows Logged"
+          },
+          "rows_scored": {
+            "type": "integer",
+            "title": "Rows Scored"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/TrackRules"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesSummary"
+            },
+            "type": "array",
+            "title": "Series"
+          }
+        },
+        "type": "object",
+        "required": [
+          "logging_started_at",
+          "last_logged_at",
+          "logger_running",
+          "rows_logged",
+          "rows_scored",
+          "generated_at",
+          "rules",
+          "series"
+        ],
+        "title": "TrackSummaryOut"
       },
       "TradeIn": {
         "properties": {
