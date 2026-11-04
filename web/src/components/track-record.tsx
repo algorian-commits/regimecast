@@ -128,7 +128,7 @@ function PairChart({
             labelFormatter={(l) => utc(String(l))}
             formatter={(v, name) => [typeof v === "number" ? `${v.toFixed(digits + 1)}${unit}` : "–", name]}
           />
-          <Legend wrapperStyle={{ fontSize: 12, color: "var(--muted)" }} iconType="plainline" />
+          <Legend wrapperStyle={{ fontSize: 12 }} iconType="plainline" formatter={(v) => <span style={{ color: "var(--muted)" }}>{v}</span>} />
           <Line name={a.name} dataKey={a.key} stroke={a.color} strokeWidth={2} dot={few ? { r: 3, strokeWidth: 0, fill: a.color } : false} connectNulls={false} isAnimationActive={false} />
           <Line name={b.name} dataKey={b.key} stroke={b.color} strokeWidth={2} strokeDasharray={b.dashed ? "6 4" : undefined} dot={few ? { r: 3, strokeWidth: 0, fill: b.color } : false} connectNulls={false} isAnimationActive={false} />
         </LineChart>
@@ -337,7 +337,7 @@ function Explain() {
 
 function Selected({ symbol, horizon, summary }: { symbol: Symbol; horizon: Horizon; summary: Summary }) {
   const [rec, reload] = useLoad(
-    () => load(() => api.GET("/track-record", { params: { query: { symbol, horizon_hours: horizon, limit: 1000 } } })),
+    () => load(() => api.GET("/track-record", { params: { query: { symbol, horizon_hours: horizon, limit: 720 } } })),
     `${symbol}|${horizon}`,
     120_000,
   );
