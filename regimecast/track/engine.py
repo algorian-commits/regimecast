@@ -174,7 +174,8 @@ def _insert_new(conn: sa.Connection, table: sa.Table, row: dict, key: list[str])
         from sqlalchemy.dialects.postgresql import insert
     else:
         from sqlalchemy.dialects.sqlite import insert
-    return conn.execute(insert(table).values(**row).on_conflict_do_nothing(index_elements=key)).rowcount
+    stmt = insert(table).values(**row).on_conflict_do_nothing(index_elements=key).returning(table.c[key[0]])
+    return len(conn.execute(stmt).fetchall())   # rowcount is not reliable here: psycopg answers -1
 
 
 # ------------------------------------------------------------------ logger
