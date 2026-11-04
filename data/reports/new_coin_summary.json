@@ -1,0 +1,77 @@
+{
+  "commit": "809246afc9412fb45c319a63610c9f89e80b0dc2",
+  "windows": {
+    "XRPUSDT": {
+      "first_hour": "2020-01-06 09:00:00+00:00",
+      "warmup_end": "2020-07-06 09:00:00+00:00",
+      "scored_from": "2022-01-01",
+      "scored_to_exclusive": "2026-10-01"
+    },
+    "DOGEUSDT": {
+      "first_hour": "2020-07-10 10:00:00+00:00",
+      "warmup_end": "2021-01-10 10:00:00+00:00",
+      "scored_from": "2022-02-01",
+      "scored_to_exclusive": "2026-10-01"
+    },
+    "BNBUSDT": {
+      "first_hour": "2020-02-10 09:00:00+00:00",
+      "warmup_end": "2020-08-10 09:00:00+00:00",
+      "scored_from": "2022-01-01",
+      "scored_to_exclusive": "2026-10-01"
+    },
+    "ADAUSDT": {
+      "first_hour": "2020-01-31 09:00:00+00:00",
+      "warmup_end": "2020-07-31 09:00:00+00:00",
+      "scored_from": "2022-01-01",
+      "scored_to_exclusive": "2026-10-01"
+    },
+    "AVAXUSDT": {
+      "first_hour": "2020-09-23 08:00:00+00:00",
+      "warmup_end": "2021-03-23 08:00:00+00:00",
+      "scored_from": "2022-04-01",
+      "scored_to_exclusive": "2026-10-01"
+    }
+  },
+  "crash_mode": "crash_cut10_replace_nofloor",
+  "bars": {
+    "volatility": {
+      "lower": 8,
+      "significant": 6,
+      "of": 10,
+      "need_lower": 8,
+      "need_significant": 5,
+      "pass": true
+    },
+    "liquidation": {
+      "ece_lower": 10,
+      "brier_lower": 10,
+      "ece_within_limit": 10,
+      "of": 10,
+      "need_ece_lower": 9,
+      "need_brier_lower": 8,
+      "need_within": 8,
+      "pass": true
+    },
+    "stress": {
+      "auc_ok": 5,
+      "ap_above": 5,
+      "of": 5,
+      "need": 4,
+      "pass": true
+    },
+    "regimes": {
+      "ordered": 5,
+      "of": 5,
+      "need": 4,
+      "pass": true
+    },
+    "crash_mode": {
+      "gap_smaller": 5,
+      "ece_ok": 5,
+      "of": 5,
+      "need_gap_smaller": 4,
+      "need_ece_ok": 5,
+      "pass": true
+    }
+  }
+}
