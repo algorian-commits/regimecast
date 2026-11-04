@@ -40,7 +40,7 @@ export function Nav() {
   };
   return (
     <header className="sticky top-0 z-10 border-b border-border bg-surface/90 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-2">
+      <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-2 xl:max-w-7xl">
         <Link href="/" className="mr-4 flex items-center gap-2 font-semibold">
           {/* Calm line breaking into a new regime; same mark as app/icon.svg, in theme colours. */}
           <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden>
@@ -49,11 +49,11 @@ export function Nav() {
           </svg>
           RegimeCast
         </Link>
-        <nav className="hidden flex-1 gap-1 lg:flex">{LINKS.map(link)}</nav>
+        <nav className="hidden flex-1 gap-1 xl:flex">{LINKS.map(link)}</nav>
         <div className="ml-auto flex items-center gap-1">
           {session.state === "in" && <InboxBell />}
           {session.state === "in" ? (
-            <Link href="/account" aria-current={path.startsWith("/account") ? "page" : undefined} className="hidden rounded-md px-3 py-2 text-sm font-medium text-muted hover:text-text lg:inline-block" title={session.me.email}>
+            <Link href="/account" aria-current={path.startsWith("/account") ? "page" : undefined} className="hidden rounded-md px-3 py-2 text-sm font-medium text-muted hover:text-text xl:inline-block" title={session.me.email}>
               Account
             </Link>
           ) : session.state === "out" ? (
@@ -63,7 +63,7 @@ export function Nav() {
           ) : null}
           <ThemeToggle />
           <button
-            className="rounded-md px-3 py-2 text-sm lg:hidden"
+            className="rounded-md px-3 py-2 text-sm xl:hidden"
             aria-label="Menu"
             aria-expanded={open}
             onClick={() => setOpen(!open)}
@@ -72,7 +72,7 @@ export function Nav() {
           </button>
         </div>
       </div>
-      {open && <nav className="flex flex-col gap-1 border-t border-border px-4 py-2 lg:hidden">{[...LINKS, ...(session.state === "in" ? [{ href: "/account", label: "Account" }] : [])].map(link)}</nav>}
+      {open && <nav className="flex flex-col gap-1 border-t border-border px-4 py-2 xl:hidden">{[...LINKS, ...(session.state === "in" ? [{ href: "/account", label: "Account" }] : [])].map(link)}</nav>}
     </header>
   );
 }

@@ -258,6 +258,23 @@ python scripts/run_phase12.py              :: choose, check, freeze -> data/repo
 python scripts/run_phase12.py --dry-run out :: the same steps on made-up data into .\out (real files untouched)
 ```
 
+## Track Record (live forecasts, scored afterwards)
+
+Every hour the API writes down what it forecasts for BTC, ETH and SOL at 1 h and 24 h, before the outcome is known, and
+scores each one once its window has closed. The page is `/track-record`. Plain-English overview:
+`docs/TRACK_RECORD_WALKTHROUGH.md`.
+
+| Part | File | What it does |
+|---|---|---|
+| Logger and scorer | `regimecast/track/engine.py` | Two background threads in the API. The logger writes one row per coin, horizon and hour, within 30 minutes of the hour and only if the forecast's inputs end exactly at that hour. The scorer adds the outcome in a separate row, 7 minutes after the window closes. |
+| Tables | `regimecast/db/schema.py`, migration `0003_track` | `track_forecasts` and `track_scores`. Insert-only: triggers refuse UPDATE and DELETE, and the database refuses a row logged after its window's end. |
+| API | `regimecast/api/track.py` | `GET /track-record` (rows, newest first) and `GET /track-record/summary` (scores with sample sizes, missing hours; kept 30 s). 503 `not_ready` without a database. |
+| Page | `web/src/components/track-record.tsx`, `web/src/lib/track.ts` | Forecast against outcome, error against the benchmark, latest rows, missing hours, every metric in plain words. |
+
+Scored with the evaluation's own code: realised variance from `realized.build_targets`, QLIKE from `evaluate.qlike`, the
+stress label from `build.minute_features` with its 30-day lookback. The benchmark is the last window's realised variance.
+No backfilling and no backtest numbers: a missed hour stays missing. `TRACK_RECORD=0` switches the threads off.
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.

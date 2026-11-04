@@ -65,7 +65,7 @@ function ScoreTable({ series, symbol, horizon, onPick }: { series: Series[]; sym
               return (
                 <tr key={`${x.symbol}${x.horizon_hours}`} className={`border-b border-border/60 last:border-0 ${on ? "bg-surface-2" : ""}`}>
                   <td className="py-2 pr-3">
-                    <button className="font-medium text-accent hover:underline" onClick={() => onPick(x.symbol as Symbol, String(x.horizon_hours) as Horizon)} aria-pressed={on}>
+                    <button className="whitespace-nowrap font-medium text-accent hover:underline" onClick={() => onPick(x.symbol as Symbol, String(x.horizon_hours) as Horizon)} aria-pressed={on}>
                       {coin(x.symbol)} {x.horizon_hours} h
                     </button>
                   </td>
@@ -154,10 +154,10 @@ function Charts({ rows, s, summary }: { rows: TrackRow[]; s: Series; summary: Su
               a={{ key: "forecast", name: "Forecast", color: FORECAST }}
               b={{ key: "realised", name: "What happened", color: REALISED }}
               unit="%"
-              digits={1}
+              digits={2}
             />
             <p className="mt-2 text-xs text-muted">
-              Size of the price move over {s.horizon_hours} h (volatility, in %), for the window starting at each hour. Gaps are hours with nothing logged or not yet closed. {s.rows_logged} forecasts logged,{" "}
+              Size of the price move over {s.horizon_hours} h (volatility, in %), for the window starting at each hour. Gaps are hours with nothing logged or not yet closed. {s.rows_logged} {s.rows_logged === 1 ? "forecast" : "forecasts"} logged,{" "}
               {s.rows_scored} with an outcome. {s.rows_scored === 0 ? firstScore : ""}
             </p>
           </>
@@ -381,7 +381,7 @@ export function TrackRecord() {
                 The record starts empty on purpose. Nothing is filled in from before logging began, and past test results are kept out of it.
               </NotReady>
             )}
-            {s.rows_logged > 0 && s.rows_scored < s.rules.small_sample_rows && (
+            {s.rows_logged > 0 && s.series.some((x) => x.small_sample) && (
               <NotReady title={`Early days: ${span(Math.ceil(s.rows_logged / 6))} of live forecasts so far`}>
                 Every score below is a small sample. Read them as a start, not a result.
               </NotReady>
