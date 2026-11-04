@@ -62,6 +62,15 @@ rows could also be committed to Git, as the paper agent's log is (parking list i
 - **Waiting / no data / missing:** waiting means not scored yet. No data means too few prices in the window to score it
   (no number is made up, after 6 hours it is marked this way). Missing means no forecast was logged that hour.
 
+## How we know the scoring matches the evaluation
+
+Checked once on 4 Nov 2026, on real Binance candles fetched the way the scorer fetches them, against the training
+archive (`data/`, which ends in late October). This is a check of the scorer and adds nothing to the live record.
+
+- **Realised variance:** 18 windows (3 coins, 2 horizons, 3 start times). The largest gap was 0.00000000000009%, which is
+  rounding.
+- **Stress label:** 18 of 18 hours agree, including 12 hours that really held a stress event.
+
 ## What is and isn't scored
 
 | Item | Scored? | How |
