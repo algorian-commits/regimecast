@@ -372,6 +372,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/track-record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Track Record
+         * @description Forecasts as logged live, before their outcome was known, with the scores added once each window closed.
+         */
+        get: operations["track_record_track_record_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/track-record/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Track Record Summary
+         * @description Live scores per coin and horizon, each with its sample size, and the missing hours. Kept for 30 seconds.
+         */
+        get: operations["track_record_summary_track_record_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -499,23 +539,6 @@ export interface paths {
          * @description Hourly news mood (M3), oldest hour first, ending at the last complete hour.
          */
         get: operations["news_mood_news_mood_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/track-record": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Track Record */
-        get: operations["track_record_track_record_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -860,6 +883,26 @@ export interface components {
             traded: number;
             /** Reasons */
             reasons: string[];
+        };
+        /**
+         * Comparison
+         * @description Two mean errors on exactly the same rows.
+         */
+        Comparison: {
+            /**
+             * N
+             * @description Scored rows both errors are averaged over
+             */
+            n: number;
+            /** Forecast */
+            forecast: number | null;
+            /** Rival */
+            rival: number | null;
+            /**
+             * Vs Rival Pct
+             * @description Forecast's error versus the rival's, in %. Negative: forecast better
+             */
+            vs_rival_pct: number | null;
         };
         /** CurvePoint */
         CurvePoint: {
@@ -1447,6 +1490,56 @@ export interface components {
              */
             what_if: components["schemas"]["WhatIfOut"][];
         };
+        /** SeriesSummary */
+        SeriesSummary: {
+            /** Symbol */
+            symbol: string;
+            /** Horizon Hours */
+            horizon_hours: number;
+            /**
+             * Hours Expected
+             * @description Hours since logging began, up to the last one whose deadline has passed
+             */
+            hours_expected: number;
+            /** Rows Logged */
+            rows_logged: number;
+            /** Hours Missing */
+            hours_missing: number;
+            /**
+             * Missing Recent
+             * @description Latest missing hours, newest first (at most 48)
+             */
+            missing_recent: string[];
+            /** Rows Pending */
+            rows_pending: number;
+            /** Rows Scored */
+            rows_scored: number;
+            /** Rows No Data */
+            rows_no_data: number;
+            /**
+             * Separate Windows
+             * @description Scored rows divided by the horizon: 24 h windows logged hourly overlap
+             */
+            separate_windows: number;
+            /**
+             * Small Sample
+             * @description True until 720 rows (30 days) are scored for this coin and horizon
+             */
+            small_sample: boolean;
+            /**
+             * N Qlike
+             * @description Scored rows with a QLIKE for the forecast
+             */
+            n_qlike: number;
+            /** Qlike Forecast */
+            qlike_forecast: number | null;
+            vs_benchmark: components["schemas"]["Comparison"];
+            vs_har_s: components["schemas"]["Comparison"];
+            /** @description 1 h only: the stress chance is for the next hour */
+            stress: components["schemas"]["StressScore"] | null;
+            /** Latest Regime */
+            latest_regime: string | null;
+        };
         /** SimilarOut */
         SimilarOut: {
             /**
@@ -1484,6 +1577,161 @@ export interface components {
             p_stop_hit: number;
             /** Loss At Stop Usdt */
             loss_at_stop_usdt: number;
+        };
+        /** StressScore */
+        StressScore: {
+            /**
+             * N
+             * @description Scored hours with a stress chance and a label
+             */
+            n: number;
+            /**
+             * Events
+             * @description Hours among them that held a stress event
+             */
+            events: number;
+            /**
+             * Mean P
+             * @description Average chance the model gave
+             */
+            mean_p: number | null;
+            /**
+             * Actual Rate
+             * @description Share of hours that held a stress event
+             */
+            actual_rate: number | null;
+            /**
+             * Brier
+             * @description Average squared gap between the chance given and what happened (lower is better)
+             */
+            brier: number | null;
+            /**
+             * Brier Base Rate
+             * @description The same score for always saying the usual rate
+             */
+            brier_base_rate: number | null;
+            /** Small Sample */
+            small_sample: boolean;
+        };
+        /** TrackRecordOut */
+        TrackRecordOut: {
+            /** Symbol */
+            symbol: string;
+            /** Horizon Hours */
+            horizon_hours: number | null;
+            /**
+             * Records
+             * @description Newest first
+             */
+            records: components["schemas"]["TrackRow"][];
+        };
+        /** TrackRow */
+        TrackRow: {
+            /** Symbol */
+            symbol: string;
+            /** Horizon Hours */
+            horizon_hours: number;
+            /**
+             * Origin
+             * @description Hour the forecast is for: its inputs end here and its window starts here (UTC)
+             */
+            origin: string;
+            /**
+             * Window End
+             * @description When the outcome window ends (UTC)
+             */
+            window_end: string;
+            /**
+             * Logged At
+             * @description When this row was written, always before window_end
+             */
+            logged_at: string;
+            /**
+             * Made At
+             * @description When the model cache produced the forecast
+             */
+            made_at: string;
+            /**
+             * Forecast Variance
+             * @description The forecast the app showed, as variance of the log return
+             */
+            forecast_variance: number;
+            /** Forecast Model */
+            forecast_model: string;
+            /** Har S Variance */
+            har_s_variance: number | null;
+            /** Har S Model */
+            har_s_model: string | null;
+            /**
+             * Benchmark Variance
+             * @description Realised variance of the window just before this one
+             */
+            benchmark_variance: number | null;
+            /**
+             * P Stress
+             * @description Chance of a stress event in the hour after origin
+             */
+            p_stress: number | null;
+            /** Stress Level */
+            stress_level: string | null;
+            /** Regime */
+            regime: string | null;
+            /**
+             * Status
+             * @description pending: the window has not closed or not been scored yet; no_data: too few prices to score it
+             * @enum {string}
+             */
+            status: "pending" | "scored" | "no_data";
+            /** Scored At */
+            scored_at: string | null;
+            /**
+             * Realised Variance
+             * @description What happened, by the same definition as the models' target
+             */
+            realised_variance: number | null;
+            /** Qlike Forecast */
+            qlike_forecast: number | null;
+            /** Qlike Har S */
+            qlike_har_s: number | null;
+            /** Qlike Benchmark */
+            qlike_benchmark: number | null;
+            /**
+             * Stress Event
+             * @description 1 h rows: did the hour hold a stress event?
+             */
+            stress_event: boolean | null;
+        };
+        /** TrackRules */
+        TrackRules: {
+            /** Log Deadline Minutes */
+            log_deadline_minutes: number;
+            /** Settle Minutes */
+            settle_minutes: number;
+            /** Small Sample Rows */
+            small_sample_rows: number;
+            /** Small Sample Events */
+            small_sample_events: number;
+        };
+        /** TrackSummaryOut */
+        TrackSummaryOut: {
+            /**
+             * Logging Started At
+             * @description When the first live row was written; null until then
+             */
+            logging_started_at: string | null;
+            /** Last Logged At */
+            last_logged_at: string | null;
+            /** Logger Running */
+            logger_running: boolean;
+            /** Rows Logged */
+            rows_logged: number;
+            /** Rows Scored */
+            rows_scored: number;
+            /** Generated At */
+            generated_at: string;
+            rules: components["schemas"]["TrackRules"];
+            /** Series */
+            series: components["schemas"]["SeriesSummary"][];
         };
         /** TradeIn */
         TradeIn: {
@@ -2596,6 +2844,73 @@ export interface operations {
             };
         };
     };
+    track_record_track_record_get: {
+        parameters: {
+            query?: {
+                symbol?: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
+                horizon_hours?: ("1" | "24") | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackRecordOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description No database */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    track_record_summary_track_record_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackSummaryOut"];
+                };
+            };
+            /** @description No database */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     health_health_get: {
         parameters: {
             query?: never;
@@ -2847,38 +3162,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotReady"];
-                };
-            };
-        };
-    };
-    track_record_track_record_get: {
-        parameters: {
-            query?: {
-                symbol?: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
