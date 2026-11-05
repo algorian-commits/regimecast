@@ -164,7 +164,8 @@ python scripts/m8_parser_eval.py                                         :: accu
 ```
 
 For the live site, add the same key as the `ANTHROPIC_API_KEY` variable on the Railway `api` service. Until the key
-is set, the parser runs on the rule reader (the key is skipped for now; see the open items in `docs/PLAN.md`).
+is set, the parser runs on the rule reader. Accuracy (6 Nov 2026): the app's prompt is at least 99.4% correct on every
+field; the rule reader gets all fields right on 76% of messages.
 
 ## Live dashboard and accounts (Modules M5, M6)
 

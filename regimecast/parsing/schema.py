@@ -49,8 +49,8 @@ def json_schema() -> dict:
     Schema; number limits are checked afterwards by ParsedTrade, and a failure triggers a retry."""
     num = {"type": ["number", "null"]}
 
-    def enum(*vals):
-        return {"type": ["string", "null"], "enum": [*vals, None]}
+    def enum(*vals):   # anyOf, not type ["string", "null"]: the API rejects an enum next to a type list
+        return {"anyOf": [{"type": "string", "enum": list(vals)}, {"type": "null"}]}
 
     props = {
         "intent": {"type": "string", "enum": ["trade", "advice", "off_topic"]},

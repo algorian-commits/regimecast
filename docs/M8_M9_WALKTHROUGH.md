@@ -90,8 +90,9 @@ fields, or go to the confirm step). 95% intervals in `data/reports/m8_parser_acc
 Target from the proposal: 95% per field. The rule reader misses it on entry and margin: it cannot tell a price from
 a margin when they sit next to each other without "at" ("at 190 margin 150", "81k pe, 200$ margin").
 
-**Claude columns:** waiting for the API key. Then `python scripts/m8_parser_eval.py` runs both prompts once
-(about $0.15) and fills this table; answers are saved so reruns are free.
+**Claude columns (6 Nov 2026):** all fields right on 93.0% of messages with v1 and 99.5% with v2; every single field
+is at least 96.0% (v1) and 99.4% (v2). Full table and 95% intervals: `data/reports/m8_parser_accuracy.csv`; details in
+`docs/FINAL_EVALUATION.md`, section 8. Cost $0.08 for both prompts.
 
 The two prompts: **v1** is what a first attempt would be (one paragraph: the fields, null when not stated, "58k =
 58000"). **v2** adds the written labelling rules field by field and six worked examples that are not in the test

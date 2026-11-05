@@ -21,7 +21,7 @@ development: it refits every 90 days, on past data only.
 | Paper agent | **PASS** | In a falling year it lost 13% where holding lost 36%; worst drop -39% against -65%. |
 | Trade verdict (Phase 12) | **FAIL** | The Trade Grade itself passed strongly; the crowd warning and the "similar moments" up/down odds did not. |
 | App | speed **PASS**; click-through **pending** | 50 of 50 live risk checks answered in under 2 s; Saeed's one-time click-through is still to do. |
-| Trade parser (Claude) | **not run** | Waits for the Anthropic API key. |
+| Trade parser (Claude) | **PASS** | Run 6 Nov 2026: the app's prompt is at least 99.4% correct on every field (bar: 95%). |
 
 By the verdict Saeed set ("good" if the model parts, the paper agent, the trade verdict and the app all pass), the
 project is **good in its core, with one honest failure**. The forecasting models and the agent passed on a year they
@@ -198,11 +198,11 @@ are.
 The one-time check on the live URL is Saeed's: sign up, set balance and limit, type a trade, confirm, see it saved,
 see the dashboard update, log out. It is still to do, because Claude does not create accounts on the live site.
 
-### 8. Trade parser: not run
+### 8. Trade parser: PASS
 
-The 95% field-accuracy bar for the Claude parser is still to do. It needs the Anthropic API key
-(`scripts/set_anthropic_key.ps1`, then `python scripts/m8_parser_eval.py`). The rule reader, the fallback the live
-site uses now, scored 76% all-fields-right in development.
+Run on 6 Nov 2026 (`scripts/m8_parser_eval.py --fresh`, `data/reports/m8_parser_*`). The app's prompt (v2): every field at least 99.4% correct on the 176 trade messages (lowest 95% interval: 96.9%, on the coin), all fields right on 199 of 200 messages. The one miss: "Is buying SOL at 150 a good idea?" was read as a request for advice, where the labels say trade. Prompt v1 also cleared 95% on every field (lowest: stop-loss, 96.0%); the rule reader scored 76% all fields right. Cost: $0.08 for both prompts, about $0.0002 and 1.1 s per parse. Labels come from two blind AI passes, not humans.
+
+The first run failed on every call before any cost: the structured-output schema put an enum beside a type list (`["string", "null"]`), which the API rejects. Fixed in `regimecast/parsing/schema.py` (anyOf), with a test; the prompts and the scoring are unchanged.
 
 ## After the final test
 

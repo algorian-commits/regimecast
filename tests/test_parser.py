@@ -101,6 +101,8 @@ def test_schema_matches_model():
     s = json_schema()
     assert list(s["properties"]) == FIELDS == list(ParsedTrade.model_fields)
     assert s["required"] == FIELDS and s["additionalProperties"] is False
+    # the API rejects an enum beside a type list ("Enum value 'BTC' does not match declared type"), 6 Nov 2026
+    assert not [f for f, p in s["properties"].items() if "enum" in p and isinstance(p.get("type"), list)]
 
 
 # ------------------------------------------------------------------ follow-up, guardrails, warnings
