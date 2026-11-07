@@ -24,6 +24,9 @@ from pydantic import BaseModel, Field, model_validator
 from regimecast import config
 from regimecast.api import accounts, agent, inbox, live_ws, market, parser, replay, track, whales
 from regimecast.api import verdict as verdict_api
+from regimecast.api import guardian as guardian_api
+from regimecast.guardian.loop import guardian as position_guardian
+from regimecast.notify.linking import poller as telegram_poller
 from regimecast.alerts.engine import engine as alert_engine
 from regimecast.track.engine import recorder as track_recorder
 from regimecast.whales.live import watch as whale_watch
@@ -38,6 +41,8 @@ async def lifespan(app):
     alert_engine.start()     # Phase 11: alert rules checked once a minute (alerts/engine.py)
     whale_watch.start()      # Phase 11: Whale Watch on Hyperliquid's public data (whales/live.py)
     track_recorder.start()   # Track Record: forecasts logged live, scored after their window (track/engine.py)
+    position_guardian.start()  # 13C: open positions checked once a minute, Telegram delivery (guardian/loop.py)
+    telegram_poller.start()  # 13C: the Telegram bot's replies to /start <code> and /unlink (notify/linking.py)
     yield
 
 
@@ -52,6 +57,7 @@ replay.install(app)     # Phase 11: crash replay (replay.py)
 inbox.install(app)      # Phase 11: alert inbox (inbox.py)
 whales.install(app)     # Phase 11: Whale Watch events (whales.py)
 track.install(app)      # Track Record: GET /track-record, /track-record/summary (track.py)
+guardian_api.install(app)  # 13C: Position Guardian and Telegram, /me/guardian, /me/telegram (guardian.py)
 
 Symbol = Literal["BTCUSDT", "ETHUSDT", "SOLUSDT"]
 
