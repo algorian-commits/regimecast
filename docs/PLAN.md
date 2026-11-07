@@ -646,11 +646,9 @@ The scorecards and the liquidation map are descriptive (no bar). They show their
 ## Open questions
 
 1. **Criteria 1 and 4:** do you want to ask Mr. Awais to word them as "we test and report either way", or leave them as they are?
-2. **Anthropic API key (skipped for now, not forgotten).** The Phase 7 parser runs on the rule reader until it is set.
-   Needed: (a) on the PC, `powershell -ExecutionPolicy Bypass -File scripts\set_anthropic_key.ps1` (hidden input,
-   never pasted in chat or written to the repo); (b) `python scripts/m8_parser_eval.py` for the accuracy table
-   (about $0.15); (c) the same key as the `ANTHROPIC_API_KEY` variable on the Railway `api` service, so the live
-   site uses Claude. The final evaluation's parser bar waits for it.
+2. **Anthropic API key: done (7 Nov).** Set on the PC and as `ANTHROPIC_API_KEY` on the Railway `api`; the live site
+   reads trades with Claude Haiku 5.5 (prompt v2). Accuracy on the 200-message set, rerun 7 Nov: all fields right
+   99.5% (v2) vs 93.0% (v1) and 76.0% (rule reader); about $0.00025 and 1.1 s per parse. Parser bar (95% per field): passed.
 
 ## Decision log
 

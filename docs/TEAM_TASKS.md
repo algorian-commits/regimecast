@@ -29,5 +29,5 @@ This split is a suggestion; change it if you agree on another one.
 ## Open items
 
 - Ask Mr. Awais whether success criteria 1 and 4 may be worded as "we test and report either way".
-- Anthropic API key for the trade parser. It's skipped for now; steps are in `docs/PLAN.md` open questions.
+- Anthropic API key: done 7 Nov. The live trade reader uses Claude (99.5% of test messages fully right).
   Never paste keys in chat or commit them.
