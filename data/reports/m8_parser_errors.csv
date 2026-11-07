@@ -62,3 +62,27 @@ rules,190,margin_usdt,500.0,,long SOL 10x from 178 with 0.5k margin
 rules,192,notional_usdt,2000.0,,"long ether 6x, 2,000 dollar position, from 2,530"
 rules,196,notional_usdt,700.0,,short solana 7x at 186.2 with 700 usdt worth
 rules,196,margin_usdt,,700.0,short solana 7x at 186.2 with 700 usdt worth
+v1,17,stop,167.825,,"sol 8x long @ 171.25, 120 usdt collateral, stop 2% below entry"
+v1,24,stop,210.0,,"Short SOL 10x at 200, 500 usdt margin, stop-loss 5% above"
+v1,41,leverage,1.0,,long btc no leverage 0.2 btc at 80k
+v1,50,stop,79834.25,,btc long 10x 0.15 btc entry 81.05k sl 1.5% below
+v1,54,notional_usdt,4000.0,,"yaar bitcoin short 15x 82500 pe, position 4000 dollars"
+v1,54,margin_usdt,,4000.0,"yaar bitcoin short 15x 82500 pe, position 4000 dollars"
+v1,64,stop,78585.0,,"Long BTC 3x with $1.5k at 80,600, stop 2.5% below"
+v1,94,asset,,BTC,long at 81k 10x
+v1,107,intent,trade,advice,Is buying SOL at 150 a good idea?
+v1,107,asset,SOL,,Is buying SOL at 150 a good idea?
+v1,107,side,long,,Is buying SOL at 150 a good idea?
+v1,107,entry,150.0,,Is buying SOL at 150 a good idea?
+v1,142,notional_usdt,,47850.0,"Long BTC 6x @ 79,750 with 0.6 BTC. SL: 4% below."
+v1,148,notional_usdt,,41250.0,short 0.5 btc at 82.5k 2x isolated stop 84k
+v1,148,margin_usdt,,20625.0,short 0.5 btc at 82.5k 2x isolated stop 84k
+v1,155,entry,2400.0,3000.0,eth long 5x 2400 entry 3k position
+v1,155,notional_usdt,3000.0,2400.0,eth long 5x 2400 entry 3k position
+v1,169,stop,163.78,,"Long SOL with 2,500 USDT at 5x from 172.4, stop 5% below"
+v1,193,stop,158.595,,"SOL long 9x @ 163.5 using 225 usdt, SL 3% below"
+v1,200,stop,80018.12,,"long btc 22x from 80,990 using 0.05 btc, stop 1.2% below"
+v2,107,intent,trade,advice,Is buying SOL at 150 a good idea?
+v2,107,asset,SOL,,Is buying SOL at 150 a good idea?
+v2,107,side,long,,Is buying SOL at 150 a good idea?
+v2,107,entry,150.0,,Is buying SOL at 150 a good idea?

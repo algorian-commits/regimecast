@@ -13,6 +13,7 @@ import json
 import math
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from enum import IntEnum
 from typing import Literal
 
 from fastapi import FastAPI, Query
@@ -21,9 +22,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
 from regimecast import config
-from regimecast.api import accounts, agent, inbox, live_ws, market, parser, replay, whales
+from regimecast.api import accounts, agent, inbox, live_ws, market, parser, replay, track, whales
 from regimecast.api import verdict as verdict_api
 from regimecast.alerts.engine import engine as alert_engine
+from regimecast.track.engine import recorder as track_recorder
 from regimecast.whales.live import watch as whale_watch
 from regimecast.risk import fhs_live
 from regimecast.risk import liquidation as liq
@@ -32,9 +34,10 @@ from regimecast.vol import live as vol_live
 
 @asynccontextmanager
 async def lifespan(app):
-    vol_live.cache.start()   # HAR-S forecasts refresh in the background (vol/live.py)
+    vol_live.cache.start()   # volatility forecasts refresh in the background (vol/live.py)
     alert_engine.start()     # Phase 11: alert rules checked once a minute (alerts/engine.py)
     whale_watch.start()      # Phase 11: Whale Watch on Hyperliquid's public data (whales/live.py)
+    track_recorder.start()   # Track Record: forecasts logged live, scored after their window (track/engine.py)
     yield
 
 
@@ -48,8 +51,16 @@ app.include_router(agent.router)  # Phase 9: GET /agent, the paper-trading risk 
 replay.install(app)     # Phase 11: crash replay (replay.py)
 inbox.install(app)      # Phase 11: alert inbox (inbox.py)
 whales.install(app)     # Phase 11: Whale Watch events (whales.py)
+track.install(app)      # Track Record: GET /track-record, /track-record/summary (track.py)
 
 Symbol = Literal["BTCUSDT", "ETHUSDT", "SOLUSDT"]
+
+
+class Horizon(IntEnum):
+    """Forecast horizon in hours (a query parameter: FastAPI reads it as text, which Literal[1, 24] always refuses)."""
+    one_hour = 1
+    one_day = 24
+
 
 # Used only if no forecast is available (e.g. the first minutes after a restart). Flagged in responses.
 PLACEHOLDER_ANNUAL_VOL = {"BTCUSDT": 0.55, "ETHUSDT": 0.70, "SOLUSDT": 0.90}
@@ -107,21 +118,25 @@ class RiskOut(BaseModel):
     horizon_hours: int
     p_liquidation: float
     model: str
-    sigma_horizon_pct: float
+    sigma_horizon_pct: float = Field(description="Volatility forecast over the horizon (std of the log return, %): "
+                                                 "the HAR-S + LightGBM combination")
     volatility_source: str
+    liquidation_sigma_pct: float = Field(description="Volatility the liquidation and stop chances use (%): HAR-S, the "
+                                                     "forecast FHS was fitted and tested on in the final evaluation")
     max_safe_leverage: float
     max_position_usdt: float
     fees_round_trip_usdt: float
     maintenance_margin_rate: float
     stop: StopInfo | None = None
     regime: str | None = None
-    drivers: list[Driver] = Field([], description="What moves the volatility forecast (exact SHAP values of HAR-S)")
+    drivers: list[Driver] = Field([], description="What moves the HAR-S part of the forecast (exact SHAP values)")
+    drivers_gbm: list[Driver] = Field([], description="What moves the LightGBM part of the forecast (TreeSHAP values)")
     stress_level: str | None = Field(None, description="Market stress in the next hour: low, elevated or high")
     p_stress_next_hour: float | None = None
     explanation: list[str]
     warnings: list[str]
     generated_at: str
-    verdict: verdict_api.VerdictOut | None = Field(None, description="Phase 12: Trade Grade A-F, reasons, crowd, similar moments, timing")
+    verdict: verdict_api.VerdictOut | None = Field(None, description="Phase 12: Trade Grade A-F, reasons, similar moments' range, timing")
     fix: verdict_api.FixOut | None = Field(None, description="Phase 12: the closest safer version of the same trade")
     what_if: list[verdict_api.WhatIfOut] = Field([], description="Phase 12: dollars on a normal, bad and crash day")
 
@@ -143,7 +158,8 @@ def _latest_forecasts() -> dict:
 
 
 def _forecast(symbol: str, horizon: int) -> dict | None:
-    """A published model forecast (data/forecasts/latest.json, Phase 5) wins; else live HAR-S."""
+    """A published model forecast (data/forecasts/latest.json) wins; else the live combination (HAR-S + LightGBM),
+    or live HAR-S while the combination has no fresh inputs."""
     fc = _latest_forecasts().get(symbol, {}).get(f"{horizon}h")
     if fc and fc.get("variance"):
         return {"inputs_until": fc.get("made_at", "?"), **fc}
@@ -159,17 +175,17 @@ def _hit_model(symbol: str, side: str, horizon: int, source: str):
     FHS (Phase 5's best calibrated model) when the volatility comes from live HAR-S, the
     pairing it was fitted on; otherwise the random-walk baseline."""
     entry = FHS.get(symbol, {}).get(f"{horizon}h")
-    if entry and source.startswith("HAR-S"):
+    if entry and source.startswith("HAR-S ("):
         return (lambda d, sigma: fhs_live.survival(entry[side], d, sigma)), "fhs_har_s"
     return liq.first_passage_prob, "first_passage_baseline"
 
 
-def _drivers_line(drivers: list[dict]) -> str:
+def _drivers_line(drivers: list[dict], part: str = "") -> str:
     top = [d for d in drivers if abs(d["effect_pct"]) >= 3][:3]
     if not top:
         return ""
     parts = [f"{d['name']} ({'+' if d['effect_pct'] > 0 else ''}{d['effect_pct']:.0f}%)" for d in top]
-    return "What moves the volatility forecast vs a typical hour: " + ", ".join(parts) + "."
+    return f"What moves the volatility forecast{part} vs a typical hour: " + ", ".join(parts) + "."
 
 
 def _regime_line(rg: dict | None) -> str:
@@ -189,6 +205,15 @@ def _sigma(symbol: str, horizon: int, override: float | None) -> tuple[float, st
         return math.sqrt(fc["variance"]), f"{fc['model']}, data to {fc['inputs_until'][:16].replace('T', ' ')} UTC"
     a = PLACEHOLDER_ANNUAL_VOL[symbol]
     return a * math.sqrt(horizon / config.HOURS_PER_YEAR), "PLACEHOLDER: no forecast available right now"
+
+
+def _risk_sigma(symbol: str, horizon: int, override: float | None) -> tuple[float, str]:
+    """Volatility for the liquidation and stop chances: live HAR-S, the forecast FHS was fitted on and the final
+    evaluation tested it with (as were the Trade Grade's bands); else the shown forecast, with the random walk."""
+    fc = None if override else vol_live.cache.get_har_s(symbol, horizon)
+    if fc:
+        return math.sqrt(fc["variance"]), f"{fc['model']}, data to {fc['inputs_until'][:16].replace('T', ' ')} UTC"
+    return _sigma(symbol, horizon, override)
 
 
 # ------------------------------------------------------------------ routes
@@ -214,13 +239,14 @@ def risk_check(t: TradeIn) -> RiskOut:
     if t.leverage > tier.max_leverage:
         warnings.append(f"Binance allows at most {tier.max_leverage}x for this position size.")
 
-    sigma_h, source = _sigma(t.symbol, t.horizon_hours, t.sigma_annual)
+    shown_h, source = _sigma(t.symbol, t.horizon_hours, t.sigma_annual)
+    sigma_h, risk_source = _risk_sigma(t.symbol, t.horizon_hours, t.sigma_annual)
     if source.startswith("PLACEHOLDER"):
         warnings.append("No volatility forecast is available right now, so a fixed placeholder is used.")
 
     lp = liq.liquidation_price(pos)
     dist = liq.adverse_log_distance(pos, lp)
-    hit_prob, model_name = _hit_model(t.symbol, t.side, t.horizon_hours, source)
+    hit_prob, model_name = _hit_model(t.symbol, t.side, t.horizon_hours, risk_source)
     p = hit_prob(dist, sigma_h)
 
     def prob_fn(p_: liq.Position) -> float:
@@ -247,29 +273,34 @@ def risk_check(t: TradeIn) -> RiskOut:
     if st and st["level"] != "low":
         warnings.append(f"Stress risk is {st['level']}: {100 * st['p_stress_next_hour']:.0f}% chance of a market stress "
                         f"event in the next hour (normally {100 * st['base_rate']:.0f}%).")
-    fc_drivers = (_forecast(t.symbol, t.horizon_hours) or {}).get("drivers", []) if source.startswith("HAR-S") else []
+    fc = (_forecast(t.symbol, t.horizon_hours) or {}) if source.startswith("HAR-S") else {}
+    fc_drivers, gbm_drivers = fc.get("drivers", []), fc.get("drivers_gbm", [])
     expl = [
         f"Liquidation is triggered by the mark price at about {lp:,.2f} USDT." if finite
         else "This position cannot be liquidated at this margin.",
         f"That is a {move_pct:.2f}% adverse move from your entry." if finite else "",
-        f"Expected volatility over {t.horizon_hours}h is about {100 * sigma_h:.2f}% ({source}).",
+        f"Expected volatility over {t.horizon_hours}h is about {100 * shown_h:.2f}% ({source}).",
+        f"The liquidation and stop chances use FHS on the HAR-S forecast ({100 * sigma_h:.2f}%), the pairing the "
+        f"final evaluation tested." if risk_source != source and model_name == "fhs_har_s" else "",
         f"Highest leverage keeping P(liquidation) under {100 * t.risk_limit:.1f}% is {safe_lev}x.",
         _regime_line(rg),
-        _drivers_line(fc_drivers),
+        _drivers_line(fc_drivers, " (HAR-S part)" if gbm_drivers else ""),
+        _drivers_line(gbm_drivers, " (LightGBM part)"),
         f"Stress risk for the next hour: {st['level']} ({100 * st['p_stress_next_hour']:.0f}%, normally "
         f"{100 * st['base_rate']:.0f}%)." if st else "",
     ]
-    sigma_24h = sigma_h if t.horizon_hours == 24 else _sigma(t.symbol, 24, t.sigma_annual)[0]
+    sigma_24h = sigma_h if t.horizon_hours == 24 else _risk_sigma(t.symbol, 24, t.sigma_annual)[0]
     v, fix, what_if = verdict_api.assess(t, pos, sigma_h, sigma_24h, hit_prob, rg, st, vol_live.cache.get_state(t.symbol))
     return RiskOut(
         symbol=t.symbol, side=t.side, notional_usdt=round(pos.notional, 2), margin_usdt=round(margin, 2),
         liquidation_price=round(lp, 2) if finite else None,
         liquidation_distance_pct=round(move_pct, 3) if finite else None,
         horizon_hours=t.horizon_hours, p_liquidation=round(p, 5), model=model_name,
-        sigma_horizon_pct=round(100 * sigma_h, 3), volatility_source=source,
+        sigma_horizon_pct=round(100 * shown_h, 3), volatility_source=source,
+        liquidation_sigma_pct=round(100 * sigma_h, 3),
         max_safe_leverage=safe_lev, max_position_usdt=round(safe_lev * pos.initial_margin, 2),
         fees_round_trip_usdt=round(liq.fees_round_trip(pos), 4), maintenance_margin_rate=tier.mmr,
-        stop=stop_info, regime=rg["regime"] if rg else None, drivers=fc_drivers,
+        stop=stop_info, regime=rg["regime"] if rg else None, drivers=fc_drivers, drivers_gbm=gbm_drivers,
         stress_level=st["level"] if st else None, p_stress_next_hour=round(st["p_stress_next_hour"], 4) if st else None,
         explanation=[e for e in expl if e], warnings=warnings,
         generated_at=datetime.now(timezone.utc).isoformat(), verdict=v, fix=fix, what_if=what_if,
@@ -277,12 +308,13 @@ def risk_check(t: TradeIn) -> RiskOut:
 
 
 @app.get("/forecast", responses={503: {"model": NotReady}})
-def forecast(symbol: Symbol = "BTCUSDT", horizon_hours: Literal[1, 24] = 24):
-    """Volatility forecast over the next 1 or 24 hours (HAR-S on live Binance data until Phase 5)."""
-    fc = _forecast(symbol, horizon_hours)
+def forecast(symbol: Symbol = "BTCUSDT", horizon_hours: Horizon = Horizon.one_day):
+    """Volatility forecast over the next 1 or 24 hours: the HAR-S + LightGBM combination on live Binance data,
+    with what moves each part (drivers, drivers_gbm)."""
+    fc = _forecast(symbol, int(horizon_hours))
     if not fc:
         return not_ready("no volatility forecast yet (the API refreshes every 10 minutes)")
-    return {"symbol": symbol, "horizon_hours": horizon_hours, **fc}
+    return {"symbol": symbol, "horizon_hours": int(horizon_hours), **fc}
 
 
 @app.get("/stress", responses={503: {"model": NotReady}})
@@ -326,15 +358,6 @@ def news_mood(symbol: Symbol = "BTCUSDT", hours: int = Query(168, ge=1, le=24 * 
     if not data:
         return not_ready("news mood not built yet: python -m regimecast.sentiment.pipeline collect")
     return data
-
-
-@app.get("/track-record")
-def track_record(symbol: Symbol = "BTCUSDT", limit: int = Query(500, ge=1, le=5000)):
-    f = config.DATA_DIR / "track_record" / f"{symbol}.jsonl"
-    if not f.exists():
-        return {"symbol": symbol, "records": []}
-    lines = f.read_text().strip().splitlines()[-limit:]
-    return {"symbol": symbol, "records": [json.loads(x) for x in lines]}
 
 
 @app.get("/data-health/{symbol}", responses={503: {"model": NotReady}})

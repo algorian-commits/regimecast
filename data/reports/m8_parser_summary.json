@@ -14,6 +14,28 @@
       "cost_per_parse_usd": 0.0,
       "median_seconds": 0.0,
       "p95_seconds": 0.0
+    },
+    "v1": {
+      "cases": 200,
+      "failed": 0,
+      "retried": 0,
+      "input_tokens": 207454,
+      "output_tokens": 21750,
+      "cost_usd": 0.0316,
+      "cost_per_parse_usd": 0.000158,
+      "median_seconds": 1.155,
+      "p95_seconds": 2.143
+    },
+    "v2": {
+      "cases": 200,
+      "failed": 0,
+      "retried": 0,
+      "input_tokens": 398654,
+      "output_tokens": 19371,
+      "cost_usd": 0.0496,
+      "cost_per_parse_usd": 0.000248,
+      "median_seconds": 1.133,
+      "p95_seconds": 1.779
     }
   }
 }

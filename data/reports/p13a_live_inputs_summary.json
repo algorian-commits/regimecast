@@ -1,0 +1,35 @@
+{
+ "run_at": "2026-11-02T02:00:59.381186+00:00",
+ "hours": 48,
+ "tolerance": 1e-06,
+ "window_end": {
+  "BTCUSDT": "2026-10-25 00:00:00+00:00",
+  "ETHUSDT": "2026-10-25 00:00:00+00:00",
+  "SOLUSDT": "2026-10-25 00:00:00+00:00"
+ },
+ "inputs_checked": 138,
+ "inputs_within_tol": 120,
+ "inputs_explained": 18,
+ "unexplained": [],
+ "app_windows_unexplained": [],
+ "explanations": {
+  "ls_top": {
+   "largest_rel_diff": 3.388107741818294e-05,
+   "limit": 0.0001,
+   "why": "Binance's API rounds this ratio to 4 decimals; the archive keeps more (largest gap 0.00005)."
+  },
+  "ls_accounts": {
+   "largest_rel_diff": 0.0002770713922234638,
+   "limit": 0.0005,
+   "why": "The API's ratio is its long share / short share, each already rounded to 4 decimals (checked: 0.7444 / 0.2556 = 2.9124); the archive divides the unrounded shares."
+  },
+  "taker_ls": {
+   "largest_rel_diff": 0.0011465132491022144,
+   "limit": 0.002,
+   "why": "Same 5-minute row (checked by hand), but Binance's API and archive differ by about 0.1%, beyond rounding. Their volume figures differ slightly; nothing on our side can remove it."
+  }
+ },
+ "largest_forecast_rel_diff_variance": 0.00568783420347696,
+ "largest_forecast_gap_sigma_pct_points": 0.0039207060079002876,
+ "passes": true
+}

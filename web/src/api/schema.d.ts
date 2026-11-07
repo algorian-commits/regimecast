@@ -372,6 +372,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/track-record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Track Record
+         * @description Forecasts as logged live, before their outcome was known, with the scores added once each window closed.
+         */
+        get: operations["track_record_track_record_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/track-record/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Track Record Summary
+         * @description Live scores per coin and horizon, each with its sample size, and the missing hours. Kept for 30 seconds.
+         */
+        get: operations["track_record_summary_track_record_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -435,7 +475,8 @@ export interface paths {
         };
         /**
          * Forecast
-         * @description Volatility forecast over the next 1 or 24 hours (HAR-S on live Binance data until Phase 5).
+         * @description Volatility forecast over the next 1 or 24 hours: the HAR-S + LightGBM combination on live Binance data,
+         *     with what moves each part (drivers, drivers_gbm).
          */
         get: operations["forecast_forecast_get"];
         put?: never;
@@ -498,23 +539,6 @@ export interface paths {
          * @description Hourly news mood (M3), oldest hour first, ending at the last complete hour.
          */
         get: operations["news_mood_news_mood_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/track-record": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Track Record */
-        get: operations["track_record_track_record_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -860,36 +884,25 @@ export interface components {
             /** Reasons */
             reasons: string[];
         };
-        /** CrowdOut */
-        CrowdOut: {
-            /** Warning */
-            warning: boolean;
+        /**
+         * Comparison
+         * @description Two mean errors on exactly the same rows.
+         */
+        Comparison: {
             /**
-             * Side
-             * @description Where the crowd is piled in, when warning
+             * N
+             * @description Scored rows both errors are averaged over
              */
-            side?: ("long" | "short") | null;
-            /** Message */
-            message: string;
-            /** Funding Rate */
-            funding_rate: number | null;
+            n: number;
+            /** Forecast */
+            forecast: number | null;
+            /** Rival */
+            rival: number | null;
             /**
-             * Ls Top
-             * @description Top traders' long/short position ratio
+             * Vs Rival Pct
+             * @description Forecast's error versus the rival's, in %. Negative: forecast better
              */
-            ls_top?: number | null;
-            /**
-             * Oi Chg 24H
-             * @description Open-interest growth over 24 h (log)
-             */
-            oi_chg_24h?: number | null;
-            /**
-             * P After Warning
-             * @description Dev period: share of warnings followed by a 5% move against the crowd within 24 h
-             */
-            p_after_warning?: number | null;
-            /** P Other */
-            p_other?: number | null;
+            vs_rival_pct: number | null;
         };
         /** CurvePoint */
         CurvePoint: {
@@ -984,6 +997,12 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * Horizon
+         * @description Forecast horizon in hours (a query parameter: FastAPI reads it as text, which Literal[1, 24] always refuses).
+         * @enum {integer}
+         */
+        Horizon: 1 | 24;
         /** InboxItem */
         InboxItem: {
             /** Id */
@@ -1412,10 +1431,18 @@ export interface components {
             p_liquidation: number;
             /** Model */
             model: string;
-            /** Sigma Horizon Pct */
+            /**
+             * Sigma Horizon Pct
+             * @description Volatility forecast over the horizon (std of the log return, %): the HAR-S + LightGBM combination
+             */
             sigma_horizon_pct: number;
             /** Volatility Source */
             volatility_source: string;
+            /**
+             * Liquidation Sigma Pct
+             * @description Volatility the liquidation and stop chances use (%): HAR-S, the forecast FHS was fitted and tested on in the final evaluation
+             */
+            liquidation_sigma_pct: number;
             /** Max Safe Leverage */
             max_safe_leverage: number;
             /** Max Position Usdt */
@@ -1429,10 +1456,16 @@ export interface components {
             regime?: string | null;
             /**
              * Drivers
-             * @description What moves the volatility forecast (exact SHAP values of HAR-S)
+             * @description What moves the HAR-S part of the forecast (exact SHAP values)
              * @default []
              */
             drivers: components["schemas"]["Driver"][];
+            /**
+             * Drivers Gbm
+             * @description What moves the LightGBM part of the forecast (TreeSHAP values)
+             * @default []
+             */
+            drivers_gbm: components["schemas"]["Driver"][];
             /**
              * Stress Level
              * @description Market stress in the next hour: low, elevated or high
@@ -1446,7 +1479,7 @@ export interface components {
             warnings: string[];
             /** Generated At */
             generated_at: string;
-            /** @description Phase 12: Trade Grade A-F, reasons, crowd, similar moments, timing */
+            /** @description Phase 12: Trade Grade A-F, reasons, similar moments' range, timing */
             verdict?: components["schemas"]["VerdictOut"] | null;
             /** @description Phase 12: the closest safer version of the same trade */
             fix?: components["schemas"]["FixOut"] | null;
@@ -1456,6 +1489,56 @@ export interface components {
              * @default []
              */
             what_if: components["schemas"]["WhatIfOut"][];
+        };
+        /** SeriesSummary */
+        SeriesSummary: {
+            /** Symbol */
+            symbol: string;
+            /** Horizon Hours */
+            horizon_hours: number;
+            /**
+             * Hours Expected
+             * @description Hours since logging began, up to the last one whose deadline has passed
+             */
+            hours_expected: number;
+            /** Rows Logged */
+            rows_logged: number;
+            /** Hours Missing */
+            hours_missing: number;
+            /**
+             * Missing Recent
+             * @description Latest missing hours, newest first (at most 48)
+             */
+            missing_recent: string[];
+            /** Rows Pending */
+            rows_pending: number;
+            /** Rows Scored */
+            rows_scored: number;
+            /** Rows No Data */
+            rows_no_data: number;
+            /**
+             * Separate Windows
+             * @description Scored rows divided by the horizon: 24 h windows logged hourly overlap
+             */
+            separate_windows: number;
+            /**
+             * Small Sample
+             * @description True until 720 rows (30 days) are scored for this coin and horizon
+             */
+            small_sample: boolean;
+            /**
+             * N Qlike
+             * @description Scored rows with a QLIKE for the forecast
+             */
+            n_qlike: number;
+            /** Qlike Forecast */
+            qlike_forecast: number | null;
+            vs_benchmark: components["schemas"]["Comparison"];
+            vs_har_s: components["schemas"]["Comparison"];
+            /** @description 1 h only: the stress chance is for the next hour */
+            stress: components["schemas"]["StressScore"] | null;
+            /** Latest Regime */
+            latest_regime: string | null;
         };
         /** SimilarOut */
         SimilarOut: {
@@ -1476,13 +1559,6 @@ export interface components {
              * @description Median size of the next 24 h move (%)
              */
             typical_move_pct: number;
-            /** P Up */
-            p_up: number;
-            /**
-             * Coin Flip
-             * @description True when the up-chance is between 40% and 60%
-             */
-            coin_flip: boolean;
             /** Same Regime */
             same_regime: boolean;
             /** Message */
@@ -1501,6 +1577,161 @@ export interface components {
             p_stop_hit: number;
             /** Loss At Stop Usdt */
             loss_at_stop_usdt: number;
+        };
+        /** StressScore */
+        StressScore: {
+            /**
+             * N
+             * @description Scored hours with a stress chance and a label
+             */
+            n: number;
+            /**
+             * Events
+             * @description Hours among them that held a stress event
+             */
+            events: number;
+            /**
+             * Mean P
+             * @description Average chance the model gave
+             */
+            mean_p: number | null;
+            /**
+             * Actual Rate
+             * @description Share of hours that held a stress event
+             */
+            actual_rate: number | null;
+            /**
+             * Brier
+             * @description Average squared gap between the chance given and what happened (lower is better)
+             */
+            brier: number | null;
+            /**
+             * Brier Base Rate
+             * @description The same score for always saying the usual rate
+             */
+            brier_base_rate: number | null;
+            /** Small Sample */
+            small_sample: boolean;
+        };
+        /** TrackRecordOut */
+        TrackRecordOut: {
+            /** Symbol */
+            symbol: string;
+            /** Horizon Hours */
+            horizon_hours: number | null;
+            /**
+             * Records
+             * @description Newest first
+             */
+            records: components["schemas"]["TrackRow"][];
+        };
+        /** TrackRow */
+        TrackRow: {
+            /** Symbol */
+            symbol: string;
+            /** Horizon Hours */
+            horizon_hours: number;
+            /**
+             * Origin
+             * @description Hour the forecast is for: its inputs end here and its window starts here (UTC)
+             */
+            origin: string;
+            /**
+             * Window End
+             * @description When the outcome window ends (UTC)
+             */
+            window_end: string;
+            /**
+             * Logged At
+             * @description When this row was written, always before window_end
+             */
+            logged_at: string;
+            /**
+             * Made At
+             * @description When the model cache produced the forecast
+             */
+            made_at: string;
+            /**
+             * Forecast Variance
+             * @description The forecast the app showed, as variance of the log return
+             */
+            forecast_variance: number;
+            /** Forecast Model */
+            forecast_model: string;
+            /** Har S Variance */
+            har_s_variance: number | null;
+            /** Har S Model */
+            har_s_model: string | null;
+            /**
+             * Benchmark Variance
+             * @description Realised variance of the window just before this one
+             */
+            benchmark_variance: number | null;
+            /**
+             * P Stress
+             * @description Chance of a stress event in the hour after origin
+             */
+            p_stress: number | null;
+            /** Stress Level */
+            stress_level: string | null;
+            /** Regime */
+            regime: string | null;
+            /**
+             * Status
+             * @description pending: the window has not closed or not been scored yet; no_data: too few prices to score it
+             * @enum {string}
+             */
+            status: "pending" | "scored" | "no_data";
+            /** Scored At */
+            scored_at: string | null;
+            /**
+             * Realised Variance
+             * @description What happened, by the same definition as the models' target
+             */
+            realised_variance: number | null;
+            /** Qlike Forecast */
+            qlike_forecast: number | null;
+            /** Qlike Har S */
+            qlike_har_s: number | null;
+            /** Qlike Benchmark */
+            qlike_benchmark: number | null;
+            /**
+             * Stress Event
+             * @description 1 h rows: did the hour hold a stress event?
+             */
+            stress_event: boolean | null;
+        };
+        /** TrackRules */
+        TrackRules: {
+            /** Log Deadline Minutes */
+            log_deadline_minutes: number;
+            /** Settle Minutes */
+            settle_minutes: number;
+            /** Small Sample Rows */
+            small_sample_rows: number;
+            /** Small Sample Events */
+            small_sample_events: number;
+        };
+        /** TrackSummaryOut */
+        TrackSummaryOut: {
+            /**
+             * Logging Started At
+             * @description When the first live row was written; null until then
+             */
+            logging_started_at: string | null;
+            /** Last Logged At */
+            last_logged_at: string | null;
+            /** Logger Running */
+            logger_running: boolean;
+            /** Rows Logged */
+            rows_logged: number;
+            /** Rows Scored */
+            rows_scored: number;
+            /** Generated At */
+            generated_at: string;
+            rules: components["schemas"]["TrackRules"];
+            /** Series */
+            series: components["schemas"]["SeriesSummary"][];
         };
         /** TradeIn */
         TradeIn: {
@@ -1614,7 +1845,7 @@ export interface components {
         VerdictFactor: {
             /**
              * Key
-             * @description knockout, liquidation, stop, costs, regime, stress, crowd, timing or calm
+             * @description knockout, liquidation, stop, costs, regime, stress, timing or calm
              */
             key: string;
             /**
@@ -1653,7 +1884,7 @@ export interface components {
             break_even_win_rate?: number | null;
             /** Break Even Note */
             break_even_note: string;
-            crowd?: components["schemas"]["CrowdOut"] | null;
+            /** @description How big the next 24 h move was after similar past hours (80% range); no up/down chance (it failed the final evaluation) */
             similar?: components["schemas"]["SimilarOut"] | null;
             /** Timing */
             timing: string[];
@@ -2613,6 +2844,73 @@ export interface operations {
             };
         };
     };
+    track_record_track_record_get: {
+        parameters: {
+            query?: {
+                symbol?: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
+                horizon_hours?: ("1" | "24") | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackRecordOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description No database */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    track_record_summary_track_record_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackSummaryOut"];
+                };
+            };
+            /** @description No database */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     health_health_get: {
         parameters: {
             query?: never;
@@ -2710,7 +3008,7 @@ export interface operations {
         parameters: {
             query?: {
                 symbol?: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
-                horizon_hours?: 1 | 24;
+                horizon_hours?: components["schemas"]["Horizon"];
             };
             header?: never;
             path?: never;
@@ -2864,38 +3162,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotReady"];
-                };
-            };
-        };
-    };
-    track_record_track_record_get: {
-        parameters: {
-            query?: {
-                symbol?: "BTCUSDT" | "ETHUSDT" | "SOLUSDT";
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

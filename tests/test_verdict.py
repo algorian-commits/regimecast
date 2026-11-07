@@ -525,7 +525,9 @@ def test_a_verdict_failure_never_breaks_the_risk_check(api, monkeypatch):
     assert r.status_code == 200 and r.json()["verdict"] is None and r.json()["p_liquidation"] > 0
 
 
-def test_crowd_and_similar_moments_in_the_api(api, monkeypatch, tmp_path):
+def test_no_crowd_warning_or_up_chance_in_the_api(api, monkeypatch, tmp_path):
+    """Phase 13A: both failed the final evaluation, so the app shows neither, and the crowd never moves the grade;
+    the similar moments' 80% range stays."""
     from regimecast.api import main
     c, V, cfg = api
     P = E.synthetic_panel(seed=2, start="2021-01-01", end="2021-06-01")
@@ -537,15 +539,18 @@ def test_crowd_and_similar_moments_in_the_api(api, monkeypatch, tmp_path):
                                               "other": 0.07}}
     cfg["similar"].update({"k": 100, "scaling": {"BTCUSDT": sc}})
     state = {"funding_rate": 5e-4, "ls_top": 3.0, "oi_chg_24h": 0.08, "ret_24h": 0.01, "ret_168h": -0.02,
-             "funding_rank": 0.97, "ls_rank": 0.99, "oi_rank": 0.95, "p_stress_3h_ago": 0.02}
+             "funding_rank": 0.97, "ls_rank": 0.99, "oi_rank": 0.95, "p_stress_3h_ago": 0.02}   # every crowd extreme
     monkeypatch.setattr(main.vol_live.cache, "get_state", lambda s: state)
-    v = c.post("/risk-check", json={**TRADE, "leverage": 2, "stop": 93000}).json()["verdict"]
-    assert v["crowd"]["warning"] and v["crowd"]["side"] == "long" and "21% of the time, vs 7%" in v["crowd"]["message"]
-    assert v["grade"] == "B" and any(r.startswith("Traders are crowded on the long side") for r in v["reasons"])
+    r = c.post("/risk-check", json={**TRADE, "leverage": 2, "stop": 93000}).json()
+    v = r["verdict"]
+    assert "crowd" not in v and v["grade"] == "A" and not any(f["key"] == "crowd" for f in v["factors"])
     s = v["similar"]
     assert s["n"] == 100 and s["range_low_pct"] < s["range_high_pct"] and "past hours" in s["message"]
+    assert "p_up" not in s and "coin_flip" not in s and "went up" not in s["message"]
+    text = json.dumps(r).lower()
+    assert "crowd" not in text and "went up" not in text and "p_up" not in text
     short = c.post("/risk-check", json={**TRADE, "side": "short", "leverage": 2, "stop": 107000}).json()["verdict"]
-    assert short["grade"] == "A"                                           # against the crowd: no crowding step
+    assert short["grade"] == "A"
 
 
 def test_live_cache_keeps_the_crowding_inputs(monkeypatch):

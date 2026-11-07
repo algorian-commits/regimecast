@@ -5,6 +5,10 @@ it already has: regime and stress (vol/live.py), and the last hour's funding, cr
 from the same feature rows as the stress gauge. Logic lives in regimecast/verdict/; this file turns a trade into
 its inputs and the results into the API's shapes. A failure here never breaks the risk check: the verdict is
 left out and the rest is returned.
+
+Removed after the final evaluation (Phase 13A): the crowd warning, with the grade's crowd step, and the similar
+moments' up/down chance. Neither passed its bar on the sealed year (docs/FINAL_EVALUATION.md, section 6), so the
+app no longer shows them. The code and settings behind them stay in regimecast/verdict/ for the evaluation record.
 """
 from __future__ import annotations
 
@@ -17,7 +21,7 @@ import pandas as pd
 from pydantic import BaseModel, Field
 
 from regimecast.risk import liquidation as liq
-from regimecast.verdict import crowd as C, fix as FX, grade as G, settings, similar as S, timing as T, whatif as WI
+from regimecast.verdict import fix as FX, grade as G, settings, similar as S, timing as T, whatif as WI
 
 log = logging.getLogger("api.verdict")
 FUNDING_HOURS = (0, 8, 16)
@@ -28,20 +32,9 @@ _LIBRARIES: dict[str, S.Library | None] = {}
 
 # ------------------------------------------------------------------ schemas
 class VerdictFactor(BaseModel):
-    key: str = Field(description="knockout, liquidation, stop, costs, regime, stress, crowd, timing or calm")
+    key: str = Field(description="knockout, liquidation, stop, costs, regime, stress, timing or calm")
     score: int = Field(description="Setup: 0 fine to 4 as bad as it gets. Market: grade steps added")
     text: str
-
-
-class CrowdOut(BaseModel):
-    warning: bool
-    side: Literal["long", "short"] | None = Field(None, description="Where the crowd is piled in, when warning")
-    message: str
-    funding_rate: float | None
-    ls_top: float | None = Field(None, description="Top traders' long/short position ratio")
-    oi_chg_24h: float | None = Field(None, description="Open-interest growth over 24 h (log)")
-    p_after_warning: float | None = Field(None, description="Dev period: share of warnings followed by a 5% move against the crowd within 24 h")
-    p_other: float | None = None
 
 
 class SimilarOut(BaseModel):
@@ -49,8 +42,6 @@ class SimilarOut(BaseModel):
     range_low_pct: float = Field(description="80% range of the next 24 h move, low end (%)")
     range_high_pct: float
     typical_move_pct: float = Field(description="Median size of the next 24 h move (%)")
-    p_up: float
-    coin_flip: bool = Field(description="True when the up-chance is between 40% and 60%")
     same_regime: bool
     message: str
 
@@ -63,8 +54,8 @@ class VerdictOut(BaseModel):
     p_knockout: float = Field(description="Chance the stop or the liquidation price is reached within the horizon")
     break_even_win_rate: float | None = Field(None, description="Share of such trades you must win to make money after fees and funding; above 1 = never")
     break_even_note: str
-    crowd: CrowdOut | None = None
-    similar: SimilarOut | None = None
+    similar: SimilarOut | None = Field(None, description="How big the next 24 h move was after similar past hours "
+                                                      "(80% range); no up/down chance (it failed the final evaluation)")
     timing: list[str]
     not_direction: str
     settings_frozen_at: str | None = Field(None, description="When the grading settings were fixed on the dev period; null = defaults")
@@ -129,7 +120,6 @@ class Context:
         self.n_funding = settlements(now, t.horizon_hours)
         self.regime = rg["regime"] if rg else None
         self.st = st
-        self.crowd = C.assess(state, CFG["crowd"].get(t.symbol))
         p_before = (state or {}).get("p_stress_3h_ago")
         tm = T.check(pd.Timestamp(now), t.horizon_hours, CALENDAR, CFG["thin_hours"].get(t.symbol, ()),
                      st["p_stress_next_hour"] if st else None, p_before)
@@ -163,8 +153,7 @@ class Context:
             stress_level=self.st["level"] if self.st else None,
             p_stress=self.st["p_stress_next_hour"] if self.st else None,
             stress_base=self.st.get("base_rate") if self.st else None,
-            crowd_on_side=bool(self.crowd and self.crowd.side == self.t.side),
-            crowd_text=self.crowd.message(self.coin) if self.crowd else "", timing=self.timing)
+            timing=self.timing)   # no crowd step since 13A: crowd_on_side stays False
         v = G.assess(facts, CFG["grade"])
         info = {"position": p, "lp": lp if finite else None, "fees": fees, "funding": funding, "liq_loss": liq_loss,
                 "p_stop": self.hit(d_stop, self.sigma) if d_stop is not None else None, "facts": facts}
@@ -249,8 +238,7 @@ def _similar(ctx: Context, state: dict | None, sigma_24h: float) -> SimilarOut |
         return None
     pc = lambda x: round(100 * (math.exp(x) - 1), 2)        # noqa: E731
     return SimilarOut(n=m.n, range_low_pct=pc(m.lo), range_high_pct=pc(m.hi), typical_move_pct=pc(m.typical),
-                      p_up=round(m.p_up, 4), coin_flip=m.coin_flip, same_regime=m.same_regime,
-                      message=m.message(ctx.coin))
+                      same_regime=m.same_regime, message=m.range_message(ctx.coin))
 
 
 def assess(t, pos: liq.Position, sigma: float, sigma_24h: float, hit: Callable[[float, float], float],
@@ -261,16 +249,11 @@ def assess(t, pos: liq.Position, sigma: float, sigma_24h: float, hit: Callable[[
         ctx = Context(t, pos, sigma, hit, rg, st, state, now)
         v, info, o = ctx.version(t.leverage, t.stop)
         pbe, note = break_even(ctx, info)
-        cr = ctx.crowd
         verdict = VerdictOut(
             grade=v.grade, headline=v.headline, reasons=v.reasons,
             factors=[VerdictFactor(key=f.key, score=f.score, text=f.text) for f in v.factors],
             p_knockout=round(info["facts"].p_knockout, 5),
             break_even_win_rate=round(pbe, 4) if pbe is not None else None, break_even_note=note,
-            crowd=CrowdOut(warning=cr.side is not None, side=cr.side, message=cr.message(ctx.coin) or
-                           "No crowd warning: funding, top traders and open interest are not all at extremes.",
-                           funding_rate=cr.funding_rate, ls_top=cr.ls_top, oi_chg_24h=cr.oi_chg_24h,
-                           p_after_warning=cr.p_after, p_other=cr.p_other) if cr else None,
             similar=_similar(ctx, state, sigma_24h), timing=ctx.timing, not_direction=G.NOT_DIRECTION,
             settings_frozen_at=CFG["frozen_at"])
         p = info["position"]

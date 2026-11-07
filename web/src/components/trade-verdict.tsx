@@ -21,11 +21,10 @@ const FACTOR = {
   costs: "Fees and funding",
   regime: "Market regime",
   stress: "Market stress",
-  crowd: "Crowding",
   timing: "Timing",
   calm: "Market",
 } as Record<string, string>;
-const MARKET = new Set(["regime", "stress", "crowd", "timing"]);
+const MARKET = new Set(["regime", "stress", "timing"]);
 
 export function TradeVerdict({ r, children }: { r: Schemas["RiskOut"]; children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -151,11 +150,8 @@ function Workings({ v }: { v: Verdict }) {
         liquidation is reached: {prob(v.p_knockout)}.{be && ` Break-even win rate: ${be}.`}
       </p>
 
-      <h3 className="mt-4 text-sm font-semibold">Crowd warning</h3>
-      <p className="mt-1 text-sm">{v.crowd ? v.crowd.message : "Not available right now (it needs the live funding and long/short data, and thresholds fixed on the dev period)."}</p>
-
       <h3 className="mt-4 text-sm font-semibold">Similar moments</h3>
-      <p className="mt-1 text-sm">{v.similar ? v.similar.message : "Not available yet: the past hours it compares with ship once the dev-period run is done."}</p>
+      <p className="mt-1 text-sm">{v.similar ? v.similar.message : "Not available right now."}</p>
 
       <h3 className="mt-4 text-sm font-semibold">Timing</h3>
       {v.timing.length ? (

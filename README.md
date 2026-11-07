@@ -119,7 +119,7 @@ See `docs/M4_WALKTHROUGH.md`.
 | Targets | `regimecast/features/targets.py` | What happens after each hourly origin: realised variance and the largest adverse mark-price move over 1 h and 24 h (a separate table, never features). |
 | Volatility | `regimecast/models/volatility.py` | LightGBM on the M4 features + DVOL (`regimecast/data/dvol.py`), and its average with HAR-S. |
 | Liquidation risk | `regimecast/models/liquidation_risk.py`, `calibration.py` | Random walk, FHS and quantile LightGBM, isotonic calibration, Brier/ECE/reliability, block-bootstrap intervals. |
-| Live | `regimecast/vol/live.py`, `regimecast/risk/fhs_live.py` | The app: HAR-S on live Binance candles, FHS liquidation probability, exact SHAP drivers. |
+| Live | `regimecast/vol/combo_live.py`, `combo_live/`, `regimecast/vol/live.py`, `regimecast/risk/fhs_live.py` | The app: the HAR-S + LightGBM combination (no order book; fitted through 2026-09-30 by `scripts/fit_live_combo.py`) with both parts' SHAP drivers; FHS on live HAR-S, the pairing the final evaluation tested, for liquidation and stop chances. Checks: `scripts/p13a_live_check.py`, `scripts/p13a_latency.py`, results in `data/reports/p13a_*`. |
 
 ```bat
 python scripts/run_phase5.py          :: all results -> data/reports/phase5_*.csv (about 30 min)
@@ -164,7 +164,8 @@ python scripts/m8_parser_eval.py                                         :: accu
 ```
 
 For the live site, add the same key as the `ANTHROPIC_API_KEY` variable on the Railway `api` service. Until the key
-is set, the parser runs on the rule reader (the key is skipped for now; see the open items in `docs/PLAN.md`).
+is set, the parser runs on the rule reader. Accuracy (6 Nov 2026): the app's prompt is at least 99.4% correct on every
+field; the rule reader gets all fields right on 76% of messages.
 
 ## Live dashboard and accounts (Modules M5, M6)
 
@@ -231,16 +232,23 @@ See `docs/M12_WALKTHROUGH.md`.
 ## Trade verdict for beginners (Module M9, extended)
 
 Someone who knows nothing about trading types a trade and learns, in plain words, whether it is **well built** and how
-to make it safer. It judges the setup (size, leverage, stop, costs, timing, crowding), never which way the price will
+to make it safer. It judges the setup (size, leverage, stop, costs, timing), never which way the price will
 go: Phase 6b showed our data cannot predict direction. Plain-English overview: `docs/M12_VERDICT_WALKTHROUGH.md`.
+
+**Removed from the app in Phase 13A, because they failed the final evaluation** (`docs/FINAL_EVALUATION.md`): the crowd
+warning, with the grade's crowd step (a 5% move against the crowd came 0.95 times as often after a warning on BTC, 1.32
+on ETH and 1.46 on SOL; the bar was 1.5 with an interval above 1, on 2 of 3 coins), and the similar moments' up/down
+chance (a Brier score slightly worse than always saying the long-run up share on BTC and SOL: a coin flip). The grade
+(F 17-21 times riskier than A), the 80% move range (held 79-83% of the time), "fix my trade", the what-if strip and the
+timing warnings passed and stay. The two rows marked below remain in the code for the evaluation record only.
 
 | Part | File | What it does |
 |---|---|---|
 | Trade Grade | `regimecast/verdict/grade.py` | A to F with three plain reasons: chance the stop or liquidation is reached, liquidation vs the user's limit, the stop, fees and funding vs a typical move; market steps for a stressed regime, stress, crowding and timing. Break-even win rate. |
 | Fix my trade | `regimecast/verdict/fix.py` | The closest safer version (lower leverage, same margin, a stop outside normal noise) that meets the user's limit and can lose no more. |
 | What-if strip | `regimecast/verdict/whatif.py` | Dollars on a normal day and a bad day (90th / 99th percentile 24 h move in the current regime) and a crash day like 10 Oct 2025. |
-| Crowd warning | `regimecast/verdict/crowd.py` | Funding, top traders' long/short ratio and open-interest growth at extremes against their own last 14 days, with the historical odds of a 5% move against the crowd within 24 h. Live ranks from Binance's public 1-hour history (refreshed with the stress gauge). |
-| Similar moments | `regimecast/verdict/similar.py` | The past hours most like now (only hours whose next day had played out); the 80% range of the next 24 h move and how often it went up, with a coin-flip note. |
+| Crowd warning (**not in the app**) | `regimecast/verdict/crowd.py` | Funding, top traders' long/short ratio and open-interest growth at extremes against their own last 14 days, with the historical odds of a 5% move against the crowd within 24 h. Live ranks from Binance's public 1-hour history (refreshed with the stress gauge). |
+| Similar moments (**app: range only**) | `regimecast/verdict/similar.py` | The past hours most like now (only hours whose next day had played out); the 80% range of the next 24 h move. How often it went up is computed for the evaluation record only. |
 | Bad timing | `regimecast/verdict/timing.py`, `macro_events.csv` | FOMC, CPI and the jobs report inside the trade's horizon (fixed calendar, 2020-2027), weekends, thin hours, stress rising. |
 | Settings | `regimecast/verdict/settings.py`, `frozen.json`, `similar/*.npz` | Chosen on 2022-01 to 2024-09, checked on 2024-10 to 2025-09, frozen 30 Oct 2026 by the run below. |
 | Evaluation | `regimecast/verdict/evaluate.py`, `devrun.py`, `final.py` | The pass-bar measures (example-trade grid, crowd ratio with a 90% block bootstrap, coverage and Brier); `run_final(final=True)`: Phase 10 runs it once. |
@@ -250,6 +258,23 @@ go: Phase 6b showed our data cannot predict direction. Plain-English overview: `
 python scripts/run_phase12.py              :: choose, check, freeze -> data/reports/phase12_*, frozen.json, verdict/similar/*.npz
 python scripts/run_phase12.py --dry-run out :: the same steps on made-up data into .\out (real files untouched)
 ```
+
+## Track Record (live forecasts, scored afterwards)
+
+Every hour the API writes down what it forecasts for BTC, ETH and SOL at 1 h and 24 h, before the outcome is known, and
+scores each one once its window has closed. The page is `/track-record`. Plain-English overview:
+`docs/TRACK_RECORD_WALKTHROUGH.md`.
+
+| Part | File | What it does |
+|---|---|---|
+| Logger and scorer | `regimecast/track/engine.py` | Two background threads in the API. The logger writes one row per coin, horizon and hour, within 30 minutes of the hour and only if the forecast's inputs end exactly at that hour. The scorer adds the outcome in a separate row, 7 minutes after the window closes. |
+| Tables | `regimecast/db/schema.py`, migration `0003_track` | `track_forecasts` and `track_scores`. Insert-only: triggers refuse UPDATE and DELETE, and the database refuses a row logged after its window's end. |
+| API | `regimecast/api/track.py` | `GET /track-record` (rows, newest first) and `GET /track-record/summary` (scores with sample sizes, missing hours; kept 30 s). 503 `not_ready` without a database. |
+| Page | `web/src/components/track-record.tsx`, `web/src/lib/track.ts` | Forecast against outcome, error against the benchmark, latest rows, missing hours, every metric in plain words. |
+
+Scored with the evaluation's own code: realised variance from `realized.build_targets`, QLIKE from `evaluate.qlike`, the
+stress label from `build.minute_features` with its 30-day lookback. The benchmark is the last window's realised variance.
+No backfilling and no backtest numbers: a missed hour stays missing. `TRACK_RECORD=0` switches the threads off.
 
 ## Rules we follow (to keep results honest)
 
