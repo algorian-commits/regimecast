@@ -49,7 +49,7 @@ SEED = 13
 def history_gate(depth: pd.DataFrame, min_span_days: float = MIN_SPAN_DAYS, min_accounts: int = MIN_ACCOUNTS) -> dict:
     """``depth``: one row per account with its first and last perp fill (fills.perp_depth)."""
     d = depth[depth["n_fills"] > 0].copy()
-    first, last = pd.to_datetime(d["first_fill"], utc=True), pd.to_datetime(d["last_fill"], utc=True)
+    first, last = pd.to_datetime(d["first_fill"], utc=True, format="ISO8601"), pd.to_datetime(d["last_fill"], utc=True, format="ISO8601")
     d["span_days"] = (last - first).dt.total_seconds() / 86400
     ok = d[d["span_days"] >= min_span_days]
     return {"accounts_with_fills": int(len(d)), "accounts_6m": int(len(ok)), "needed": min_accounts,
@@ -62,8 +62,8 @@ def history_gate(depth: pd.DataFrame, min_span_days: float = MIN_SPAN_DAYS, min_
 def periods(depth: pd.DataFrame, eligible: list[str], end_cap: pd.Timestamp | None = None) -> dict:
     """``end_cap``: the last day there are prices for, if earlier than the downloads."""
     d = depth.set_index("address").loc[eligible]
-    start = pd.to_datetime(d["first_fill"], utc=True).max().ceil("D")
-    end = pd.to_datetime(d["downloaded_at"], utc=True).min().floor("D")
+    start = pd.to_datetime(d["first_fill"], utc=True, format="ISO8601").max().ceil("D")
+    end = pd.to_datetime(d["downloaded_at"], utc=True, format="ISO8601").min().floor("D")
     if end_cap is not None:
         end = min(end, end_cap)
     b_start = start + (end - start) * 2 / 3

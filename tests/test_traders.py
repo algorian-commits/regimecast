@@ -693,3 +693,13 @@ def test_trader_modal_jobs_have_no_schedule():
 
     text = (Path(__file__).parents[1] / "regimecast" / "jobs" / "modal_traders.py").read_text(encoding="utf-8")
     assert "modal.Cron" not in text and "modal.Period" not in text
+
+
+def test_history_check_reads_times_with_and_without_fractions_of_a_second():
+    rows = [{"address": "a", "n_fills": 5, "first_fill": "2025-01-30T19:33:57+00:00",
+             "last_fill": "2026-10-01T00:00:00.123000+00:00", "downloaded_at": "2026-11-02T01:00:00.5+00:00"},
+            {"address": "b", "n_fills": 5, "first_fill": "2025-02-01T00:00:00.250000+00:00",
+             "last_fill": "2026-10-01T00:00:00+00:00", "downloaded_at": "2026-11-03T01:00:00+00:00"}]
+    d = pd.DataFrame(rows)
+    assert ct.history_gate(d, min_accounts=2)["historical_test"] is True
+    assert ct.periods(d, ["a", "b"])["end"] == pd.Timestamp("2026-11-02", tz="UTC")
