@@ -102,7 +102,7 @@ A liquidation is a forced trade, so a big cluster near the price is a place wher
 
 - It covers **tracked Hyperliquid accounts only, not the whole market**.
 - It's a snapshot: a trader adding margin moves their liquidation price.
-- Accounts are read in turn, so a full sweep takes several minutes. The page shows how old the oldest reading is.
+- Accounts are read one at a time, so a full sweep of about 1,560 accounts takes up to half an hour. The skilled ones are re-read every 2 minutes, and the page shows how old the oldest reading is.
 - Positions more than 20% from the price, or with no liquidation price, aren't drawn. The page says how much that leaves out.
 
 ## The two alerts

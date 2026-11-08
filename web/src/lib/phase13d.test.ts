@@ -40,6 +40,8 @@ describe("words", () => {
     expect(money(2.5e9)).toBe("$2.50B");
     expect(money(90)).toBe("$90");
     expect(money(null)).toBe("–");
+    expect(money(999_600)).toBe("$1.0M");
+    expect(money(999.7)).toBe("$1k");
   });
   it("gives every net figure its sample size", () => {
     const w = netWords(net({ net_usd: 2e6, n_long: 3, n_short: 1, n_flat: 2, n_read: 6 }));

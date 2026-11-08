@@ -31,9 +31,10 @@ export function money(x: number | null | undefined) {
   if (x == null || !Number.isFinite(x)) return "–";
   const a = Math.abs(x);
   const s = x < 0 ? "-" : "";
-  if (a >= 1e9) return `${s}$${(a / 1e9).toFixed(2)}B`;
-  if (a >= 1e6) return `${s}$${(a / 1e6).toFixed(1)}M`;
-  if (a >= 1e3) return `${s}$${(a / 1e3).toFixed(0)}k`;
+  // thresholds sit where rounding would reach the next unit: 999,600 is "$1.0M", not "$1000k"
+  if (a >= 999.995e6) return `${s}$${(a / 1e9).toFixed(2)}B`;
+  if (a >= 999.5e3) return `${s}$${(a / 1e6).toFixed(1)}M`;
+  if (a >= 999.5) return `${s}$${(a / 1e3).toFixed(0)}k`;
   return `${s}$${a.toFixed(0)}`;
 }
 

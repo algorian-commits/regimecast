@@ -3,7 +3,7 @@
 ``clearinghouseState`` weighs 2, so a sweep of every account that has traded perps costs a few
 thousand weight. The watcher spends at most TRADER_WEIGHT_PER_MIN (default 500 of the 1,200 per
 minute Hyperliquid allows an IP address; Whale Watch's sweep uses about 64 per minute on the same
-address), so a full sweep takes several minutes, and skilled accounts are read again every
+address); requests go one at a time, so a full sweep of ~1,560 accounts takes about half an hour from a PC, and skilled accounts are read again every
 SKILLED_EVERY_S on top. Each position keeps the time it was read. TRADER_WATCH=0 switches it off.
 """
 from __future__ import annotations

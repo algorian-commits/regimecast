@@ -82,7 +82,7 @@ function Skilled() {
           <Card title="What skilled traders hold, net">
             {d.n_skilled === 0 ? (
               <p className="text-sm text-muted">
-                No account passed the skill test across the {d.bh_family.toLocaleString()} tested, so there is nobody to show here. That is a result: most records in this pool cannot be told
+                No account passed the skill test among the {d.bh_family.toLocaleString()} with perp trades, so there is nobody to show here. That is a result: most records in this pool cannot be told
                 apart from luck.
               </p>
             ) : (
@@ -98,7 +98,7 @@ function Skilled() {
             {!d.live && <p className="mt-2 text-xs text-warn">The live position feed is not running on this server, so current positions are missing.</p>}
           </Card>
           {d.n_skilled > 0 && (
-            <Card title={`Skilled traders and their open positions (${d.n_skilled} of ${d.bh_family.toLocaleString()} tested)`}>
+            <Card title={`Skilled traders and their open positions (${d.n_skilled} of ${d.bh_family.toLocaleString()} with perp trades)`}>
               <ul className="space-y-3">
                 {d.traders.map((t) => (
                   <li key={t.card.address} className="border-t border-border pt-2 first:border-t-0 first:pt-0">
@@ -330,10 +330,10 @@ function Scorecards() {
           return (
             <>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Stat label="Skilled" value={c.skilled ?? 0} sub={`of ${d.summary.accounts_with_perp_fills.toLocaleString()} tested`} />
+                <Stat label="Skilled" value={c.skilled ?? 0} sub={`of ${d.summary.accounts_with_perp_fills.toLocaleString()} with perp trades`} />
                 <Stat label="Unproven" value={c.unproven ?? 0} sub="can't be told from luck" />
                 <Stat label="Losing" value={c.losing ?? 0} sub="net loss over the history" />
-                <Stat label="Pool" value={d.summary.pool_size.toLocaleString()} sub={`${c.no_trades ?? 0} had no perp trades`} />
+                <Stat label="Pool" value={d.summary.pool_size.toLocaleString()} sub={`${(c.no_trades ?? 0).toLocaleString()} had no perp trades`} />
               </div>
               {d.cards.length === 0 ? (
                 <p className="mt-3 text-sm text-muted">No account has this label.</p>
