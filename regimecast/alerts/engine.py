@@ -77,8 +77,8 @@ def live_view() -> MarketView:
         return m.mark_price if m and not m.stale else None
 
     def sigma(s, h):
-        fc = vol_live.cache.get(s, h)
-        return math.sqrt(fc["variance"]) if fc and fc.get("model", "").startswith("HAR-S") else None
+        fc = vol_live.cache.get_har_s(s, h)     # FHS was fitted and tested on HAR-S, not on the combination
+        return math.sqrt(fc["variance"]) if fc else None
 
     return MarketView(price, vol_live.cache.get_stress, vol_live.cache.get_regime, sigma, fhs_live.load())
 

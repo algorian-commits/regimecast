@@ -107,3 +107,41 @@ whale_seen = sa.Table(   # every Hyperliquid account Whale Watch has seen (for "
     sa.Column("address", sa.String(42), primary_key=True),
     sa.Column("first_seen", sa.DateTime(timezone=True), nullable=False),
 )
+
+# Track Record (migration 0003_track). Both tables only take new rows: triggers refuse UPDATE and DELETE.
+track_forecasts = sa.Table(   # one forecast per coin, horizon and hour, written before its window ends
+    "track_forecasts", metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("symbol", sa.String(12), nullable=False),
+    sa.Column("horizon_hours", sa.Integer, nullable=False),
+    sa.Column("origin_ts", sa.DateTime(timezone=True), nullable=False),    # hour H: inputs end here, the window starts
+    sa.Column("target_end", sa.DateTime(timezone=True), nullable=False),   # H + horizon: the window ends
+    sa.Column("logged_at", sa.DateTime(timezone=True), nullable=False),    # when this row was written
+    sa.Column("made_at", sa.DateTime(timezone=True), nullable=False),      # when the model cache produced the forecast
+    sa.Column("forecast_variance", sa.Float, nullable=False),              # what the app shows (ForecastCache.get)
+    sa.Column("forecast_model", sa.String(80), nullable=False),
+    sa.Column("har_s_variance", sa.Float, nullable=True),
+    sa.Column("har_s_model", sa.String(80), nullable=True),
+    sa.Column("benchmark_variance", sa.Float, nullable=True),              # realised variance of the window before
+    sa.Column("p_stress", sa.Float, nullable=True),                        # chance of stress in the hour after H
+    sa.Column("stress_base_rate", sa.Float, nullable=True),
+    sa.Column("stress_level", sa.String(10), nullable=True),
+    sa.Column("stress_model", sa.String(80), nullable=True),
+    sa.Column("regime", sa.String(10), nullable=True),
+    sa.UniqueConstraint("symbol", "horizon_hours", "origin_ts", name="uq_track_forecast_hour"),
+    sa.CheckConstraint("logged_at < target_end", name="ck_track_logged_before_outcome"),
+    sa.CheckConstraint("horizon_hours IN (1, 24)", name="ck_track_horizon"),
+    sa.Index("ix_track_forecasts_end", "target_end"),
+)
+
+track_scores = sa.Table(   # the outcome, added in a separate row once the window has closed
+    "track_scores", metadata,
+    sa.Column("forecast_id", sa.Integer, sa.ForeignKey("track_forecasts.id"), primary_key=True),
+    sa.Column("scored_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("status", sa.String(10), nullable=False),       # "scored", or "no_data" if the window has too few prices
+    sa.Column("realised_variance", sa.Float, nullable=True),
+    sa.Column("qlike_forecast", sa.Float, nullable=True),
+    sa.Column("qlike_har_s", sa.Float, nullable=True),
+    sa.Column("qlike_benchmark", sa.Float, nullable=True),
+    sa.Column("stress_event", sa.Boolean, nullable=True),     # 1 h rows only: did the hour after H hold a stress event?
+)

@@ -1,0 +1,49 @@
+{
+ "base_url": "local API, this branch, live Binance data",
+ "n": 50,
+ "under_2s": 50,
+ "typical_s": 0.019,
+ "p95_s": 0.028,
+ "slowest_s": 0.042,
+ "problems": [],
+ "passes": true,
+ "forecasts": {
+  "BTCUSDT": {
+   "1h": {
+    "model": "HAR-S + LightGBM (fitted to 2026-09-30)",
+    "sigma_pct": 0.363,
+    "inputs_until": "2026-11-02T02:00:00+00:00"
+   },
+   "24h": {
+    "model": "HAR-S + LightGBM (fitted to 2026-09-30)",
+    "sigma_pct": 1.776,
+    "inputs_until": "2026-11-02T02:00:00+00:00"
+   }
+  },
+  "ETHUSDT": {
+   "1h": {
+    "model": "HAR-S + LightGBM (fitted to 2026-09-30)",
+    "sigma_pct": 0.569,
+    "inputs_until": "2026-11-02T02:00:00+00:00"
+   },
+   "24h": {
+    "model": "HAR-S + LightGBM (fitted to 2026-09-30)",
+    "sigma_pct": 2.347,
+    "inputs_until": "2026-11-02T02:00:00+00:00"
+   }
+  },
+  "SOLUSDT": {
+   "1h": {
+    "model": "HAR-S + LightGBM (fitted to 2026-09-30)",
+    "sigma_pct": 0.681,
+    "inputs_until": "2026-11-02T02:00:00+00:00"
+   },
+   "24h": {
+    "model": "HAR-S + LightGBM (fitted to 2026-09-30)",
+    "sigma_pct": 3.299,
+    "inputs_until": "2026-11-02T02:00:00+00:00"
+   }
+  }
+ },
+ "run_at": "2026-11-02T02:12:06Z"
+}

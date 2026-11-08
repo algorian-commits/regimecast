@@ -9,7 +9,7 @@ import { useLoad } from "@/lib/use-load";
 import { Badge, Card, LoadView, NotReady } from "./ui";
 
 type Regime = { regime: "calm" | "active" | "stressed"; p_calm: number; p_active: number; p_stressed: number; typical_next_24h_vol_pct: Record<string, number>; inputs_until: string; model: string };
-type Forecast = { annualised_vol_pct: number; sigma_pct: number; model: string; inputs_until: string; drivers: { name: string; effect_pct: number }[] };
+type Forecast = { annualised_vol_pct: number; sigma_pct: number; model: string; inputs_until: string; drivers: { name: string; effect_pct: number }[]; drivers_gbm?: { name: string; effect_pct: number }[] };
 type Stress = { p_stress_next_hour: number; level: "low" | "elevated" | "high"; base_rate: number; inputs_until: string; model: string; drivers: { name: string; direction: "up" | "down" }[] };
 
 const REGIME_TONE = { calm: "good", active: "warn", stressed: "bad" } as const;
@@ -83,8 +83,14 @@ function VolatilityGauge({ symbol }: { symbol: Symbol }) {
               )}
               {d.drivers[0] && (
                 <div className="mt-2 text-xs text-muted">
-                  Biggest driver: {d.drivers[0].name} ({d.drivers[0].effect_pct > 0 ? "+" : ""}
+                  Biggest driver{d.drivers_gbm?.[0] ? " (HAR-S part)" : ""}: {d.drivers[0].name} ({d.drivers[0].effect_pct > 0 ? "+" : ""}
                   {d.drivers[0].effect_pct.toFixed(0)}%)
+                </div>
+              )}
+              {d.drivers_gbm?.[0] && (
+                <div className="mt-1 text-xs text-muted">
+                  Biggest driver (LightGBM part): {d.drivers_gbm[0].name} ({d.drivers_gbm[0].effect_pct > 0 ? "+" : ""}
+                  {d.drivers_gbm[0].effect_pct.toFixed(0)}%)
                 </div>
               )}
               <Footer until={d.inputs_until} />

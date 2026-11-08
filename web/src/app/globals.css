@@ -15,10 +15,12 @@
   --good: #15803d;
   --warn: #b45309;
   --bad: #b91c1c;
-  --chart-long: #2563eb;
-  --chart-short: #c2570c;
+  --chart-5: #2563eb;
+  --chart-6: #c2570c;
   --chart-1: #2563eb;
   --chart-2: #94a3b8;
+  --chart-3: #c2410c;
+  --chart-4: #0d9488;
 }
 
 .dark {
@@ -33,10 +35,12 @@
   --good: #4ade80;
   --warn: #fbbf24;
   --bad: #f87171;
-  --chart-long: #4f8cff;
-  --chart-short: #d96c1a;
+  --chart-5: #4f8cff;
+  --chart-6: #d96c1a;
   --chart-1: #4f8cff;
   --chart-2: #475569;
+  --chart-3: #ea580c;
+  --chart-4: #0d9488;
 }
 
 @theme inline {

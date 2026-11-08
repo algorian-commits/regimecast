@@ -42,7 +42,7 @@ export function Badge({ tone = "muted", children }: { tone?: "good" | "warn" | "
     bad: "bg-bad/15 text-bad",
     muted: "bg-surface-2 text-muted",
   }[tone];
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${c}`}>{children}</span>;
+  return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${c}`}>{children}</span>;
 }
 
 export function Skeleton({ className = "h-6 w-full" }: { className?: string }) {

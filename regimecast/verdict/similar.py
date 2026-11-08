@@ -109,6 +109,15 @@ class Moments:
              f"{pc(self.lo):+.1f}% and {pc(self.hi):+.1f}%. It went up {100 * self.p_up:.0f}% of the time")
         return s + (": close to a coin flip, so this says nothing about direction." if self.coin_flip else ".")
 
+    def range_message(self, coin: str) -> str:
+        """What the app shows since Phase 13A: the size of the move only. The up chance failed the final
+        evaluation (no better than always saying the long-run up share), so it is no longer shown."""
+        pc = lambda m: 100 * (np.exp(m) - 1)                       # noqa: E731
+        where = "in the same market regime " if self.same_regime else ""
+        return (f"In the {self.n} past hours {where}that looked most like now, {coin} typically moved "
+                f"{pc(self.typical):.1f}% over the next 24 h; 8 times out of 10 the move was between "
+                f"{pc(self.lo):+.1f}% and {pc(self.hi):+.1f}%. Which way it goes is not predictable.")
+
 
 def _nearest(lib: Library, x: np.ndarray, n: int, regime: int, kmax: int) -> tuple[np.ndarray, np.ndarray]:
     """Indices of the nearest known rows, sorted by distance: within the same regime, and among all."""

@@ -10,6 +10,8 @@ data/reports/*
 !data/reports/final_*.csv
 !data/reports/final_*.json
 !data/reports/traders_*
+# Phase 13A pass-mark evidence
+!data/reports/p13a_*
 __pycache__/
 *.pyc
 .venv/

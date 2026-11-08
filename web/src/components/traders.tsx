@@ -182,10 +182,10 @@ function MapRow({ b }: { b: ReturnType<typeof bandRows>[number] }) {
     <div className="group grid grid-cols-[4.75rem_1fr_1fr] items-center gap-x-1 rounded py-[3px] hover:bg-surface-2" title={tip}>
       <span className="pr-1 text-right font-mono text-[11px] text-muted">{usd(b.price_low, 0)}</span>
       <div className="flex h-3 justify-end border-r border-border">
-        {b.long_usd > 0 && <div className="h-3 min-w-0.5 rounded-l" style={{ width: `${100 * b.longShare}%`, background: "var(--chart-long)" }} />}
+        {b.long_usd > 0 && <div className="h-3 min-w-0.5 rounded-l" style={{ width: `${100 * b.longShare}%`, background: "var(--chart-5)" }} />}
       </div>
       <div className="flex h-3">
-        {b.short_usd > 0 && <div className="h-3 min-w-0.5 rounded-r" style={{ width: `${100 * b.shortShare}%`, background: "var(--chart-short)" }} />}
+        {b.short_usd > 0 && <div className="h-3 min-w-0.5 rounded-r" style={{ width: `${100 * b.shortShare}%`, background: "var(--chart-6)" }} />}
       </div>
     </div>
   );
@@ -263,10 +263,10 @@ function LiquidationMap() {
                     <span className="pr-1 text-right">Price</span>
                     <span className="flex items-center justify-end gap-1.5">
                       Longs {money(t.long_usd)} ({t.n_long})
-                      <i className="inline-block h-2 w-2 rounded-sm" style={{ background: "var(--chart-long)" }} />
+                      <i className="inline-block h-2 w-2 rounded-sm" style={{ background: "var(--chart-5)" }} />
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <i className="inline-block h-2 w-2 rounded-sm" style={{ background: "var(--chart-short)" }} />
+                      <i className="inline-block h-2 w-2 rounded-sm" style={{ background: "var(--chart-6)" }} />
                       Shorts {money(t.short_usd)} ({t.n_short})
                     </span>
                   </div>

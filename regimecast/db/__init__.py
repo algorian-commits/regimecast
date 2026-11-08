@@ -54,7 +54,7 @@ def upgrade(engine: sa.Engine) -> None:
     cfg.set_main_option("script_location", str(MIGRATIONS))
     with engine.begin() as conn:
         cfg.attributes["connection"] = conn
-        command.upgrade(cfg, "head")
+        command.upgrade(cfg, "heads")   # independent migrations branch from the same parent; apply them all
 
 
 def get_engine() -> sa.Engine | None:
