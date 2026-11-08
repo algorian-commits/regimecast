@@ -1,6 +1,6 @@
 # Popular trader tracker: a plain-words walkthrough (Phase 13D)
 
-**Status:** code, tests and page are built. Results are not in yet: the fill download is still running, so the numbers below say "pending" until it finishes.
+**Status:** done. The copy test ran once and passed (8 Nov 2026); 7 of 1,560 accounts with perp trades pass the skill test. The numbers and their limits are in the Results section at the end.
 
 ## What it is for
 
@@ -151,8 +151,66 @@ Our final evaluation found that direction can't be predicted from market signals
 
 ## Results
 
-**History check:** pending.
+**History check.** All 2,884 pool accounts were downloaded, about 31.5 million fills.
 
-**Scorecards:** pending.
+- 1,560 accounts have perp fills; the other 1,324 hold spot or staked coins only.
+- For 882, Hyperliquid no longer serves their older fills, so their history is cut short.
+- 755 accounts have 6+ months of perp fills, far more than the 60 needed. So the copy test ran on past data, as pre-registered, not as a forward test.
+- The median account's perp history spans 168 days, and the top quarter spans 456 days or more.
 
-**Copy test:** pending.
+**Scorecards.** Out of 1,560 accounts with perp trades:
+
+| Label | Accounts | What it means |
+|---|---|---|
+| Skilled | 7 | Average daily profit above zero, and still significant after correcting for testing 1,560 accounts |
+| Unproven | 753 | Can't be told apart from luck |
+| Losing | 800 | Net realised loss over the history |
+
+Only 619 had enough history for the test (30+ days and 10+ trades). Their median Sharpe ratio is 0.09, close to zero, which is what a mostly-luck pool looks like.
+
+**About the 7 skilled accounts:**
+
+- They have 66 to 686 days of history and 10 to 147 finished trades each.
+- Their realised Sharpe ratios run from 3.7 to 9.0.
+- Most hold trades for a few hours to a few days.
+
+**Read their records with care.** Win rates of 70-100% and profit factors in the tens or hundreds usually mean losing trades are still open. Open positions don't count until they are closed. One account has won every one of its 55 finished trades.
+
+**A bug I found and fixed in my own test.** The first run of the scorecards found no skilled account at all. The reason was a flaw in the test settings, not the traders:
+
+- 2,000 random draws can't show a p-value below 1/2,001 = 0.0005.
+- The correction's strictest cut-off over 1,560 accounts is 0.05/1,560 = 0.00003.
+- So 7 accounts sat at the smallest p-value the test could produce, and none could ever pass.
+
+Accounts with a p-value under 0.01 are now redrawn 100,000 times. This is the same method, only finer, and it's logged in the plan's decision log as found after seeing the first result. The skill score, which ranks accounts and picks them for the copy test, is unchanged.
+
+**Copy test: PASSED.** It ran once, on 8 Nov 2026, from commit `be49d43`.
+
+- **Period A:** skill was measured from 1 May to 31 Aug 2026.
+- **Who was copied:** of the 395 accounts that traded BTC, ETH or SOL in period A, the top 40 (the top 10%) by skill score.
+- **Period B:** they were copied from 31 Aug to 1 Nov 2026 (62 days), with a 5-minute delay, the 0.045% taker fee and funding.
+
+| | Sharpe ratio in period B |
+|---|---|
+| Copying the top 40 | **4.00** |
+| Random groups of 40 (median of 200) | 0.06 |
+| The middle 90% of random groups | -3.37 to 2.87 |
+| Buy-and-hold BTC, ETH, SOL | -0.61 |
+
+All three parts of the bar hold:
+
+1. Copying beat the random median, and in fact beat all 200 random groups.
+2. It beat buy-and-hold.
+3. The 90% range of its lead over random copying runs from 1.57 to 7.13, so it lies above 0.
+
+So the page may say "following them has worked", and it does.
+
+**What this result does and doesn't show:**
+
+- **It is one 62-day window.** The range of the lead is wide, and a different two months could look different.
+- **Period B was a falling market** (buy-and-hold lost money). Part of the gain may come from accounts that were short going into a fall. The test can't tell skill at choosing direction apart from a bias that happened to suit these two months.
+- **The pool is today's leaderboard,** so accounts that blew up are missing. The random groups come from the same pool, so that bias hits the comparison with random copying equally. It does flatter the comparison with buy-and-hold.
+- **Prices are Binance's 1-minute closes,** covering 99.5% of minutes. A real copier on Hyperliquid would get slightly different fills, and large copies could move the price.
+- **Different groups:** the copy test followed the top 40 by skill score in period A. The page's "skilled" label is the 7 that pass the strict correction over each account's whole history.
+
+Paper results, not advice.

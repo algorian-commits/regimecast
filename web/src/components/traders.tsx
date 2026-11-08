@@ -51,6 +51,12 @@ function CopyTest() {
                 />
               </div>
             )}
+            {d.status === "passed" && r && (
+              <p className="mt-2 text-xs text-muted">
+                What was copied: the top {String(r.k)} accounts by skill score measured before the copying period, which is a wider group than the &ldquo;skilled&rdquo; label below. It is one
+                test over {String(r.days)} days, in a market where simply holding lost money, so part of the gain may come from being short at the right time.
+              </p>
+            )}
             {d.forward && (
               <p className="mt-2 text-xs text-muted">
                 Forward test: logging from {String(d.forward.started_at).slice(0, 10)}, scored once after {String(d.forward.ends_at).slice(0, 10)}.
