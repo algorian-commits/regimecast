@@ -15,7 +15,8 @@ fills have coin names like ``@107`` or ``PURR/USDC`` and are left out).
 * **Skill test**: is the average daily PnL above zero? A one-sided circular block
   bootstrap (blocks of about n^(1/3) days keep the day-to-day dependence): the series is
   shifted to mean 0 (the "no skill" world), resampled ``N_BOOT`` times, and the p-value is
-  the share of resampled means at least as high as the real one. Accounts with fewer than
+  the share of resampled means at least as high as the real one. Accounts with p under
+  ``REFINE_BELOW`` are resampled ``N_FINE`` times, so p can go below the correction's cut-offs. Accounts with fewer than
   ``MIN_DAYS`` days or ``MIN_TRADES`` finished trades get p = 1 (too little to tell).
 * **Benjamini-Hochberg** over every account in the pool that has perp fills (FDR
   ``FDR_Q``), so "skilled" is not just the luckiest of thousands.
@@ -33,6 +34,10 @@ import numpy as np
 import pandas as pd
 
 N_BOOT = 2000
+# 2,000 draws cannot show a p-value under 1/2,001, while the correction's strictest cut-off over ~1,500
+# accounts is 0.05/1,500 = 0.00003: accounts under REFINE_BELOW are drawn again N_FINE times.
+REFINE_BELOW = 0.01
+N_FINE = 100_000
 MIN_DAYS = 30
 MIN_TRADES = 10
 FDR_Q = 0.05
@@ -114,8 +119,8 @@ def block_length(n: int) -> int:
     return max(1, round(n ** (1 / 3)))
 
 
-def skill_test(x: np.ndarray, n_boot: int = N_BOOT, seed: int = 0) -> dict:
-    """One-sided block-bootstrap test of mean(x) > 0. Returns p, score (mean / SE), SE, block length."""
+def skill_test(x: np.ndarray, n_boot: int = N_BOOT, seed: int = 0, n_fine: int = N_FINE) -> dict:
+    """One-sided block-bootstrap test of mean(x) > 0. Returns p, score (mean / SE), SE, block length, draws."""
     x = np.asarray(x, float)
     n = len(x)
     if n < 2 or not np.isfinite(x).all() or np.allclose(x, x[0]):
@@ -127,7 +132,14 @@ def skill_test(x: np.ndarray, n_boot: int = N_BOOT, seed: int = 0) -> dict:
     se = means.std(ddof=1)
     null = means - m   # the same resampling in a world where the true mean is 0
     p = (1 + np.sum(null >= m)) / (n_boot + 1)
-    return {"p": float(p), "score": float(m / se) if se > 0 else 0.0, "se": float(se), "block": b}
+    draws = n_boot
+    if p < REFINE_BELOW and n_fine > n_boot:   # a finer p-value; the score keeps the first draws' SE
+        hits = 0
+        for i in range(0, n_fine, 10_000):
+            k = min(10_000, n_fine - i)
+            hits += int(np.sum(x[_blocks(n, k, b, rng)].mean(axis=1) - m >= m))
+        p, draws = (1 + hits) / (n_fine + 1), n_fine
+    return {"p": float(p), "score": float(m / se) if se > 0 else 0.0, "se": float(se), "block": b, "draws": draws}
 
 
 def benjamini_hochberg(p: np.ndarray, q: float = FDR_Q) -> np.ndarray:

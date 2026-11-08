@@ -703,3 +703,15 @@ def test_history_check_reads_times_with_and_without_fractions_of_a_second():
     d = pd.DataFrame(rows)
     assert ct.history_gate(d, min_accounts=2)["historical_test"] is True
     assert ct.periods(d, ["a", "b"])["end"] == pd.Timestamp("2026-11-02", tz="UTC")
+
+
+def test_small_p_values_are_fine_enough_for_the_correction():
+    """2,000 draws cannot go below 1/2,001; the correction over 1,560 accounts needs 0.05/1,560."""
+    x = np.random.default_rng(3).normal(1.0, 1.0, 400)
+    coarse = sc.skill_test(x, 2000, n_fine=0)
+    fine = sc.skill_test(x, 2000)
+    assert coarse["p"] == pytest.approx(1 / 2001)
+    assert fine["p"] < 0.05 / 1560 and fine["draws"] == sc.N_FINE
+    assert fine["score"] == coarse["score"]                  # the ranking score does not change
+    assert sc.skill_test(np.random.default_rng(4).normal(0, 1, 200), 500)["draws"] in (500, sc.N_FINE)
+
