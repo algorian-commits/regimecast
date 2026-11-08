@@ -1200,6 +1200,549 @@
         }
       }
     },
+    "/me/telegram": {
+      "get": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Telegram Get",
+        "operationId": "telegram_get_me_telegram_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Telegram Unlink",
+        "operationId": "telegram_unlink_me_telegram_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Telegram Patch",
+        "operationId": "telegram_patch_me_telegram_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/telegram/link": {
+      "post": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Telegram Link",
+        "description": "A one-time link that connects this account to the Telegram chat that opens it.",
+        "operationId": "telegram_link_me_telegram_link_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          }
+        }
+      }
+    },
+    "/me/telegram/test": {
+      "post": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Telegram Test",
+        "operationId": "telegram_test_me_telegram_test_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "429": {
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          }
+        }
+      }
+    },
+    "/me/guardian": {
+      "get": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Guardian Get",
+        "description": "Everything the Guardian page shows.",
+        "operationId": "guardian_get_me_guardian_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardianOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          }
+        }
+      }
+    },
+    "/me/guardian/sources/hyperliquid": {
+      "post": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Add Hyperliquid",
+        "operationId": "add_hyperliquid_me_guardian_sources_hyperliquid_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HyperliquidIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/guardian/sources/binance": {
+      "post": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Add Binance",
+        "description": "Checks the key with Binance first: it is stored (encrypted) only if it can read and cannot trade or withdraw.",
+        "operationId": "add_binance_me_guardian_sources_binance_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BinanceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "502": {
+            "description": "Bad Gateway"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/guardian/sources/{source_id}": {
+      "delete": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Delete Source",
+        "description": "Stop watching. A Binance key is deleted from the database at once, with its positions.",
+        "operationId": "delete_source_me_guardian_sources__source_id__delete",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/guardian/positions": {
+      "post": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Add Position",
+        "operationId": "add_position_me_guardian_positions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PositionOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/guardian/positions/{position_id}": {
+      "patch": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Patch Position",
+        "description": "Mute or unmute (a muted position is still shown, but sends no alerts), or set its own risk limit.",
+        "operationId": "patch_position_me_guardian_positions__position_id__patch",
+        "parameters": [
+          {
+            "name": "position_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Position Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PositionPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PositionOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Delete Position",
+        "operationId": "delete_position_me_guardian_positions__position_id__delete",
+        "parameters": [
+          {
+            "name": "position_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Position Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          },
+          "503": {
+            "description": "Accounts database not configured or not reachable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/guardian/status": {
+      "get": {
+        "tags": [
+          "guardian"
+        ],
+        "summary": "Guardian Status",
+        "description": "Whether the Guardian loop and the Telegram bot run in this API process.",
+        "operationId": "guardian_status_guardian_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardianStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
@@ -2078,6 +2621,34 @@
         ],
         "title": "BacktestRow"
       },
+      "BinanceIn": {
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "title": "Api Key",
+            "default": ""
+          },
+          "api_secret": {
+            "type": "string",
+            "title": "Api Secret",
+            "default": ""
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "title": "BinanceIn",
+        "description": "A Binance API key with ONLY \"Enable Reading\" ticked. Checked on save: refused if it can trade or withdraw."
+      },
       "Candle": {
         "properties": {
           "t": {
@@ -2647,6 +3218,113 @@
         ],
         "title": "FixOut"
       },
+      "GuardianOut": {
+        "properties": {
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceOut"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/PositionOut"
+            },
+            "type": "array",
+            "title": "Positions"
+          },
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/InboxItem"
+            },
+            "type": "array",
+            "title": "Alerts",
+            "description": "Guardian alerts, newest first"
+          },
+          "profile_risk_limit": {
+            "type": "number",
+            "title": "Profile Risk Limit"
+          },
+          "binance_keys_enabled": {
+            "type": "boolean",
+            "title": "Binance Keys Enabled",
+            "description": "False when the server has no GUARDIAN_SECRET"
+          },
+          "telegram": {
+            "$ref": "#/components/schemas/TelegramOut"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GuardianStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sources",
+          "positions",
+          "alerts",
+          "profile_risk_limit",
+          "binance_keys_enabled",
+          "telegram",
+          "status"
+        ],
+        "title": "GuardianOut"
+      },
+      "GuardianStatus": {
+        "properties": {
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          },
+          "last_run": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run"
+          },
+          "last_fired": {
+            "type": "integer",
+            "title": "Last Fired"
+          },
+          "last_sent": {
+            "type": "integer",
+            "title": "Last Sent"
+          },
+          "every_seconds": {
+            "type": "number",
+            "title": "Every Seconds"
+          },
+          "telegram_configured": {
+            "type": "boolean",
+            "title": "Telegram Configured"
+          },
+          "telegram_polling": {
+            "type": "boolean",
+            "title": "Telegram Polling"
+          },
+          "binance_keys_enabled": {
+            "type": "boolean",
+            "title": "Binance Keys Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "running",
+          "last_run",
+          "last_fired",
+          "last_sent",
+          "every_seconds",
+          "telegram_configured",
+          "telegram_polling",
+          "binance_keys_enabled"
+        ],
+        "title": "GuardianStatus"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2668,6 +3346,33 @@
         ],
         "title": "Horizon",
         "description": "Forecast horizon in hours (a query parameter: FastAPI reads it as text, which Literal[1, 24] always refuses)."
+      },
+      "HyperliquidIn": {
+        "properties": {
+          "address": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Address",
+            "description": "0x... wallet address (public; no key needed)"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "address"
+        ],
+        "title": "HyperliquidIn"
       },
       "InboxItem": {
         "properties": {
@@ -2771,6 +3476,157 @@
           "unread"
         ],
         "title": "InboxOut"
+      },
+      "LinkOut": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "Open on the phone and tap Start; works once, for 10 minutes"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "title": "LinkOut"
+      },
+      "ManualIn": {
+        "properties": {
+          "check_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check Id"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "BTCUSDT",
+                  "ETHUSDT",
+                  "SOLUSDT"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "side": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "long",
+                  "short"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Side"
+          },
+          "entry": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry"
+          },
+          "leverage": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 150.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leverage"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty",
+            "description": "Size in coins. Give qty OR margin."
+          },
+          "margin": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin"
+          },
+          "margin_mode": {
+            "type": "string",
+            "enum": [
+              "isolated",
+              "cross"
+            ],
+            "title": "Margin Mode",
+            "default": "isolated"
+          },
+          "wallet_balance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wallet Balance"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          }
+        },
+        "type": "object",
+        "title": "ManualIn",
+        "description": "A position entered by hand, or from a saved risk check (check_id: the rest is taken from it)."
       },
       "MarketOut": {
         "properties": {
@@ -3197,6 +4053,282 @@
         ],
         "title": "ParsedTrade",
         "description": "What the user typed, field by field. null = not stated (never guessed)."
+      },
+      "PositionOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Where it comes from, in words"
+          },
+          "manual": {
+            "type": "boolean",
+            "title": "Manual"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "long",
+              "short"
+            ],
+            "title": "Side"
+          },
+          "entry": {
+            "type": "number",
+            "title": "Entry"
+          },
+          "qty": {
+            "type": "number",
+            "title": "Qty"
+          },
+          "leverage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leverage"
+          },
+          "margin_mode": {
+            "type": "string",
+            "title": "Margin Mode"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          },
+          "muted": {
+            "type": "boolean",
+            "title": "Muted"
+          },
+          "risk_limit": {
+            "type": "number",
+            "title": "Risk Limit",
+            "description": "The limit used: its own, else the profile's"
+          },
+          "own_limit": {
+            "type": "boolean",
+            "title": "Own Limit"
+          },
+          "covered": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Covered",
+            "description": "False for coins RegimeCast does not model; null before the first check"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "mark_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mark Price"
+          },
+          "liquidation_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidation Price"
+          },
+          "distance_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Pct"
+          },
+          "moves_1h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moves 1H",
+            "description": "Distance to liquidation in typical one-hour moves"
+          },
+          "p_liquidation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Liquidation",
+            "description": "Chance of liquidation within 24 h"
+          },
+          "stress_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress Level"
+          },
+          "states": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "States",
+            "description": "Each rule: true holds, false clear"
+          },
+          "safer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SaferOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source_id",
+          "source",
+          "manual",
+          "symbol",
+          "side",
+          "entry",
+          "qty",
+          "leverage",
+          "margin_mode",
+          "stop",
+          "muted",
+          "risk_limit",
+          "own_limit"
+        ],
+        "title": "PositionOut"
+      },
+      "PositionPatch": {
+        "properties": {
+          "muted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Muted"
+          },
+          "risk_limit": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 0.5,
+                "minimum": 0.0001
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Limit",
+            "description": "Own limit for this position"
+          },
+          "clear_risk_limit": {
+            "type": "boolean",
+            "title": "Clear Risk Limit",
+            "description": "True: use the profile's limit again",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "PositionPatch"
       },
       "ProfileIn": {
         "properties": {
@@ -3910,6 +5042,142 @@
         ],
         "title": "RiskOut"
       },
+      "SaferOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "safe",
+              "none"
+            ],
+            "title": "Status"
+          },
+          "limit": {
+            "type": "number",
+            "title": "Limit"
+          },
+          "leverage_now": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leverage Now"
+          },
+          "leverage_safe": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leverage Safe"
+          },
+          "add_margin_usdt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Add Margin Usdt",
+            "description": "Add this much margin, same size"
+          },
+          "reduce_to_usdt": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reduce To Usdt",
+            "description": "Or reduce the position to this size, keeping the margin"
+          },
+          "reduce_to_qty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reduce To Qty"
+          },
+          "p_liquidation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Liquidation"
+          },
+          "liquidation_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidation Price"
+          },
+          "moves_1h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moves 1H"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade",
+            "description": "Phase 12 grade of the fixed version, if its fix was used"
+          },
+          "stop_advice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Advice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "limit"
+        ],
+        "title": "SaferOut"
+      },
       "SeriesSummary": {
         "properties": {
           "symbol": {
@@ -4071,6 +5339,106 @@
         ],
         "title": "SimilarOut"
       },
+      "SourceOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "hyperliquid",
+              "binance"
+            ],
+            "title": "Kind"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address",
+            "description": "Hyperliquid: the public wallet address. Binance: always null"
+          },
+          "permissions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permissions",
+            "description": "Binance: what the key may do, as last checked"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_polled_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Polled At"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "positions": {
+            "type": "integer",
+            "title": "Positions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "address",
+          "permissions",
+          "status",
+          "last_error",
+          "last_polled_at",
+          "created_at",
+          "positions"
+        ],
+        "title": "SourceOut"
+      },
       "StopInfo": {
         "properties": {
           "stop": {
@@ -4176,6 +5544,106 @@
           "small_sample"
         ],
         "title": "StressScore"
+      },
+      "TelegramIn": {
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "kinds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kinds",
+            "description": "Alert kinds to send; leave out to keep"
+          },
+          "all_kinds": {
+            "type": "boolean",
+            "title": "All Kinds",
+            "description": "True: send every kind (clears the list)",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "TelegramIn"
+      },
+      "TelegramOut": {
+        "properties": {
+          "configured": {
+            "type": "boolean",
+            "title": "Configured",
+            "description": "False when the server has no TELEGRAM_BOT_TOKEN"
+          },
+          "linked": {
+            "type": "boolean",
+            "title": "Linked"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "linked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked At"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "kinds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kinds",
+            "description": "Alert kinds sent to Telegram; null = every kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "configured",
+          "linked"
+        ],
+        "title": "TelegramOut"
       },
       "TrackRecordOut": {
         "properties": {

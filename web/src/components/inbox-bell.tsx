@@ -16,6 +16,10 @@ const KIND_LABEL: Record<string, string> = {
   regime_stressed: "regime",
   position_risk: "your position",
   whale_watch: "whale watch",
+  guardian_risk: "Guardian",
+  guardian_stress: "Guardian",
+  guardian_near: "Guardian",
+  guardian_key: "Guardian",
 };
 
 export function InboxBell() {

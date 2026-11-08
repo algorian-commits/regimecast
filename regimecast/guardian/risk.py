@@ -63,6 +63,11 @@ class Reading:
     def coin(self) -> str:
         return self.symbol.removesuffix("USDT")
 
+    @property
+    def crossed(self) -> bool:
+        """The mark price is already at or past the liquidation price."""
+        return self.distance_pct is not None and self.distance_pct <= 0
+
     def as_dict(self) -> dict:
         return {k: (None if isinstance(v, float) and not math.isfinite(v) else v) for k, v in self.__dict__.items()}
 
@@ -96,7 +101,9 @@ def read(row, mark: float | None, sigma_24h: float | None, sigma_1h: float | Non
     lp = row["liquidation_price"] if row["source_id"] is not None else manual_liquidation_price(row)
     d = log_distance(row["side"], mark, lp)
     p = hit_fn(fhs, row["symbol"], row["side"])(d, sigma_24h) if d > 0 else 1.0
-    pct = None if lp is None else 100 * abs(1 - lp / mark)
+    # Signed: negative when the mark is already past the liquidation price (a hand-entered position from an
+    # entry far from today's price; the exchange would have closed it).
+    pct = None if lp is None else 100 * ((1 - lp / mark) if row["side"] == "long" else (lp / mark - 1))
     moves = (d / sigma_1h if math.isfinite(d) else math.inf) if sigma_1h else None
     return Reading(symbol=row["symbol"], side=row["side"], qty=row["qty"], mark=mark, liquidation_price=lp,
                    distance_pct=pct, moves_1h=moves, p_liquidation=p, limit=limit, leverage=row["leverage"],
@@ -107,6 +114,8 @@ def read(row, mark: float | None, sigma_24h: float | None, sigma_1h: float | Non
 def states(r: Reading) -> dict[str, bool | None]:
     """Each rule's condition: True holds, False cleared, None unknown or inside the clearing band."""
     risk = True if r.p_liquidation > r.limit else False if r.p_liquidation <= rules.RISK_CLEAR_SHARE * r.limit else None
+    if r.crossed:   # one message ("past its liquidation price"), not one per rule
+        return {"guardian_risk": True, "guardian_stress": None, "guardian_near": None}
     exposed = r.side == "long" and (r.leverage or 0) >= LEVERAGED
     stress = None if r.stress_level is None else (exposed and r.stress_level == "high")
     if r.moves_1h is None:
@@ -167,6 +176,8 @@ def safer(r: Reading, stop: float | None, limit: float, fhs: dict, rg=None, st=N
     helps."""
     if r.liquidation_price is None:
         return {"status": "safe", "limit": limit}
+    if r.crossed:   # nothing to rescale from: the margin is already gone at this price
+        return {"status": "none", "limit": limit}
     hit = hit_fn(fhs, r.symbol, r.side)
     lev0 = leverage_from_now(r.symbol, r.side, r.mark, r.qty, r.liquidation_price)
     notional = r.qty * r.mark
@@ -231,6 +242,13 @@ def safer_text(r: Reading, s: dict) -> str:
 def message(rule: str, r: Reading, where: str, s: dict) -> tuple[str, str]:
     """(title, message) for an inbox row and the Telegram text."""
     n = name(r, where)
+    if r.crossed:
+        place = (f"The mark price {fmt_price(r.mark)} is already past the liquidation price "
+                 f"{fmt_price(r.liquidation_price)}: on the exchange this position would have been liquidated. "
+                 f"If it is still open, check it there now.")
+        title = f"{n}: past its liquidation price"
+        tail = "Prices from Binance's live mark price. Not financial advice."
+        return title, "\n".join((place, tail))
     if r.liquidation_price is not None:
         side_word = "below" if r.side == "long" else "above"
         moves = f", about {r.moves_1h:.1f} typical hourly moves" if r.moves_1h is not None else ""

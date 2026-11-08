@@ -276,6 +276,26 @@ Scored with the evaluation's own code: realised variance from `realized.build_ta
 stress label from `build.minute_features` with its 30-day lookback. The benchmark is the last window's realised variance.
 No backfilling and no backtest numbers: a missed hour stays missing. `TRACK_RECORD=0` switches the threads off.
 
+## Position Guardian and Telegram alerts (Phase 13C)
+
+RegimeCast watches your open leveraged positions every minute and messages you, in the app and on Telegram, when the
+risk changes, with a safer version of the position in the same message. It only reads positions: it never trades and
+never stores a key that could. The page is `/guardian`. Plain-English overview: `docs/GUARDIAN_WALKTHROUGH.md`.
+
+| Part | File | What it does |
+|---|---|---|
+| Sources | `regimecast/guardian/hyperliquid.py`, `binance.py` | Hyperliquid by public wallet address (no key). Binance by a read-only key: checked with `apiRestrictions` on save and every 6 h, refused or deleted if it can trade, withdraw or transfer. Testnet has no `apiRestrictions`, so there a test order (`/fapi/v1/order/test`, nothing is placed) must be refused for permission. |
+| Key storage | `regimecast/guardian/crypto.py` | Fernet, key derived from `GUARDIAN_SECRET` (HKDF). Without it, Binance keys are switched off. Keys are never logged and never in a response, a 422 included. |
+| Rules and safer version | `regimecast/guardian/risk.py` | 24 h liquidation chance (FHS on HAR-S, from the current mark price), distance in typical one-hour moves, stress. Three rules, each fires once and re-arms (Phase 11's `rules.step`). The safer version reruns Phase 12's "fix my trade" on the position as it stands now. |
+| Loop | `regimecast/guardian/loop.py` | A thread in the API: sources and rules once a minute, Telegram delivery every 15 s. `GUARDIAN=0` switches it off. |
+| Telegram | `regimecast/notify/` | One-time link codes (`t.me/<bot>?start=<code>`, 10 minutes), long polling for `/start` (`TELEGRAM_POLL=0` switches it off), delivery of every inbox row (any alert kind), at most 20 a user an hour, 3 tries, unlinks a blocked chat. Bot token and Binance signatures are scrubbed from logs. |
+| API | `regimecast/api/guardian.py` | `/me/telegram` (link, settings, test, unlink), `/me/guardian` (sources, positions, mute, own limit), `/guardian/status`. |
+| Page | `web/src/components/guardian.tsx`, `web/src/lib/guardian.ts` | Watched positions with live risk and the safer version, sources, Telegram, alert history. |
+
+Server settings (Railway, set by Saeed, never in the repo): `TELEGRAM_BOT_TOKEN`, `GUARDIAN_SECRET` (32+ characters).
+On this PC: `scripts/set_guardian_secrets.ps1` asks for them with hidden input. Tests: `tests/test_guardian.py` (fake
+exchanges and a fake Telegram). Pass marks: `scripts/p13c_pass_marks.py`.
+
 ## Rules we follow (to keep results honest)
 
 1. A value labelled at time *t* only uses data up to *t*.

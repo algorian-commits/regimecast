@@ -10,6 +10,7 @@ import { ThemeToggle } from "./theme-toggle";
 const LINKS = [
   { href: "/", label: "Overview" },
   { href: "/risk-check", label: "Risk Check" },
+  { href: "/guardian", label: "Guardian" },
   { href: "/agent", label: "Agent" },
   { href: "/track-record", label: "Track Record" },
   { href: "/replay", label: "Replay" },

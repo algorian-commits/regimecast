@@ -322,6 +322,21 @@ def test_own_limit_forces_an_alert(fresh, eng):
     assert [e["kind"] for e in events(eng)] == ["guardian_risk"]
 
 
+def test_position_already_past_liquidation_sends_one_plain_message(fresh, eng):
+    """A hand-entered entry far from today's price can be past its liquidation price: say so once, and offer no fix."""
+    fakes, _ = fresh
+    c = user()
+    c.post("/me/guardian/positions", json={"symbol": "BTCUSDT", "side": "long", "entry": 100_000, "leverage": 50,
+                                           "margin": 200})
+    run(eng, Market(75_000), fakes)
+    evs = events(eng)
+    assert [e["kind"] for e in evs] == ["guardian_risk"]
+    assert "past its liquidation price" in evs[0]["title"] and "would have been liquidated" in evs[0]["message"]
+    assert "Safer version" not in evs[0]["message"] and evs[0]["detail"]["safer"]["status"] == "none"
+    p = c.get("/me/guardian").json()["positions"][0]
+    assert p["distance_pct"] < 0 and p["moves_1h"] < 0
+
+
 def test_safer_version_matches_the_liquidation_price():
     lev = risk.leverage_from_now("BTCUSDT", "long", 70_000, 0.1, 63_300)
     from regimecast.risk import liquidation as liq

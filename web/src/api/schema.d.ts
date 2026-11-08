@@ -412,6 +412,197 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me/telegram": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Telegram Get */
+        get: operations["telegram_get_me_telegram_get"];
+        put?: never;
+        post?: never;
+        /** Telegram Unlink */
+        delete: operations["telegram_unlink_me_telegram_delete"];
+        options?: never;
+        head?: never;
+        /** Telegram Patch */
+        patch: operations["telegram_patch_me_telegram_patch"];
+        trace?: never;
+    };
+    "/me/telegram/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Telegram Link
+         * @description A one-time link that connects this account to the Telegram chat that opens it.
+         */
+        post: operations["telegram_link_me_telegram_link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/telegram/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Telegram Test */
+        post: operations["telegram_test_me_telegram_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/guardian": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Guardian Get
+         * @description Everything the Guardian page shows.
+         */
+        get: operations["guardian_get_me_guardian_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/guardian/sources/hyperliquid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Hyperliquid */
+        post: operations["add_hyperliquid_me_guardian_sources_hyperliquid_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/guardian/sources/binance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Binance
+         * @description Checks the key with Binance first: it is stored (encrypted) only if it can read and cannot trade or withdraw.
+         */
+        post: operations["add_binance_me_guardian_sources_binance_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/guardian/sources/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Source
+         * @description Stop watching. A Binance key is deleted from the database at once, with its positions.
+         */
+        delete: operations["delete_source_me_guardian_sources__source_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/guardian/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Position */
+        post: operations["add_position_me_guardian_positions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/guardian/positions/{position_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Position */
+        delete: operations["delete_position_me_guardian_positions__position_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Patch Position
+         * @description Mute or unmute (a muted position is still shown, but sends no alerts), or set its own risk limit.
+         */
+        patch: operations["patch_position_me_guardian_positions__position_id__patch"];
+        trace?: never;
+    };
+    "/guardian/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Guardian Status
+         * @description Whether the Guardian loop and the Telegram bot run in this API process.
+         */
+        get: operations["guardian_status_guardian_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -745,6 +936,24 @@ export interface components {
             /** Avg Exposure */
             avg_exposure: number;
         };
+        /**
+         * BinanceIn
+         * @description A Binance API key with ONLY "Enable Reading" ticked. Checked on save: refused if it can trade or withdraw.
+         */
+        BinanceIn: {
+            /**
+             * Api Key
+             * @default
+             */
+            api_key: string;
+            /**
+             * Api Secret
+             * @default
+             */
+            api_secret: string;
+            /** Label */
+            label?: string | null;
+        };
         /** Candle */
         Candle: {
             /**
@@ -992,6 +1201,46 @@ export interface components {
             /** Changes */
             changes: string[];
         };
+        /** GuardianOut */
+        GuardianOut: {
+            /** Sources */
+            sources: components["schemas"]["SourceOut"][];
+            /** Positions */
+            positions: components["schemas"]["PositionOut"][];
+            /**
+             * Alerts
+             * @description Guardian alerts, newest first
+             */
+            alerts: components["schemas"]["InboxItem"][];
+            /** Profile Risk Limit */
+            profile_risk_limit: number;
+            /**
+             * Binance Keys Enabled
+             * @description False when the server has no GUARDIAN_SECRET
+             */
+            binance_keys_enabled: boolean;
+            telegram: components["schemas"]["TelegramOut"];
+            status: components["schemas"]["GuardianStatus"];
+        };
+        /** GuardianStatus */
+        GuardianStatus: {
+            /** Running */
+            running: boolean;
+            /** Last Run */
+            last_run: string | null;
+            /** Last Fired */
+            last_fired: number;
+            /** Last Sent */
+            last_sent: number;
+            /** Every Seconds */
+            every_seconds: number;
+            /** Telegram Configured */
+            telegram_configured: boolean;
+            /** Telegram Polling */
+            telegram_polling: boolean;
+            /** Binance Keys Enabled */
+            binance_keys_enabled: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1003,6 +1252,16 @@ export interface components {
          * @enum {integer}
          */
         Horizon: 1 | 24;
+        /** HyperliquidIn */
+        HyperliquidIn: {
+            /**
+             * Address
+             * @description 0x... wallet address (public; no key needed)
+             */
+            address: string;
+            /** Label */
+            label?: string | null;
+        };
         /** InboxItem */
         InboxItem: {
             /** Id */
@@ -1040,6 +1299,49 @@ export interface components {
             items: components["schemas"]["InboxItem"][];
             /** Unread */
             unread: number;
+        };
+        /** LinkOut */
+        LinkOut: {
+            /**
+             * Url
+             * @description Open on the phone and tap Start; works once, for 10 minutes
+             */
+            url: string;
+            /** Expires At */
+            expires_at: string;
+        };
+        /**
+         * ManualIn
+         * @description A position entered by hand, or from a saved risk check (check_id: the rest is taken from it).
+         */
+        ManualIn: {
+            /** Check Id */
+            check_id?: number | null;
+            /** Symbol */
+            symbol?: ("BTCUSDT" | "ETHUSDT" | "SOLUSDT") | null;
+            /** Side */
+            side?: ("long" | "short") | null;
+            /** Entry */
+            entry?: number | null;
+            /** Leverage */
+            leverage?: number | null;
+            /**
+             * Qty
+             * @description Size in coins. Give qty OR margin.
+             */
+            qty?: number | null;
+            /** Margin */
+            margin?: number | null;
+            /**
+             * Margin Mode
+             * @default isolated
+             * @enum {string}
+             */
+            margin_mode: "isolated" | "cross";
+            /** Wallet Balance */
+            wallet_balance?: number | null;
+            /** Stop */
+            stop?: number | null;
         };
         /** MarketOut */
         MarketOut: {
@@ -1242,6 +1544,97 @@ export interface components {
              * @description Cross margin: the whole wallet balance
              */
             wallet_usdt?: number | null;
+        };
+        /** PositionOut */
+        PositionOut: {
+            /** Id */
+            id: number;
+            /** Source Id */
+            source_id: number | null;
+            /**
+             * Source
+             * @description Where it comes from, in words
+             */
+            source: string;
+            /** Manual */
+            manual: boolean;
+            /** Symbol */
+            symbol: string;
+            /**
+             * Side
+             * @enum {string}
+             */
+            side: "long" | "short";
+            /** Entry */
+            entry: number;
+            /** Qty */
+            qty: number;
+            /** Leverage */
+            leverage: number | null;
+            /** Margin Mode */
+            margin_mode: string;
+            /** Stop */
+            stop: number | null;
+            /** Muted */
+            muted: boolean;
+            /**
+             * Risk Limit
+             * @description The limit used: its own, else the profile's
+             */
+            risk_limit: number;
+            /** Own Limit */
+            own_limit: boolean;
+            /**
+             * Covered
+             * @description False for coins RegimeCast does not model; null before the first check
+             */
+            covered?: boolean | null;
+            /** Note */
+            note?: string | null;
+            /** Mark Price */
+            mark_price?: number | null;
+            /** Liquidation Price */
+            liquidation_price?: number | null;
+            /** Distance Pct */
+            distance_pct?: number | null;
+            /**
+             * Moves 1H
+             * @description Distance to liquidation in typical one-hour moves
+             */
+            moves_1h?: number | null;
+            /**
+             * P Liquidation
+             * @description Chance of liquidation within 24 h
+             */
+            p_liquidation?: number | null;
+            /** Stress Level */
+            stress_level?: string | null;
+            /**
+             * States
+             * @description Each rule: true holds, false clear
+             */
+            states?: {
+                [key: string]: boolean | null;
+            } | null;
+            safer?: components["schemas"]["SaferOut"] | null;
+            /** Checked At */
+            checked_at?: string | null;
+        };
+        /** PositionPatch */
+        PositionPatch: {
+            /** Muted */
+            muted?: boolean | null;
+            /**
+             * Risk Limit
+             * @description Own limit for this position
+             */
+            risk_limit?: number | null;
+            /**
+             * Clear Risk Limit
+             * @description True: use the profile's limit again
+             * @default false
+             */
+            clear_risk_limit: boolean;
         };
         /**
          * ProfileIn
@@ -1490,6 +1883,45 @@ export interface components {
              */
             what_if: components["schemas"]["WhatIfOut"][];
         };
+        /** SaferOut */
+        SaferOut: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "fixed" | "safe" | "none";
+            /** Limit */
+            limit: number;
+            /** Leverage Now */
+            leverage_now?: number | null;
+            /** Leverage Safe */
+            leverage_safe?: number | null;
+            /**
+             * Add Margin Usdt
+             * @description Add this much margin, same size
+             */
+            add_margin_usdt?: number | null;
+            /**
+             * Reduce To Usdt
+             * @description Or reduce the position to this size, keeping the margin
+             */
+            reduce_to_usdt?: number | null;
+            /** Reduce To Qty */
+            reduce_to_qty?: number | null;
+            /** P Liquidation */
+            p_liquidation?: number | null;
+            /** Liquidation Price */
+            liquidation_price?: number | null;
+            /** Moves 1H */
+            moves_1h?: number | null;
+            /**
+             * Grade
+             * @description Phase 12 grade of the fixed version, if its fix was used
+             */
+            grade?: string | null;
+            /** Stop Advice */
+            stop_advice?: string | null;
+        };
         /** SeriesSummary */
         SeriesSummary: {
             /** Symbol */
@@ -1564,6 +1996,40 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** SourceOut */
+        SourceOut: {
+            /** Id */
+            id: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "hyperliquid" | "binance";
+            /** Label */
+            label: string | null;
+            /**
+             * Address
+             * @description Hyperliquid: the public wallet address. Binance: always null
+             */
+            address: string | null;
+            /**
+             * Permissions
+             * @description Binance: what the key may do, as last checked
+             */
+            permissions: {
+                [key: string]: unknown;
+            } | null;
+            /** Status */
+            status: string;
+            /** Last Error */
+            last_error: string | null;
+            /** Last Polled At */
+            last_polled_at: string | null;
+            /** Created At */
+            created_at: string;
+            /** Positions */
+            positions: number;
+        };
         /** StopInfo */
         StopInfo: {
             /** Stop */
@@ -1612,6 +2078,46 @@ export interface components {
             brier_base_rate: number | null;
             /** Small Sample */
             small_sample: boolean;
+        };
+        /** TelegramIn */
+        TelegramIn: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /**
+             * Kinds
+             * @description Alert kinds to send; leave out to keep
+             */
+            kinds?: string[] | null;
+            /**
+             * All Kinds
+             * @description True: send every kind (clears the list)
+             * @default false
+             */
+            all_kinds: boolean;
+        };
+        /** TelegramOut */
+        TelegramOut: {
+            /**
+             * Configured
+             * @description False when the server has no TELEGRAM_BOT_TOKEN
+             */
+            configured: boolean;
+            /** Linked */
+            linked: boolean;
+            /** Username */
+            username?: string | null;
+            /** Linked At */
+            linked_at?: string | null;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Kinds
+             * @description Alert kinds sent to Telegram; null = every kind
+             */
+            kinds?: string[] | null;
         };
         /** TrackRecordOut */
         TrackRecordOut: {
@@ -2908,6 +3414,628 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    telegram_get_me_telegram_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    telegram_unlink_me_telegram_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    telegram_patch_me_telegram_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TelegramIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    telegram_link_me_telegram_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    telegram_test_me_telegram_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    guardian_get_me_guardian_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuardianOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_hyperliquid_me_guardian_sources_hyperliquid_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HyperliquidIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_binance_me_guardian_sources_binance_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BinanceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceOut"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_source_me_guardian_sources__source_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_position_me_guardian_positions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PositionOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_position_me_guardian_positions__position_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                position_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ok"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patch_position_me_guardian_positions__position_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                position_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PositionPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PositionOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Accounts database not configured or not reachable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    guardian_status_guardian_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuardianStatus"];
+                };
             };
         };
     };
