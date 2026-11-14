@@ -175,10 +175,9 @@ export function CrashReplay() {
           <LoadView load={events} lines={1} notReady={() => null}>
             {(list) => (
               <select className={sel} value={o.event} onChange={(e) => setO({ ...o, event: e.target.value })} aria-label="Crash">
-                {list.map((e) => (
-                  <option key={e.id} value={e.id} disabled={!e.available}>
+                {list.filter((e) => e.available).map((e) => (
+                  <option key={e.id} value={e.id}>
                     {e.title}
-                    {e.available ? "" : " (after the final evaluation)"}
                   </option>
                 ))}
               </select>
