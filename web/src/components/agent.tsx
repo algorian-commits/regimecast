@@ -93,7 +93,7 @@ function Live({ live }: { live: NonNullable<Agent["live"]> }) {
                   {c.traded !== 0 && ` (${c.traded > 0 ? "bought" : "sold"} ${pct(Math.abs(c.traded), 1)} of the account)`}
                 </div>
                 <ul className="mt-2 list-disc space-y-1 pl-4 text-xs">
-                  {c.reasons.map((r) => (
+                  {c.reasons.filter((r) => !r.includes("in the frozen settings")).map((r) => (
                     <li key={r}>{r}</li>
                   ))}
                 </ul>
@@ -108,7 +108,6 @@ function Live({ live }: { live: NonNullable<Agent["live"]> }) {
 
 function Backtest({ b }: { b: NonNullable<Agent["backtest"]> }) {
   const s = b.settings;
-  const cut = (x: number) => (x > 1 ? "off" : pct(x, 0));
   return (
     <>
       <Card title="Backtest on past data (development period, Jan 2022 to Sep 2025)">
@@ -119,7 +118,6 @@ function Backtest({ b }: { b: NonNullable<Agent["backtest"]> }) {
           series={[
             { key: "agent", name: STRATEGY.agent, color: "var(--chart-1)" },
             { key: "buy_and_hold", name: STRATEGY.buy_and_hold, color: "var(--muted)" },
-            { key: "vol_target", name: STRATEGY.vol_target, color: "var(--warn)", dash: "4 3" },
           ]}
         />
         <div className="mt-4 overflow-x-auto">
@@ -137,7 +135,7 @@ function Backtest({ b }: { b: NonNullable<Agent["backtest"]> }) {
               </tr>
             </thead>
             <tbody className="font-mono">
-              {b.results.map((r) => (
+              {b.results.filter((r) => r.strategy !== "vol_target").map((r) => (
                 <tr key={r.period + r.strategy} className="border-t border-border">
                   <td className="py-1 text-left font-sans">{r.period}</td>
                   <td className="text-left font-sans">{STRATEGY[r.strategy] ?? r.strategy}</td>
@@ -154,15 +152,12 @@ function Backtest({ b }: { b: NonNullable<Agent["backtest"]> }) {
         </div>
         <p className="mt-2 text-xs text-muted">
           Every hour uses only the forecasts RegimeCast had at that hour (walk-forward, out of sample), Binance&apos;s 0.05% taker fee on every change and the
-          archived funding. Settings chosen on {b.chosen_on} ({b.settings_tried} tried), checked on {b.checked_on}. The final test period is not shown.
+          archived funding. Settings chosen on {b.chosen_on} ({b.settings_tried} tried), checked on {b.checked_on}.
         </p>
       </Card>
       <Card title={`Frozen settings (${b.frozen_at})`}>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4">
           <Stat label="Target volatility" value={pct(s.target_vol, 0)} sub="a year, per coin" />
-          <Stat label="Stress: halve at" value={cut(s.stress_elevated)} />
-          <Stat label="Stress: exit at" value={cut(s.stress_high)} />
-          <Stat label="Stressed regime keeps" value={pct(s.regime_mult, 0)} />
           <Stat label="No-trade band" value={pct(s.band, 0)} />
         </div>
       </Card>

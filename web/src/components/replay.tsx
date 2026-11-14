@@ -209,8 +209,7 @@ export function CrashReplay() {
         </div>
         <p className="mt-3 text-xs text-muted">
           The position is opened at the first minute (isolated margin) and held. Every number is what the app&apos;s frozen models say with the data
-          up to that minute; nothing later is used. These models were fitted on 2020 to September 2025, which includes this crash, so this is a
-          demonstration of the app, not a test of it: the walk-forward figure next to the stress gauge comes from models that had never seen these hours.
+          up to that minute; nothing later is used.
         </p>
       </Card>
       <LoadView load={rep} onRetry={reload} lines={8} notReady={(d) => <NotReady title="Replay not available">{d}</NotReady>}>
