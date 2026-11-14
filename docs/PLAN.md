@@ -643,6 +643,48 @@ The scorecards and the liquidation map are descriptive (no bar). They show their
 | Telegram rate limits | One message per alert, re-arm rule, at most 20 messages per user per hour |
 
 
+## Phase 14 (proposed 13 Nov 2026, not approved): Risk autopilot
+
+Status: an idea to brainstorm after the P1 mid defense. Nothing here is approved or built. It needs pass marks and
+Saeed's approval before any work starts.
+
+Goal: the trader picks the direction; RegimeCast plans, places and looks after the position, with the trader's
+approval at each step. This is the first phase aimed at earning money.
+
+Why this shape
+- Exchanges already ship AI that picks and places trades. None of them grades a trade or tells the trader not to
+  take it, and none shows tested liquidation odds.
+- Our up/down odds scored like a coin flip on the sealed year, so RegimeCast must not choose direction. The parts
+  that passed (liquidation odds, stress warning, volatility forecast) are what drive this phase.
+
+Ideas, in the order I'd build them
+1. **Trade plan with one-tap approval.** From "long BTC with $500": leverage, 2-3 staggered entries, a stop and a
+   size that keeps the liquidation chance under the user's limit. On approval, all orders are placed.
+2. **Guardian that can act** (builds on 13C). A Telegram alert carries an "approve" button that applies the safer
+   version. Later: rules the user approves in advance, so it can act while they are away.
+3. **Whole-account risk.** The chance that the account is liquidated across all open positions together (coins
+   fall together under cross margin), not one position at a time.
+4. **Prop-trader mode.** The chance that a trade breaches a prop firm's daily loss limit: the same maths as
+   liquidation odds with a different barrier. Analytics only; could be a paid tier ($15-29 a month).
+5. **Rule trading, only if earned.** A Strategy Lab rule that passes its 8-week paper test could become an optional
+   "trade this rule for me" mode. No other route to full auto-trading.
+
+How it could earn
+- Hyperliquid builder code: a fee of up to 0.1% on perp orders placed through us, which the user approves and can
+  revoke. Charged on risk-reducing orders too.
+- Subscription for prop-trader mode.
+- Later: the risk numbers as an API for prop firms and trading front ends.
+
+Limits to keep
+- Hyperliquid first, on its testnet, then live with small position caps.
+- API wallets that can trade but not withdraw. RegimeCast never holds money.
+- No profit promises and no direction calls. The claim is "you survive longer".
+- It changes the proposal's "paper trading only, no exchange keys", so it is an extension to agree with the
+  supervisor.
+- A lawyer checks the licensing position (PVARA lists derivatives as a licensed category) before real orders go live.
+
+To decide when we brainstorm: which idea goes first, the pass marks, and whether this belongs in the FYP or beside it.
+
 ## Open questions
 
 1. **Criteria 1 and 4:** do you want to ask Mr. Awais to word them as "we test and report either way", or leave them as they are?
