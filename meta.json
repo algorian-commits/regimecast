@@ -1,0 +1,8 @@
+{
+  "updated_at": "2026-11-14T09:09:01.749819+00:00",
+  "model": "finbert",
+  "model_repo": "ProsusAI/finbert",
+  "headlines_used": 1814,
+  "last_headline_at": "2026-11-14T08:30:00+00:00",
+  "rebuilt_from": "2026-11-10T09:00:00+00:00"
+}
