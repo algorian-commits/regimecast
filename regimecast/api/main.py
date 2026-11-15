@@ -26,6 +26,7 @@ from regimecast.api import accounts, agent, inbox, live_ws, market, parser, repl
 from regimecast.api import verdict as verdict_api
 from regimecast.alerts.engine import engine as alert_engine
 from regimecast.track.engine import recorder as track_recorder
+from regimecast.agent.runner import runner as agent_runner
 from regimecast.whales.live import watch as whale_watch
 from regimecast.risk import fhs_live
 from regimecast.risk import liquidation as liq
@@ -38,6 +39,7 @@ async def lifespan(app):
     alert_engine.start()     # Phase 11: alert rules checked once a minute (alerts/engine.py)
     whale_watch.start()      # Phase 11: Whale Watch on Hyperliquid's public data (whales/live.py)
     track_recorder.start()   # Track Record: forecasts logged live, scored after their window (track/engine.py)
+    agent_runner.start()     # paper agent: one decision per hour, kept in the database (agent/runner.py)
     yield
 
 

@@ -61,7 +61,7 @@ function Live({ live }: { live: NonNullable<Agent["live"]> }) {
           <Stat label="Agent" value={change(live.equity)} tone={live.equity >= live.bh_equity ? "good" : undefined} />
           <Stat label="Buy-and-hold" value={change(live.bh_equity)} />
           <Stat label="Exposure now" value={d ? pct(d.total_exposure, 0) : "–"} sub="average of the three coins" />
-          <Stat label="Hours logged" value={live.hours_logged} sub={live.started_at ? `since ${when(live.started_at)}` : undefined} />
+          <Stat label="Last decision" value={d ? ago(d.decided_at) : "–"} sub="a new one every hour" />
         </div>
         {live.curve.length > 1 ? (
           <EquityChart
@@ -76,7 +76,7 @@ function Live({ live }: { live: NonNullable<Agent["live"]> }) {
         ) : (
           <NotReady title="The curve appears after the second hour">One point is logged so far.</NotReady>
         )}
-        <p className="mt-2 text-xs text-muted">Updated {ago(live.updated_at)}. Each decision is published before the hour it is for plays out; the data branch&apos;s history shows when.</p>
+        <p className="mt-2 text-xs text-muted">Updated {ago(live.updated_at)}. Each decision is saved with the time it was made, before the hour it is for plays out, and can&apos;t be changed afterwards.</p>
       </Card>
       {d && (
         <Card title={`Latest decision: the hour after ${when(d.hour)}`} action={<span className="text-xs text-muted">written {when(d.decided_at)}</span>}>

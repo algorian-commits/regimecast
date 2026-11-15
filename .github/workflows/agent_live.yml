@@ -7,13 +7,11 @@
 # :12 past the hour: the API refreshes its signals every 10 minutes, so by then they include the last hour.
 name: agent-live
 
+# Retired 15 Nov 2026: GitHub's scheduler ran this only every 6-8 hours. The API now runs the hourly step itself
+# (regimecast/agent/runner.py) and carried this account over from agent-data. Kept for manual runs only; running it
+# would fork a second copy of the account on agent-data, which the app no longer reads.
 on:
-  schedule:
-    - cron: "12 * * * *"
   workflow_dispatch:
-  push:
-    branches: [phase9-agent]
-    paths: [.github/workflows/agent_live.yml, regimecast/agent/live.py]
 
 concurrency:
   group: agent-live

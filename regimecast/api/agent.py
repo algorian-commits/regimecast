@@ -1,8 +1,9 @@
 """GET /agent (M10 part 2): the paper-trading risk agent.
 
-* ``live``: the hourly paper log the frozen agent writes on GitHub Actions (regimecast/agent/live.py),
-  read from the data branch ``agent-data`` (``api/latest.json``), cached for 5 minutes; a copy in
-  ``data/agent/api/latest.json`` (local runs) wins. If a fetch fails, the last good copy is served.
+* ``live``: the hourly paper log of the frozen agent (regimecast/agent/live.py). The API runs the step itself
+  and keeps the log in the database (regimecast/agent/runner.py), read here and cached for a minute. Without a
+  database it falls back to the data branch ``agent-data`` (``api/latest.json``, where GitHub Actions wrote it
+  until 15 Nov 2026), cached for 5 minutes; a copy in ``data/agent/api/latest.json`` (local runs) wins.
 * ``backtest``: the development-period results the settings were frozen on
   (``regimecast/agent/dev_summary.json``, written by scripts/run_phase9.py and shipped with the code).
 """
@@ -18,7 +19,8 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from regimecast import config
+from regimecast import config, db
+from regimecast.agent import runner
 
 router = APIRouter()
 
@@ -26,6 +28,7 @@ AGENT_DATA_URL = os.environ.get(
     "AGENT_DATA_URL", "https://raw.githubusercontent.com/algorian-commits/regimecast/agent-data/api/latest.json")
 DEV_SUMMARY = Path(__file__).resolve().parents[1] / "agent" / "dev_summary.json"
 REMOTE_TTL_S = 300
+DB_TTL_S = 60
 _cache: dict[str, tuple[float, dict]] = {}
 
 
@@ -119,6 +122,16 @@ def _live() -> dict | None:
     if local.exists():
         return json.loads(local.read_text())
     hit = _cache.get("live")
+    if hit and time.time() - hit[0] < DB_TTL_S:
+        return hit[1]
+    try:   # since 15 Nov 2026 the API itself runs the hourly step and keeps the log (agent/runner.py)
+        eng = db.get_engine()
+        data = runner.summary(eng) if eng is not None else None
+    except Exception:
+        data = None
+    if data is not None:
+        _cache["live"] = (time.time(), data)
+        return data
     if hit and time.time() - hit[0] < REMOTE_TTL_S:
         return hit[1]
     try:
