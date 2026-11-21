@@ -29,8 +29,7 @@ MOVE_USD = float(os.environ.get("WHALE_MOVE_USD", "5000000"))
 FRESH_USD = float(os.environ.get("WHALE_FRESH_USD", "5000000"))
 TIMING_USD = float(os.environ.get("WHALE_TIMING_USD", "5000000"))
 TIMING_HOURS = float(os.environ.get("WHALE_TIMING_HOURS", "6"))
-PATTERN_NOTE = ("This is a timing pattern, not evidence of wrongdoing: large traders open positions all the "
-                "time, and most of these are coincidences.")
+PATTERN_NOTE = "A timing pattern, not evidence of wrongdoing."
 
 
 def short(address: str) -> str:

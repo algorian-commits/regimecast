@@ -145,3 +145,18 @@ track_scores = sa.Table(   # the outcome, added in a separate row once the windo
     sa.Column("qlike_benchmark", sa.Float, nullable=True),
     sa.Column("stress_event", sa.Boolean, nullable=True),     # 1 h rows only: did the hour after H hold a stress event?
 )
+
+agent_log = sa.Table(   # paper agent: one decision per hour, never changed (migration 0004_agent)
+    "agent_log", metadata,
+    sa.Column("hour", sa.String(40), primary_key=True),
+    sa.Column("decided_at", sa.String(40), nullable=False),
+    sa.Column("saved_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("line", sa.Text, nullable=False),               # the log line as JSON (agent/live.py step)
+)
+
+agent_state = sa.Table(   # paper agent: the current account state, one row (id 1)
+    "agent_state", metadata,
+    sa.Column("id", sa.Integer, primary_key=True),
+    sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("state", sa.Text, nullable=False),
+)

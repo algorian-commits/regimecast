@@ -22,7 +22,7 @@ const BENCHMARK = "var(--chart-4)";
 
 function SampleBadge({ small, n }: { small: boolean; n: number }) {
   if (n === 0) return <Badge>no scores yet</Badge>;
-  return small ? <Badge tone="warn">small sample</Badge> : <Badge tone="good">30+ days</Badge>;
+  return small ? <Badge>first 30 days</Badge> : <Badge tone="good">30+ days</Badge>;
 }
 
 function Banner({ s }: { s: Summary }) {
@@ -36,8 +36,7 @@ function Banner({ s }: { s: Summary }) {
       </div>
       <p className="mt-4 text-xs text-muted">
         Each hour, every forecast is written down within {s.rules.log_deadline_minutes} minutes of the start of its window, using only data up to that start. The score is added as a
-        separate row after the window closes. The database refuses any change or deletion of either row, and an hour with no row stays missing for good. The times come from our own
-        server clock, so this shows our discipline, not independent proof.
+        separate row after the window closes. The database refuses any change or deletion of either row, and an hour with no row stays missing for good.
       </p>
     </Card>
   );
@@ -86,8 +85,8 @@ function ScoreTable({ series, symbol, horizon, onPick }: { series: Series[]; sym
         </table>
       </div>
       <p className="mt-3 text-xs text-muted">
-        Error is average QLIKE on the n rows that have both numbers; lower is better. A negative difference means our forecast&apos;s error was lower than the benchmark&apos;s. Until a
-        coin and horizon has 720 scored rows (30 days), treat its numbers as a small sample: they can swing a lot and may be luck.
+        Error is average QLIKE on the n rows that have both numbers; lower is better. A negative difference means our forecast&apos;s error was lower than the benchmark&apos;s. The
+        numbers settle as more days are scored; each coin and horizon reaches 30 days at 720 scored rows.
       </p>
     </Card>
   );
@@ -199,7 +198,7 @@ function Detail({ s, summary }: { s: Series; summary: Summary }) {
         <p className="mt-3 text-xs text-muted">Average QLIKE on the same rows. Negative means the forecast the app shows did better than HAR-S alone.</p>
       </Card>
       {st ? (
-        <Card title={`Stress warning, next hour: ${coin(s.symbol)}`} action={st.n === 0 ? <Badge>no scores yet</Badge> : st.small_sample ? <Badge tone="warn">small sample</Badge> : <Badge tone="good">30+ events</Badge>}>
+        <Card title={`Stress warning, next hour: ${coin(s.symbol)}`} action={st.n === 0 ? <Badge>no scores yet</Badge> : st.small_sample ? <Badge>first 30 events</Badge> : <Badge tone="good">30+ events</Badge>}>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat label="Hours scored" value={st.n} sub={`${st.events} held stress`} />
             <Stat label="Chance given" value={st.mean_p == null ? "–" : pct(st.mean_p, 1)} sub={`average, n = ${st.n}`} />
@@ -305,7 +304,7 @@ function Explain() {
     ["What happened (realised volatility)", "How much the price really moved in the window, added up from 1-minute prices for 1 h and 5-minute prices for 24 h. This is exactly the definition the models were tested on. Charts show it as a % move; the table stores it as variance, the % move squared."],
     ["Benchmark", "The simplest possible forecast: the next window will be as wild as the one that just ended. A forecast that can't beat this isn't adding anything."],
     ["QLIKE (the error)", "How far a forecast was from what happened, with a heavier penalty for expecting too little than for expecting too much, which suits risk. 0 is a perfect forecast; lower is better. One bad hour can move the average a lot."],
-    ["Difference", "Our average error compared with the rival's, on the same rows. -10% means our error was 10% lower. It is not a pass mark, and nothing here is a verdict."],
+    ["Difference", "Our average error compared with the rival's, on the same rows. -10% means our error was 10% lower."],
     ["HAR-S", "The linear part of the forecast, without LightGBM. It is logged next to the shown forecast because the liquidation chances use it."],
     ["Regime", "The market's state when the forecast was made: calm, active or stressed. Logged for the record, not scored."],
     ["Stress chance and stress event", "The model's chance that the next hour holds a stress event: at least 5 minutes in a row of volatility above its 99th percentile of the past 30 days."],
@@ -382,8 +381,8 @@ export function TrackRecord() {
               </NotReady>
             )}
             {s.rows_logged > 0 && s.series.some((x) => x.small_sample) && (
-              <NotReady title={`Early days: ${span(Math.ceil(s.rows_logged / 6))} of live forecasts so far`}>
-                Every score below is a small sample. Read them as a start, not a result.
+              <NotReady title={`${span(Math.ceil(s.rows_logged / 6))} of live forecasts so far`}>
+                The record grows every hour. Each coin and horizon reaches its first 30 days at 720 scored rows.
               </NotReady>
             )}
             <ScoreTable series={s.series} symbol={symbol} horizon={horizon} onPick={pick} />

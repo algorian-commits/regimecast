@@ -215,3 +215,66 @@ def test_api_agent_serves_live_log_and_backtest(tmp_path, monkeypatch):
     assert {x["strategy"] for x in body["backtest"]["results"]} == {"agent", "buy_and_hold", "vol_target"}
     monkeypatch.setattr(A, "_live", lambda: None)
     assert TestClient(app).get("/agent").json()["live"] is None
+
+
+# ------------------------------------------------------------------ hourly step inside the API (agent/runner.py)
+def _db():
+    from regimecast import db
+
+    e = db.make_engine("sqlite://")
+    db.upgrade(e)
+    return e
+
+
+class _Resp:
+    def __init__(self, code, text=""):
+        self.status_code, self.text = code, text
+
+    def json(self):
+        import json
+        return json.loads(self.text)
+
+
+def test_runner_carries_on_github_account_then_steps_once_per_hour():
+    import json
+
+    import sqlalchemy as sa
+
+    from regimecast.agent import runner as RN
+
+    s, _ = load_frozen()
+    old = L.new_state(COINS, s)
+    old, l0 = L.step(old, live_inputs("2026-11-02T07:00:00+00:00"), datetime(2026, 11, 2, 7, 12, tzinfo=timezone.utc), s)
+    files = {"state.json": json.dumps(old), "log.jsonl": json.dumps(l0) + "\n"}
+    get = lambda url, timeout=None: _Resp(200, files[url.rsplit("/", 1)[1]])
+    e = _db()
+    fetch = lambda coins: live_inputs("2026-11-02T09:00:00+00:00")
+
+    # too early in the hour: nothing
+    assert RN.tick(e, datetime(2026, 11, 2, 9, 5, tzinfo=timezone.utc), fetch, get) is None
+    # first run: the GitHub account is copied, then this hour is decided on top of it
+    line = RN.tick(e, datetime(2026, 11, 2, 9, 13, tzinfo=timezone.utc), fetch, get)
+    assert line["hour"] == "2026-11-02T09:00:00+00:00"
+    state, lines = RN.load(e)
+    assert [x["hour"] for x in lines] == ["2026-11-02T07:00:00+00:00", "2026-11-02T09:00:00+00:00"]
+    assert state["started_at"] == old["started_at"] and state["last_hour"] == line["hour"]
+    # same hour again: nothing new
+    assert RN.tick(e, datetime(2026, 11, 2, 9, 30, tzinfo=timezone.utc), fetch, get) is None
+    # the summary has the API's shape
+    out = RN.summary(e)
+    assert out["hours_logged"] == 2 and out["latest"]["hour"] == line["hour"]
+    # saved hours cannot be changed
+    with pytest.raises(Exception):
+        with e.begin() as c:
+            c.execute(sa.text("DELETE FROM agent_log"))
+
+
+def test_runner_waits_for_fresh_inputs_until_the_deadline():
+    from regimecast.agent import runner as RN
+
+    e = _db()
+    nothing = lambda url, timeout=None: _Resp(404)
+    late = lambda coins: live_inputs("2026-11-02T08:00:00+00:00")   # inputs still end at the previous hour
+    assert RN.tick(e, datetime(2026, 11, 2, 9, 20, tzinfo=timezone.utc), late, nothing) is None
+    line = RN.tick(e, datetime(2026, 11, 2, 9, 41, tzinfo=timezone.utc), late, nothing)
+    assert line is not None and line["hour"] == "2026-11-02T09:00:00+00:00"
