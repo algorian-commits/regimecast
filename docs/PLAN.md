@@ -643,10 +643,96 @@ The scorecards and the liquidation map are descriptive (no bar). They show their
 | Telegram rate limits | One message per alert, re-arm rule, at most 20 messages per user per hour |
 
 
-## Phase 14 (proposed 13 Nov 2026, not approved): Risk autopilot
+## Phase 14: Sell first, with prop-trader mode (direction from Saeed, 22 Nov 2026)
 
-Status: an idea to brainstorm after the P1 mid defense. Nothing here is approved or built. It needs pass marks and
-Saeed's approval before any work starts.
+Status: planned 22 Nov 2026. No university deliverable is due soon, so the goal is a product people pay for, as soon
+as possible. Saeed's choices: prop-trader mode is the first paid product, payment in USDT only, a global audience in
+English, and Phase 15 on testnet only within the FYP. The pass marks below are fixed before anything is built.
+
+**Why prop traders.** Crypto prop firms paid out $115M in Q1 2026 (Finance Magnates). Challenge fees are about 68% of
+their revenue, and only about 7% of traders who start a challenge ever get paid (Kraken). A trader who loses a
+$100-500 challenge has a clear reason to pay for a warning. The maths is the liquidation model that passed the final
+evaluation, with a different barrier: the firm's daily loss limit and maximum loss instead of the exchange's
+liquidation price. No product we reviewed gives this as a tested probability.
+
+### 14A: Housekeeping and the two Phase 13 merges (first, about a day)
+
+1. Remove the merged worktrees `regimecast-p13a` and `regimecast-track`, to free disk space.
+2. **Merge 13D** (trader tracker): merge `main` into `p13d-traders`, run the full tests and CI, merge, deploy, and
+   check the live page.
+3. **Merge 13B** (crash mode in the Risk Check): commit the 11 uncommitted files in `regimecast-p13b`, merge `main`,
+   then run the tests and CI. Apply the new-coin report fixes listed on 5 Nov (the SOL sentence, "8 combinations of
+   3 switches", BNB rounding), then merge and deploy. Before going live, check that the live stress gauge reaches its
+   10% level about as often as it did in the walk-forward test. The app must not claim crash mode protects against
+   sudden crashes.
+4. 13C (Guardian) stays on its branch until Saeed sets up a Telegram bot and Binance testnet keys for its pass marks.
+
+### 14B: Prop-trader mode (the first paid product)
+
+What it does
+1. **Firm presets plus custom rules.** The user picks a common crypto prop firm or enters the rules: account size,
+   daily loss limit (%, from the day's start balance or equity), maximum loss (static or trailing), profit target,
+   and whether open losses count. Presets come only from each firm's own rules page, with the date checked.
+2. **Breach risk for a trade.** For a planned position: the chance of hitting the daily loss limit before the day
+   resets, and of hitting the maximum loss within 24 hours, from FHS on the live HAR-S forecast. The answer includes
+   today's realised profit or loss and fees.
+3. **Safe size.** The largest position and leverage that keep the breach chance under the user's limit, plus the stop
+   that keeps the worst case inside the daily limit.
+4. **Day planner.** The loss "budget" left today and how many trades of a given size fit inside it.
+5. **Page and API:** `/prop` in the app, and `POST /prop-check`. Free: one firm preset and three checks a day.
+   Pro ($19 a month in USDT): all presets, custom rules, unlimited checks and alerts.
+
+Pass marks (fixed 22 Nov 2026, before building)
+
+| Part | Compared with | Pass if |
+|---|---|---|
+| Daily-breach probability, history | Random walk on the same forecast | On walk-forward history 2022-01 to 2026-09 for BTC, ETH and SOL, with a grid of daily limits (3%, 4%, 5%), leverages (2x to 20x) and both sides: ECE at most 1.5% and Brier lower than the random walk on all 3 coins. Reported as development evidence, because these years were used before. |
+| Daily-breach probability, live | Itself | Logged live in the Track Record from launch. After 30 days and at least 720 scored rows per coin: ECE at most 2%. Reported either way. |
+| Speed | 2 s bar | A prop check answers in under 2 s on the live site, 50 of 50. |
+| First buyer | None | At least one paying Pro user within 30 days of launch. A product goal, not a test of the model. |
+
+### 14C: USDT payments and Pro accounts
+
+1. Checkout through NOWPayments (about 0.5% per payment, no monthly fee; it supports USDT on TRON and other chains, and
+   subscriptions). It confirms payments by webhook, and the account is then marked Pro until the paid period ends.
+2. Reminder emails or in-app notices before renewal, since crypto subscriptions are paid each period, not pulled
+   automatically.
+3. No card payments for now. A Paddle seller account is the fallback if card demand appears.
+4. Before taking money: terms of use, a privacy note and a clear "risk estimates, not financial advice" notice.
+
+### 14D: Launch
+
+1. A landing page for prop traders: the problem, a live example check, pricing, and the Track Record as proof.
+2. A free public calculator ("chance of breaching your daily limit"), with no sign-up, to bring in visitors.
+3. Posts where prop traders gather (X, Reddit and Discord prop-trading communities) and a short demo video.
+4. Measure: visitors, free checks, sign-ups and paid users, weekly.
+
+### 14E-14H: The queued items, in this order after 14D
+
+- **14E OKX recording.** Daily snapshot of OKX copy-trading leaders on the server, with nothing on the site yet.
+  Start early, during 14A, since its value is the history it builds. Read OKX's API terms first.
+- **14F Mempool panel plus test (BTC only).** The panel describes the network. Test: does the backlog improve the
+  stress warning or 24 h forecast on data after the frozen period? Pass mark written before the test.
+- **14G Strategy Lab.** 3-5 known rules with pass marks first, then an 8-week paper test with fees. Published either
+  way. A rule that passes could later become a "trade this rule" option in Phase 15.
+- **14H Coinglass link.** A free link next to 13D's liquidation map, after 13D is merged.
+
+### Phase 14 order and risks
+
+Order: 14A (with 14E started alongside) -> 14B -> 14C -> 14D -> 14F -> 14G -> 14H.
+
+| Risk | Answer |
+|---|---|
+| Prop firms change rules often | Presets record their source and check date. Custom rules always work. |
+| Firms ban third-party tools | We read only public prices and what the user types, with no account access, so nothing runs on the firm's side. |
+| USDT-only limits buyers | Paddle is the fallback once there's demand. |
+| The breach model fails its live mark | It's reported and the page says so, as with every other model. |
+
+## Phase 15 (proposed 13 Nov 2026): Risk autopilot, testnet only within the FYP
+
+Status: Saeed chose on 22 Nov 2026 to build this on Hyperliquid's testnet only within the FYP. It waits for a
+Hyperliquid testnet wallet. Pass marks are to be fixed before building. Real orders need the supervisor's agreement
+and a legal check first.
 
 Goal: the trader picks the direction; RegimeCast plans, places and looks after the position, with the trader's
 approval at each step. This is the first phase aimed at earning money.
@@ -818,3 +904,4 @@ To decide when we brainstorm: which idea goes first, the pass marks, and whether
 | 2026-11-05 | `db.upgrade` applies every migration head | Track Record's and Phase 13C's migrations both branch from 0002 and don't depend on each other, so either can merge first. |
 | 2026-11-05 | Top nav collapses to the menu below 1280 px (was 1024 px) and the header widens there | An eighth link no longer fits at 1024 px. |
 | 2026-11-06 | Parser schema: enum fields written as anyOf (string enum or null), not an enum beside a type list | The first accuracy run failed on all 400 calls with a 400 error ("Enum value 'BTC' does not match declared type"), before any cost. A bug fix to the request, not a change to the prompts or scoring; rerun once with `--fresh`. |
+| 2026-11-22 | Phase 14: sell first, starting with prop-trader mode; USDT payments via NOWPayments; global English audience; Phase 15 autopilot on testnet only within the FYP | No university deliverable is due soon. Prop traders already pay $100-500 per challenge and most fail, and the daily-breach chance reuses the liquidation model that passed. |
